@@ -69,7 +69,7 @@ export function PitchDeckForm() {
   return (
     <div>
       <Form {...form}>
-        <form action={form.handleSubmit(data => formAction(data))} className="space-y-6">
+        <form onSubmit={form.handleSubmit(data => formAction(data))} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Pitch Deck Inputs</CardTitle>

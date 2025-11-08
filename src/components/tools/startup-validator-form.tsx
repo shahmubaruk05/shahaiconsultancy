@@ -46,7 +46,7 @@ export function StartupValidatorForm() {
   return (
     <div>
       <Form {...form}>
-        <form action={form.handleSubmit(data => formAction(data))} className="space-y-6">
+        <form onSubmit={form.handleSubmit(data => formAction(data))} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Describe Your Idea</CardTitle>
