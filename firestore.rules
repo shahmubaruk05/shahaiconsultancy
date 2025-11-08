@@ -1,0 +1,195 @@
+/**
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict user-ownership model for all data.
+ *
+ * Data Structure:
+ * All data is nested under /users/{userId}, with further subcollections for specific data types.
+ * /users/{userId} (UserProfile)
+ * /users/{userId}/startupIdeas/{startupIdeaId} (StartupIdea)
+ * /users/{userId}/businessStrategies/{businessStrategyId} (BusinessStrategy)
+ * /users/{userId}/pitchDecks/{pitchDeckId} (PitchDeck)
+ * /users/{userId}/companyFormationGuides/{companyFormationGuideId} (CompanyFormationGuide)
+ * /users/{userId}/conversations/{conversationId} (Conversation)
+ * /users/{userId}/conversations/{conversationId}/messages/{messageId} (Message)
+ *
+ * Key Security Decisions:
+ * - Strict user-ownership: Only the authenticated user (request.auth.uid) matching the userId in the path can read or write data.
+ * - No user listing: Listing of /users collection is not allowed.
+ *
+ * Authorization Denormalization:
+ *  - Each document has a userId field that must match the userId in the path. This enforces ownership.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Rule for the root `/users/{userId}` document.
+     * @path `/users/{userId}`
+     * @allow (create) User with ID 'user_abc' can create their profile.
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.id = 'user_abc'`
+     * @deny (create) User with ID 'user_abc' cannot create a profile for 'user_xyz'.
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.id = 'user_xyz'`
+     * @allow (get) User with ID 'user_abc' can read their profile.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (get) User with ID 'user_xyz' cannot read profile of user 'user_abc'.
+     *   - Request: `auth.uid = 'user_xyz'`
+     * @principle Enforces document ownership and prevents unauthorized profile access.
+     */
+    match /users/{userId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+      allow update: if isOwner(userId) && resource.data.id == userId;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rule for the `/users/{userId}/startupIdeas/{startupIdeaId}` collection.
+     * @path `/users/{userId}/startupIdeas/{startupIdeaId}`
+     * @allow (create) User with ID 'user_abc' can create a startup idea under their profile.
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_abc'`
+     * @deny (create) User with ID 'user_abc' cannot create a startup idea under another user's profile ('user_xyz').
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_xyz'`
+     * @allow (get) User with ID 'user_abc' can read a startup idea under their profile.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (get) User with ID 'user_xyz' cannot read a startup idea under user 'user_abc''s profile.
+     *   - Request: `auth.uid = 'user_xyz'`
+     * @principle Enforces document ownership and prevents unauthorized access to startup ideas.
+     */
+    match /users/{userId}/startupIdeas/{startupIdeaId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(userId) && resource.data.userId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rule for the `/users/{userId}/businessStrategies/{businessStrategyId}` collection.
+     * @path `/users/{userId}/businessStrategies/{businessStrategyId}`
+     * @allow (create) User with ID 'user_abc' can create a business strategy under their profile.
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_abc'`
+     * @deny (create) User with ID 'user_abc' cannot create a business strategy under another user's profile ('user_xyz').
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_xyz'`
+     * @allow (get) User with ID 'user_abc' can read a business strategy under their profile.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (get) User with ID 'user_xyz' cannot read a business strategy under user 'user_abc''s profile.
+     *   - Request: `auth.uid = 'user_xyz'`
+     * @principle Enforces document ownership and prevents unauthorized access to business strategies.
+     */
+    match /users/{userId}/businessStrategies/{businessStrategyId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(userId) && resource.data.userId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rule for the `/users/{userId}/pitchDecks/{pitchDeckId}` collection.
+     * @path `/users/{userId}/pitchDecks/{pitchDeckId}`
+     * @allow (create) User with ID 'user_abc' can create a pitch deck under their profile.
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_abc'`
+     * @deny (create) User with ID 'user_abc' cannot create a pitch deck under another user's profile ('user_xyz').
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_xyz'`
+     * @allow (get) User with ID 'user_abc' can read a pitch deck under their profile.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (get) User with ID 'user_xyz' cannot read a pitch deck under user 'user_abc''s profile.
+     *   - Request: `auth.uid = 'user_xyz'`
+     * @principle Enforces document ownership and prevents unauthorized access to pitch decks.
+     */
+    match /users/{userId}/pitchDecks/{pitchDeckId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(userId) && resource.data.userId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rule for the `/users/{userId}/companyFormationGuides/{companyFormationGuideId}` collection.
+     * @path `/users/{userId}/companyFormationGuides/{companyFormationGuideId}`
+     * @allow (create) User with ID 'user_abc' can create a company formation guide under their profile.
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_abc'`
+     * @deny (create) User with ID 'user_abc' cannot create a company formation guide under another user's profile ('user_xyz').
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_xyz'`
+     * @allow (get) User with ID 'user_abc' can read a company formation guide under their profile.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (get) User with ID 'user_xyz' cannot read a company formation guide under user 'user_abc''s profile.
+     *   - Request: `auth.uid = 'user_xyz'`
+     * @principle Enforces document ownership and prevents unauthorized access to company formation guides.
+     */
+    match /users/{userId}/companyFormationGuides/{companyFormationGuideId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(userId) && resource.data.userId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rule for the `/users/{userId}/conversations/{conversationId}` collection.
+     * @path `/users/{userId}/conversations/{conversationId}`
+     * @allow (create) User with ID 'user_abc' can create a conversation under their profile.
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_abc'`
+     * @deny (create) User with ID 'user_abc' cannot create a conversation under another user's profile ('user_xyz').
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_xyz'`
+     * @allow (get) User with ID 'user_abc' can read a conversation under their profile.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (get) User with ID 'user_xyz' cannot read a conversation under user 'user_abc''s profile.
+     *   - Request: `auth.uid = 'user_xyz'`
+     * @principle Enforces document ownership and prevents unauthorized access to conversations.
+     */
+    match /users/{userId}/conversations/{conversationId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(userId) && resource.data.userId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rule for the `/users/{userId}/conversations/{conversationId}/messages/{messageId}` collection.
+     * @path `/users/{userId}/conversations/{conversationId}/messages/{messageId}`
+     * @allow (create) User with ID 'user_abc' can create a message under their conversation.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (create) User with ID 'user_abc' cannot create a message under another user's conversation ('user_xyz').
+     *   - Request: `auth.uid = 'user_abc'`
+     * @allow (get) User with ID 'user_abc' can read a message under their conversation.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (get) User with ID 'user_xyz' cannot read a message under user 'user_abc''s conversation.
+     *   - Request: `auth.uid = 'user_xyz'`
+     * @principle Enforces document ownership and prevents unauthorized access to messages.
+     */
+    match /users/{userId}/conversations/{conversationId}/messages/{messageId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+  }
+}

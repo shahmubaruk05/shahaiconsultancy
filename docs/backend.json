@@ -1,0 +1,436 @@
+{
+  "entities": {
+    "BusinessStrategy": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BusinessStrategy",
+      "type": "object",
+      "description": "Represents a generated business strategy.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the BusinessStrategy entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N BusinessStrategy)"
+        },
+        "businessModel": {
+          "type": "string",
+          "description": "The business model used to generate the strategy."
+        },
+        "usp": {
+          "type": "string",
+          "description": "The unique selling proposition used to generate the strategy."
+        },
+        "pricing": {
+          "type": "string",
+          "description": "The pricing strategy used to generate the strategy."
+        },
+        "marketingChannels": {
+          "type": "string",
+          "description": "The marketing channels used to generate the strategy."
+        },
+        "ninetyDayActionPlan": {
+          "type": "string",
+          "description": "The 90-day action plan generated as part of the strategy."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the strategy was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "businessModel",
+        "usp",
+        "pricing",
+        "marketingChannels",
+        "ninetyDayActionPlan",
+        "createdAt"
+      ]
+    },
+    "StartupIdea": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "StartupIdea",
+      "type": "object",
+      "description": "Represents a validated startup idea.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the StartupIdea entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N StartupIdea)"
+        },
+        "input": {
+          "type": "string",
+          "description": "The user input used to validate the idea."
+        },
+        "score": {
+          "type": "number",
+          "description": "The validation score of the startup idea."
+        },
+        "summary": {
+          "type": "string",
+          "description": "A summary of the startup idea validation."
+        },
+        "risks": {
+          "type": "string",
+          "description": "Identified risks associated with the startup idea."
+        },
+        "recommendations": {
+          "type": "string",
+          "description": "Recommendations for the startup idea."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the idea was validated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "input",
+        "score",
+        "summary",
+        "risks",
+        "recommendations",
+        "createdAt"
+      ]
+    },
+    "PitchDeck": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PitchDeck",
+      "type": "object",
+      "description": "Represents a pitch deck outline.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PitchDeck entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N PitchDeck)"
+        },
+        "input": {
+          "type": "string",
+          "description": "The user input used to generate the pitch deck."
+        },
+        "slides": {
+          "type": "array",
+          "description": "An array of slide objects representing the pitch deck outline.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the pitch deck was generated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "input",
+        "slides",
+        "createdAt"
+      ]
+    },
+    "CompanyFormationGuide": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CompanyFormationGuide",
+      "type": "object",
+      "description": "Represents a company formation guide.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CompanyFormationGuide entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N CompanyFormationGuide)"
+        },
+        "country": {
+          "type": "string",
+          "description": "The country the company formation guide is for (Bangladesh or USA)."
+        },
+        "formationSteps": {
+          "type": "string",
+          "description": "The steps to form a company."
+        },
+        "documentChecklist": {
+          "type": "string",
+          "description": "A checklist of required documents."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the formation process."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the guide was generated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "country",
+        "formationSteps",
+        "documentChecklist",
+        "notes",
+        "createdAt"
+      ]
+    },
+    "Conversation": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Conversation",
+      "type": "object",
+      "description": "Represents a conversation with the Ask Shah chatbot.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Conversation entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Conversation)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the conversation was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "createdAt"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a message in a conversation with the Ask Shah chatbot.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Message entity."
+        },
+        "conversationId": {
+          "type": "string",
+          "description": "Reference to Conversation. (Relationship: Conversation 1:N Message)"
+        },
+        "sender": {
+          "type": "string",
+          "description": "The sender of the message (user or chatbot)."
+        },
+        "text": {
+          "type": "string",
+          "description": "The text content of the message."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "conversationId",
+        "sender",
+        "text",
+        "createdAt"
+      ]
+    },
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user profile.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the profile was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "name",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Collection of user profiles.  Root document for user-specific data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/startupIdeas/{startupIdeaId}",
+        "definition": {
+          "entityName": "StartupIdea",
+          "schema": {
+            "$ref": "#/backend/entities/StartupIdea"
+          },
+          "description": "Collection of startup ideas owned by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "startupIdeaId",
+              "description": "The unique identifier of the startup idea."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/businessStrategies/{businessStrategyId}",
+        "definition": {
+          "entityName": "BusinessStrategy",
+          "schema": {
+            "$ref": "#/backend/entities/BusinessStrategy"
+          },
+          "description": "Collection of business strategies owned by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "businessStrategyId",
+              "description": "The unique identifier of the business strategy."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/pitchDecks/{pitchDeckId}",
+        "definition": {
+          "entityName": "PitchDeck",
+          "schema": {
+            "$ref": "#/backend/entities/PitchDeck"
+          },
+          "description": "Collection of pitch decks owned by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "pitchDeckId",
+              "description": "The unique identifier of the pitch deck."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/companyFormationGuides/{companyFormationGuideId}",
+        "definition": {
+          "entityName": "CompanyFormationGuide",
+          "schema": {
+            "$ref": "#/backend/entities/CompanyFormationGuide"
+          },
+          "description": "Collection of company formation guides owned by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "companyFormationGuideId",
+              "description": "The unique identifier of the company formation guide."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/conversations/{conversationId}",
+        "definition": {
+          "entityName": "Conversation",
+          "schema": {
+            "$ref": "#/backend/entities/Conversation"
+          },
+          "description": "Collection of conversations owned by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "conversationId",
+              "description": "The unique identifier of the conversation."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/conversations/{conversationId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Collection of messages within a conversation.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "conversationId",
+              "description": "The unique identifier of the conversation."
+            },
+            {
+              "name": "messageId",
+              "description": "The unique identifier of the message."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, clarity, and scalability. User-owned data is stored under the `/users/{userId}` path, creating a clear ownership model. This enables secure and efficient security rules based on `request.auth.uid`. Each entity, such as `StartupIdea`, `BusinessStrategy`, `PitchDeck`, `CompanyFormationGuide`, `Conversation`, and `Message` are stored as subcollections of `/users/{userId}`. This approach ensures that all documents in a collection share the same security requirements (Structural Segregation) and eliminates the need for complex rule logic.  The `Conversation` and `Message` collections follow the same pattern.  This design allows us to use path-based rules effectively without needing `get()` calls to parent documents, thus maintaining Authorization Independence.\n\nQAPs (Rules are not Filters): The path-based ownership model ensures secure list operations because rules can easily filter based on the `userId` in the path. A user can only list resources owned by them without additional filtering within the rules themselves.\n\nThe structure explicitly models the relationships between entities. This adheres to the principle of Data Clarity and Predictability, which simplifies debugging and maintenance."
+  }
+}
