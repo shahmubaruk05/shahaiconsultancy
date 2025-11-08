@@ -4,13 +4,15 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export function SignupForm() {
+    const router = useRouter();
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // In a real app, you'd handle form submission here.
     // For this mock, we'll just redirect.
-    window.location.href = '/';
+    router.push('/');
   };
 
   return (
