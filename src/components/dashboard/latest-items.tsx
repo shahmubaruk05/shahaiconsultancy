@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Lightbulb, Target } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 
 function formatTimestamp(timestamp: any) {
@@ -18,7 +18,7 @@ export function LatestItems() {
 
   const ideasQuery = useMemoFirebase(() => 
     user && firestore 
-      ? query(collection(firestore, 'ideaValidations'), orderBy('createdAt', 'desc'), limit(3))
+      ? query(collection(firestore, `users/${user.uid}/startupIdeas`), orderBy('createdAt', 'desc'), limit(3))
       : null, 
     [firestore, user]
   );
@@ -26,7 +26,7 @@ export function LatestItems() {
   
   const strategiesQuery = useMemoFirebase(() => 
     user && firestore 
-      ? query(collection(firestore, 'strategies'), orderBy('createdAt', 'desc'), limit(3))
+      ? query(collection(firestore, `users/${user.uid}/businessStrategies`), orderBy('createdAt', 'desc'), limit(3))
       : null, 
     [firestore, user]
   );
@@ -34,7 +34,7 @@ export function LatestItems() {
   
   const decksQuery = useMemoFirebase(() => 
     user && firestore 
-      ? query(collection(firestore, 'pitchDecks'), orderBy('createdAt', 'desc'), limit(3))
+      ? query(collection(firestore, `users/${user.uid}/pitchDecks`), orderBy('createdAt', 'desc'), limit(3))
       : null, 
     [firestore, user]
   );
@@ -60,12 +60,12 @@ export function LatestItems() {
           </TabsList>
           <TabsContent value="ideas" className="mt-4">
             <div className="space-y-4">
-              {ideas && ideas.length > 0 ? ideas.map((item) => (
+              {ideas && ideas.length > 0 ? ideas.map((item: any) => (
                 <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
                   <div className="flex items-center gap-4">
                     <Lightbulb className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium truncate">{item.ideaDescription}</p>
+                      <p className="font-medium truncate">{item.input}</p>
                       <p className="text-sm text-muted-foreground">Validated {formatTimestamp(item.createdAt)}</p>
                     </div>
                   </div>
@@ -79,7 +79,7 @@ export function LatestItems() {
           </TabsContent>
           <TabsContent value="strategies" className="mt-4">
              <div className="space-y-4">
-              {strategies && strategies.length > 0 ? strategies.map((item) => (
+              {strategies && strategies.length > 0 ? strategies.map((item: any) => (
                 <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
                   <div className="flex items-center gap-4">
                     <Target className="h-5 w-5 text-muted-foreground" />
@@ -94,12 +94,12 @@ export function LatestItems() {
           </TabsContent>
           <TabsContent value="decks" className="mt-4">
              <div className="space-y-4">
-              {decks && decks.length > 0 ? decks.map((item) => (
+              {decks && decks.length > 0 ? decks.map((item: any) => (
                 <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
                   <div className="flex items-center gap-4">
                     <FileText className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{item.businessName}</p>
+                      <p className="font-medium">{item.input.businessName}</p>
                       <p className="text-sm text-muted-foreground">Created {formatTimestamp(item.createdAt)}</p>
                     </div>
                   </div>

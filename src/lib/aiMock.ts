@@ -1,21 +1,14 @@
 
 'use client';
+import { AskShahInput } from "@/ai/flows/ask-shah";
+import { GenerateBusinessStrategyInput, GenerateBusinessStrategyOutput } from "@/ai/flows/generate-business-strategy";
+import { GeneratePitchDeckOutlineInput, GeneratePitchDeckOutlineOutput } from "@/ai/flows/generate-pitch-deck-outline";
+import { ValidateStartupIdeaInput, ValidateStartupIdeaOutput } from "@/ai/flows/validate-startup-idea";
 
-export type BusinessStrategyInput = {
-  businessModel: string;
-  usp: string;
-  pricing: string;
-  marketingChannels: string;
-};
-
-export type BusinessStrategyResult = {
-  businessStrategy: string;
-  ninetyDayActionPlan: string;
-};
 
 export async function generateBusinessStrategyMock(
-  input: BusinessStrategyInput
-): Promise<BusinessStrategyResult> {
+  input: GenerateBusinessStrategyInput
+): Promise<GenerateBusinessStrategyOutput> {
   // TODO: later replace with real AI API
   return {
     businessStrategy:
@@ -25,20 +18,10 @@ export async function generateBusinessStrategyMock(
   };
 }
 
-export type IdeaValidationInput = {
-  ideaDescription: string;
-};
-
-export type IdeaValidationResult = {
-  score: number;
-  summary: string;
-  risks: string[];
-  recommendations: string[];
-};
 
 export async function validateStartupIdeaMock(
-  input: IdeaValidationInput
-): Promise<IdeaValidationResult> {
+  input: ValidateStartupIdeaInput
+): Promise<ValidateStartupIdeaOutput> {
   const score = Math.floor(Math.random() * 35) + 60; // Random score between 60 and 95
 
   return {
@@ -58,29 +41,10 @@ export async function validateStartupIdeaMock(
   };
 }
 
-export type PitchDeckSlide = {
-  slideTitle: string;
-  slideContentSuggestions: string[];
-};
-
-export type PitchDeckInput = {
-  businessName: string;
-  businessDescription: string;
-  targetAudience: string;
-  problemStatement: string;
-  solutionStatement: string;
-  uniqueSellingProposition: string;
-  valueProposition: string;
-  revenueModel: string;
-  marketSize: string;
-  competitiveLandscape: string;
-  financialProjections: string;
-  fundingRequirements: string;
-};
 
 export async function generatePitchDeckOutlineMock(
-  input: PitchDeckInput
-): Promise<PitchDeckSlide[]> {
+  input: GeneratePitchDeckOutlineInput
+): Promise<GeneratePitchDeckOutlineOutput> {
   // TODO: later replace with real AI API
   return [
     {
@@ -157,14 +121,13 @@ export type AskShahMessage = {
 };
 
 export async function generateAskShahReplyMock(
-  question: string,
-  previousMessages: AskShahMessage[]
-): Promise<string> {
+  input: AskShahInput
+): Promise<{ answer: string }> {
   // TODO: later replace with real AI API (OpenAI/Gemini).
-  return (
-    "এটি একটি ডেমো উত্তর, যেখানে আমি Shah Mubaruk – Your Startup Coach হিসেবে " +
-    "আপনার স্টার্টআপ, ফান্ডিং, লাইসেন্সিং ও বিজনেস স্ট্র্যাটেজি বিষয়ে সাধারণ দিকনির্দেশনা দিচ্ছি। " +
-    "রিয়াল অ্যাপে এখানে আসল AI যুক্ত হবে। আপনার বর্তমান প্রশ্ন ছিল: " +
-    question
-  );
+  return {
+    answer: "এটি একটি ডেমো উত্তর, যেখানে আমি Shah Mubaruk – Your Startup Coach হিসেবে " +
+      "আপনার স্টার্টআপ, ফান্ডিং, লাইসেন্সিং ও বিজনেস স্ট্র্যাটেজি বিষয়ে সাধারণ দিকনির্দেশনা দিচ্ছি। " +
+      "রিয়াল অ্যাপে এখানে আসল AI যুক্ত হবে। আপনার বর্তমান প্রশ্ন ছিল: " +
+      input.query
+  };
 }

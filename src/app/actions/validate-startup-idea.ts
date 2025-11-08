@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { validateStartupIdeaMock } from '@/lib/aiMock';
+import { validateStartupIdea } from '@/ai/flows/validate-startup-idea';
 import { db } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -14,7 +14,7 @@ const formSchema = z.object({
 type State = {
   success: boolean;
   message?: string;
-  data?: Awaited<ReturnType<typeof validateStartupIdeaMock>>;
+  data?: Awaited<ReturnType<typeof validateStartupIdea>>;
 };
 
 export async function validateStartupIdeaAction(
@@ -34,14 +34,17 @@ export async function validateStartupIdeaAction(
   }
 
   try {
-    const result = await validateStartupIdeaMock(validatedFields.data);
+    const result = await validateStartupIdea({ideaDescription: validatedFields.data.ideaDescription});
 
-    // Save to Firestore
-    const ideaRef = db.collection('ideaValidations').doc();
+    const ideaRef = db.collection(`users/${validatedFields.data.userId}/startupIdeas`).doc();
     await ideaRef.set({
+      id: ideaRef.id,
       userId: validatedFields.data.userId,
-      ideaDescription: validatedFields.data.ideaDescription,
-      ...result,
+      input: validatedFields.data.ideaDescription,
+      score: result.score,
+      summary: result.summary,
+      risks: result.risks.join(', '),
+      recommendations: result.recommendations.join(', '),
       createdAt: FieldValue.serverTimestamp(),
     });
 

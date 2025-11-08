@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { generateAskShahReplyMock } from '@/lib/aiMock';
+import { askShah } from '@/ai/flows/ask-shah';
 import { db } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -42,12 +42,13 @@ export async function askShahAction(
   const { query, conversationId, userId } = validatedFields.data;
 
   try {
-    const messagesCol = db.collection('conversations').doc(conversationId).collection('messages');
+    const messagesCol = db.collection(`users/${userId}/conversations`).doc(conversationId).collection('messages');
     
     // Save user message
-    await messagesCol.add({
+    const userMessageRef = messagesCol.doc();
+    await userMessageRef.set({
+      id: userMessageRef.id,
       conversationId,
-      userId,
       sender: 'user',
       text: query,
       createdAt: FieldValue.serverTimestamp(),
@@ -58,25 +59,26 @@ export async function askShahAction(
     const conversationHistory: Message[] = messagesSnapshot.docs.map(doc => {
         const data = doc.data();
         return {
-            role: data.sender,
+            role: data.sender === 'ai' ? 'assistant' : 'user',
             content: data.text,
         };
     });
 
     // Generate AI reply
-    const aiReplyText = await generateAskShahReplyMock(query, conversationHistory);
+    const aiReply = await askShah({ query, conversationHistory });
 
     // Save AI reply
-    await messagesCol.add({
+    const aiMessageRef = messagesCol.doc();
+    await aiMessageRef.set({
+      id: aiMessageRef.id,
       conversationId,
-      userId,
       sender: 'ai',
-      text: aiReplyText,
+      text: aiReply.answer,
       createdAt: FieldValue.serverTimestamp(),
     });
     
     // Update conversation timestamp
-    await db.collection('conversations').doc(conversationId).update({
+    await db.collection(`users/${userId}/conversations`).doc(conversationId).update({
       updatedAt: FieldValue.serverTimestamp(),
     });
 

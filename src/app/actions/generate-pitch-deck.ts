@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { generatePitchDeckOutlineMock } from '@/lib/aiMock';
+import { generatePitchDeckOutline } from '@/ai/flows/generate-pitch-deck-outline';
 import { db } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -25,7 +25,7 @@ const formSchema = z.object({
 type State = {
   success: boolean;
   message?: string;
-  data?: Awaited<ReturnType<typeof generatePitchDeckOutlineMock>>;
+  data?: Awaited<ReturnType<typeof generatePitchDeckOutline>>;
 };
 
 export async function generatePitchDeckOutlineAction(
@@ -47,13 +47,13 @@ export async function generatePitchDeckOutlineAction(
   }
 
   try {
-    const result = await generatePitchDeckOutlineMock(validatedFields.data);
+    const result = await generatePitchDeckOutline(validatedFields.data);
 
-    // Save to Firestore
-    const pitchDeckRef = db.collection('pitchDecks').doc();
+    const pitchDeckRef = db.collection(`users/${validatedFields.data.userId}/pitchDecks`).doc();
     await pitchDeckRef.set({
+        id: pitchDeckRef.id,
         userId: validatedFields.data.userId,
-        ...validatedFields.data,
+        input: validatedFields.data,
         slides: result,
         createdAt: FieldValue.serverTimestamp(),
     });

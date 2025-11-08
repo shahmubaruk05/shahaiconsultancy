@@ -2,10 +2,9 @@
 'use server';
 
 import { z } from 'zod';
-import { generateBusinessStrategyMock } from '@/lib/aiMock';
+import { generateBusinessStrategy } from '@/ai/flows/generate-business-strategy';
 import { db } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { auth } from 'firebase-admin';
 
 const formSchema = z.object({
   businessModel: z.string().min(10, 'Please provide more detail.'),
@@ -18,7 +17,7 @@ const formSchema = z.object({
 type State = {
   success: boolean;
   message?: string;
-  data?: Awaited<ReturnType<typeof generateBusinessStrategyMock>>;
+  data?: Awaited<ReturnType<typeof generateBusinessStrategy>>;
 };
 
 export async function generateBusinessStrategyAction(
@@ -44,14 +43,17 @@ export async function generateBusinessStrategyAction(
   }
 
   try {
-    const result = await generateBusinessStrategyMock(validatedFields.data);
+    const result = await generateBusinessStrategy(validatedFields.data);
 
-    // Save to Firestore
-    const strategyRef = db.collection('strategies').doc();
+    const strategyRef = db.collection(`users/${validatedFields.data.userId}/businessStrategies`).doc();
     await strategyRef.set({
+      id: strategyRef.id,
       userId: validatedFields.data.userId,
-      ...validatedFields.data,
-      generatedStrategy: result,
+      businessModel: validatedFields.data.businessModel,
+      usp: validatedFields.data.usp,
+      pricing: validatedFields.data.pricing,
+      marketingChannels: validatedFields.data.marketingChannels,
+      ninetyDayActionPlan: result.ninetyDayActionPlan,
       createdAt: FieldValue.serverTimestamp(),
     });
 
