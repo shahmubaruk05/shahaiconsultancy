@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useActionState, useTransition } from 'react';
@@ -12,17 +13,26 @@ import { Card } from '../ui/card';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy, addDoc, serverTimestamp, limit, getDocs } from 'firebase/firestore';
+import Link from 'next/link';
 
 const formSchema = z.object({
   query: z.string().min(1),
 });
 
+type FirestoreMessage = {
+  id: string;
+  sender: 'user' | 'ai';
+  text: string;
+  createdAt: any;
+}
+
 export function AskShahChat() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: 'Hello! I am Shah, your AI startup advisor. How can I help you today?',
-    },
+  const { firestore, user, isUserLoading } = useFirebase();
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Omit<FirestoreMessage, 'id' | 'createdAt'>[]>([
+      { sender: 'ai', text: 'Hello! I am Shah, your AI startup advisor. How can I help you today?' },
   ]);
 
   const [state, formAction] = useActionState(askShahAction, { success: false, messages: [] });
@@ -32,23 +42,64 @@ export function AskShahChat() {
   });
   const [isPending, startTransition] = useTransition();
 
-  const handleFormSubmit = async (formData: FormData) => {
-    const query = formData.get('query') as string;
-    if (!query) return;
+  // Find or create conversation
+  useEffect(() => {
+    if (user && firestore) {
+      const convosRef = collection(firestore, 'conversations');
+      const q = query(convosRef, where('userId', '==', user.uid), limit(1));
+      
+      getDocs(q).then(snapshot => {
+        if (snapshot.empty) {
+          addDoc(convosRef, {
+            userId: user.uid,
+            title: 'Ask Shah – Default Conversation',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }).then(docRef => {
+            setConversationId(docRef.id);
+          });
+        } else {
+          setConversationId(snapshot.docs[0].id);
+        }
+      });
+    }
+  }, [user, firestore]);
 
-    setMessages(prev => [...prev, { role: 'user', content: query }]);
+  // Listen for new messages
+  const messagesQuery = useMemoFirebase(() => 
+    conversationId && firestore
+      ? query(collection(firestore, 'conversations', conversationId, 'messages'), orderBy('createdAt', 'asc'))
+      : null,
+    [firestore, conversationId]
+  );
+  const { data: firestoreMessages, isLoading: messagesLoading } = useCollection<Omit<FirestoreMessage, 'id'>>(messagesQuery);
+  
+  useEffect(() => {
+    if (firestoreMessages) {
+        // map sender to role and text to content
+        const newMessages = firestoreMessages.map(m => ({ role: m.sender, content: m.text }));
+        // add initial message if it doesn't exist
+        setMessages([
+             { role: 'assistant', content: 'Hello! I am Shah, your AI startup advisor. How can I help you today?' },
+            ...newMessages
+        ]);
+    }
+  }, [firestoreMessages]);
+
+
+  const handleFormSubmit = (formData: FormData) => {
+    if (!conversationId || !user) return;
+    
+    formData.append('conversationId', conversationId);
+    formData.append('userId', user.uid);
+    
     startTransition(() => {
         formAction(formData);
     });
     form.reset();
   };
 
-  useEffect(() => {
-    if (state.success && state.answer) {
-      setMessages(prev => [...prev, { role: 'assistant', content: state.answer as string }]);
-    }
-    // Handle error state if needed
-  }, [state]);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -59,7 +110,21 @@ export function AskShahChat() {
     }
   }, [messages, isPending]);
 
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  if (isUserLoading) {
+    return <Card className="flex flex-col flex-1 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></Card>;
+  }
+
+  if (!user) {
+    return (
+      <Card className="flex flex-col flex-1 items-center justify-center text-center p-8">
+        <h2 className="text-xl font-semibold mb-2">Please Log In</h2>
+        <p className="text-muted-foreground mb-4">You need to be logged in to chat with Shah.</p>
+        <Button asChild>
+          <Link href="/login">Log In</Link>
+        </Button>
+      </Card>
+    )
+  }
 
   return (
     <Card className="flex flex-col flex-1">
@@ -109,14 +174,13 @@ export function AskShahChat() {
       </ScrollArea>
       <div className="border-t p-4">
         <form action={handleFormSubmit} className="flex items-center gap-2">
-          <input type="hidden" name="conversationHistory" value={JSON.stringify(messages)} />
           <Input
             {...form.register('query')}
             autoComplete="off"
             placeholder="Ask about funding, strategy, etc..."
-            disabled={isPending}
+            disabled={isPending || messagesLoading || !conversationId}
           />
-          <Button type="submit" size="icon" disabled={isPending}>
+          <Button type="submit" size="icon" disabled={isPending || messagesLoading || !conversationId}>
             <Send className="h-4 w-4" />
           </Button>
         </form>

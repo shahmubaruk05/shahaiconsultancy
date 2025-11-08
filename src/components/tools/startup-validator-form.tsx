@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useActionState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Link from 'next/link';
 
 import { validateStartupIdeaAction } from '@/app/actions/validate-startup-idea';
 import {
@@ -26,12 +28,14 @@ import {
 import { Loader2, Sparkles, AlertTriangle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useFirebase } from '@/firebase';
 
 const formSchema = z.object({
   ideaDescription: z.string().min(50, 'Please provide a detailed description of at least 50 characters.'),
 });
 
 export function StartupValidatorForm() {
+  const { user, isUserLoading } = useFirebase();
   const [state, formAction] = useActionState(validateStartupIdeaAction, { success: false });
   const [isPending, startTransition] = useTransition();
 
@@ -42,16 +46,34 @@ export function StartupValidatorForm() {
     },
   });
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  const handleAction = (data: FormData) => {
+    if (!user) return;
+    data.append('userId', user.uid);
     startTransition(() => {
-      formAction(data);
+        formAction(data);
     });
   };
+
+  if (isUserLoading) {
+    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!user) {
+    return (
+      <Card className="text-center p-8">
+        <CardTitle>Please Log In</CardTitle>
+        <CardDescription className="mt-2 mb-4">You need to be logged in to validate an idea.</CardDescription>
+        <Button asChild>
+          <Link href="/login">Log In</Link>
+        </Button>
+      </Card>
+    );
+  }
 
   return (
     <div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form action={handleAction} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Describe Your Idea</CardTitle>

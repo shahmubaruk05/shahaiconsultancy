@@ -1,10 +1,10 @@
+
 'use server';
 
 import { z } from 'zod';
-import { generatePitchDeckOutline, GeneratePitchDeckOutlineOutput } from '@/ai/flows/generate-pitch-deck-outline';
-// import { db } from '@/lib/firebase';
-// import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-// import { getUser } from '@/lib/auth';
+import { generatePitchDeckOutlineMock } from '@/lib/aiMock';
+import { db } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const formSchema = z.object({
   businessName: z.string().min(1),
@@ -19,19 +19,21 @@ const formSchema = z.object({
   competitiveLandscape: z.string().min(10),
   financialProjections: z.string().min(10),
   fundingRequirements: z.string().min(10),
+  userId: z.string(),
 });
 
 type State = {
   success: boolean;
   message?: string;
-  data?: GeneratePitchDeckOutlineOutput;
+  data?: Awaited<ReturnType<typeof generatePitchDeckOutlineMock>>;
 };
 
 export async function generatePitchDeckOutlineAction(
   prevState: State,
-  formData: z.infer<typeof formSchema>
+  formData: FormData
 ): Promise<State> {
-  const validatedFields = formSchema.safeParse(formData);
+  const data = Object.fromEntries(formData.entries());
+  const validatedFields = formSchema.safeParse(data);
 
   if (!validatedFields.success) {
     const errorMessages = Object.entries(validatedFields.error.flatten().fieldErrors)
@@ -45,18 +47,16 @@ export async function generatePitchDeckOutlineAction(
   }
 
   try {
-    const result = await generatePitchDeckOutline(validatedFields.data);
+    const result = await generatePitchDeckOutlineMock(validatedFields.data);
 
-    // const user = await getUser();
-    // if (user) {
-    //   // Save to Firestore
-    //   await addDoc(collection(db, 'pitchDecks'), {
-    //     userId: user.email,
-    //     createdAt: serverTimestamp(),
-    //     ...validatedFields.data,
-    //     slides: result,
-    //   });
-    // }
+    // Save to Firestore
+    const pitchDeckRef = db.collection('pitchDecks').doc();
+    await pitchDeckRef.set({
+        userId: validatedFields.data.userId,
+        ...validatedFields.data,
+        slides: result,
+        createdAt: FieldValue.serverTimestamp(),
+    });
 
     return {
       success: true,

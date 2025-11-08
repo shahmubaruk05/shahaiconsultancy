@@ -1,10 +1,10 @@
+
 'use server';
 
 import { z } from 'zod';
-import { askShah } from '@/ai/flows/ask-shah';
-// import { db } from '@/lib/firebase';
-// import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-// import { getUser } from '@/lib/auth';
+import { generateAskShahReplyMock } from '@/lib/aiMock';
+import { db } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export type Message = {
   role: 'user' | 'assistant';
@@ -13,14 +13,13 @@ export type Message = {
 
 const formSchema = z.object({
   query: z.string().min(1),
-  conversationHistory: z.string(), // JSON string of Message[]
+  conversationId: z.string().min(1),
+  userId: z.string().min(1),
 });
 
 type State = {
   success: boolean;
   message?: string;
-  answer?: string;
-  messages: Message[];
 };
 
 export async function askShahAction(
@@ -29,55 +28,66 @@ export async function askShahAction(
 ): Promise<State> {
   const validatedFields = formSchema.safeParse({
     query: formData.get('query'),
-    conversationHistory: formData.get('conversationHistory'),
+    conversationId: formData.get('conversationId'),
+    userId: formData.get('userId'),
   });
 
   if (!validatedFields.success) {
     return {
       success: false,
       message: 'Invalid form data.',
-      messages: [],
     };
   }
 
-  const { query } = validatedFields.data;
-  const conversationHistory = JSON.parse(validatedFields.data.conversationHistory) as Message[];
+  const { query, conversationId, userId } = validatedFields.data;
 
   try {
-    const result = await askShah({ query, conversationHistory });
+    const messagesCol = db.collection('conversations').doc(conversationId).collection('messages');
+    
+    // Save user message
+    await messagesCol.add({
+      conversationId,
+      userId,
+      sender: 'user',
+      text: query,
+      createdAt: FieldValue.serverTimestamp(),
+    });
 
-    // const user = await getUser();
-    // In a real app, you would associate conversations with users and save messages.
-    // For example:
-    // if (user) {
-    //   // This assumes a 'conversationId' is managed on the client or passed in.
-    //   const conversationId = 'default-conversation'; 
-    //   const messagesCol = collection(db, 'conversations', conversationId, 'messages');
-    //   await addDoc(messagesCol, { role: 'user', content: query, createdAt: serverTimestamp() });
-    //   await addDoc(messagesCol, { role: 'assistant', content: result.answer, createdAt: serverTimestamp() });
-    // }
+    // Fetch conversation history for context (optional for this mock, but good practice)
+    const messagesSnapshot = await messagesCol.orderBy('createdAt').get();
+    const conversationHistory: Message[] = messagesSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            role: data.sender,
+            content: data.text,
+        };
+    });
+
+    // Generate AI reply
+    const aiReplyText = await generateAskShahReplyMock(query, conversationHistory);
+
+    // Save AI reply
+    await messagesCol.add({
+      conversationId,
+      userId,
+      sender: 'ai',
+      text: aiReplyText,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    
+    // Update conversation timestamp
+    await db.collection('conversations').doc(conversationId).update({
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
     return {
       success: true,
-      answer: result.answer,
-      messages: [
-        ...conversationHistory,
-        { role: 'user', content: query },
-        { role: 'assistant', content: result.answer },
-      ],
     };
   } catch (error) {
-    console.error(error);
-    const errorMessage = 'Shah is currently unavailable. Please try again later.';
+    console.error('Error in askShahAction:', error);
     return {
       success: false,
-      message: errorMessage,
-      answer: errorMessage,
-      messages: [
-        ...conversationHistory,
-        { role: 'user', content: query },
-        { role: 'assistant', content: errorMessage },
-      ],
+      message: 'Shah is currently unavailable. Please try again later.',
     };
   }
 }

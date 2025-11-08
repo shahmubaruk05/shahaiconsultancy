@@ -1,47 +1,49 @@
+
 'use server';
 
 import { z } from 'zod';
-import { validateStartupIdea, ValidateStartupIdeaOutput } from '@/ai/flows/validate-startup-idea';
-// import { db } from '@/lib/firebase';
-// import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-// import { getUser } from '@/lib/auth';
+import { validateStartupIdeaMock } from '@/lib/aiMock';
+import { db } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const formSchema = z.object({
-  ideaDescription: z.string().min(50),
+  ideaDescription: z.string().min(50, "Please provide a detailed description of at least 50 characters."),
+  userId: z.string(),
 });
 
 type State = {
   success: boolean;
   message?: string;
-  data?: ValidateStartupIdeaOutput;
+  data?: Awaited<ReturnType<typeof validateStartupIdeaMock>>;
 };
 
 export async function validateStartupIdeaAction(
   prevState: State,
-  formData: z.infer<typeof formSchema>
+  formData: FormData
 ): Promise<State> {
-  const validatedFields = formSchema.safeParse(formData);
+  const validatedFields = formSchema.safeParse({
+    ideaDescription: formData.get('ideaDescription'),
+    userId: formData.get('userId'),
+  });
 
   if (!validatedFields.success) {
     return {
       success: false,
-      message: 'Invalid form data.',
+      message: validatedFields.error.flatten().fieldErrors.ideaDescription?.[0] || 'Invalid form data.',
     };
   }
 
   try {
-    const result = await validateStartupIdea(validatedFields.data);
+    const result = await validateStartupIdeaMock(validatedFields.data);
 
-    // const user = await getUser();
-    // if (user) {
-    //   // Save to Firestore - uncomment when user auth is fully implemented
-    //   await addDoc(collection(db, 'ideas'), {
-    //     userId: user.email, // Or a user ID
-    //     createdAt: serverTimestamp(),
-    //     ideaDescription: validatedFields.data.ideaDescription,
-    //     ...result,
-    //   });
-    // }
+    // Save to Firestore
+    const ideaRef = db.collection('ideaValidations').doc();
+    await ideaRef.set({
+      userId: validatedFields.data.userId,
+      ideaDescription: validatedFields.data.ideaDescription,
+      ...result,
+      createdAt: FieldValue.serverTimestamp(),
+    });
 
     return {
       success: true,

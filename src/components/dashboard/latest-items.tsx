@@ -1,28 +1,57 @@
+
+'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Lightbulb, Target } from 'lucide-react';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { formatDistanceToNow } from 'date-fns';
 
-const mockLatest = {
-  strategies: [
-    { id: 1, name: 'SaaS for Artisans', date: '2 days ago' },
-    { id: 2, name: 'Eco-friendly Packaging', date: '1 week ago' },
-  ],
-  ideas: [
-    { id: 1, name: 'AI-Powered Meal Planner', date: '4 hours ago', score: 85 },
-    { id: 2, name: 'Subscription Box for Pets', date: '3 days ago', score: 72 },
-  ],
-  decks: [
-    { id: 1, name: 'Fintech App Pitch', date: '5 days ago' },
-  ],
-};
+function formatTimestamp(timestamp: any) {
+  if (!timestamp) return 'Just now';
+  const date = timestamp.toDate();
+  return formatDistanceToNow(date, { addSuffix: true });
+}
 
 export function LatestItems() {
+  const { firestore, user } = useFirebase();
+
+  const ideasQuery = useMemoFirebase(() => 
+    user && firestore 
+      ? query(collection(firestore, 'ideaValidations'), orderBy('createdAt', 'desc'), limit(3))
+      : null, 
+    [firestore, user]
+  );
+  const { data: ideas, isLoading: ideasLoading } = useCollection(ideasQuery);
+  
+  const strategiesQuery = useMemoFirebase(() => 
+    user && firestore 
+      ? query(collection(firestore, 'strategies'), orderBy('createdAt', 'desc'), limit(3))
+      : null, 
+    [firestore, user]
+  );
+  const { data: strategies, isLoading: strategiesLoading } = useCollection(strategiesQuery);
+  
+  const decksQuery = useMemoFirebase(() => 
+    user && firestore 
+      ? query(collection(firestore, 'pitchDecks'), orderBy('createdAt', 'desc'), limit(3))
+      : null, 
+    [firestore, user]
+  );
+  const { data: decks, isLoading: decksLoading } = useCollection(decksQuery);
+
+  const isLoading = ideasLoading || strategiesLoading || decksLoading;
+
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Your Latest Work</CardTitle>
       </CardHeader>
       <CardContent>
+        {isLoading ? (
+          <p>Loading your latest work...</p>
+        ) : (
         <Tabs defaultValue="ideas">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="ideas">Ideas</TabsTrigger>
@@ -31,13 +60,13 @@ export function LatestItems() {
           </TabsList>
           <TabsContent value="ideas" className="mt-4">
             <div className="space-y-4">
-              {mockLatest.ideas.map((item) => (
+              {ideas && ideas.length > 0 ? ideas.map((item) => (
                 <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
                   <div className="flex items-center gap-4">
                     <Lightbulb className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">Validated {item.date}</p>
+                      <p className="font-medium truncate">{item.ideaDescription}</p>
+                      <p className="text-sm text-muted-foreground">Validated {formatTimestamp(item.createdAt)}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -45,40 +74,41 @@ export function LatestItems() {
                      <p className="text-sm text-muted-foreground">Score</p>
                   </div>
                 </div>
-              ))}
+              )) : <p className="text-muted-foreground text-sm text-center py-4">No ideas validated yet.</p>}
             </div>
           </TabsContent>
           <TabsContent value="strategies" className="mt-4">
              <div className="space-y-4">
-              {mockLatest.strategies.map((item) => (
+              {strategies && strategies.length > 0 ? strategies.map((item) => (
                 <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
                   <div className="flex items-center gap-4">
                     <Target className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">Generated {item.date}</p>
+                      <p className="font-medium">{item.businessModel}</p>
+                      <p className="text-sm text-muted-foreground">Generated {formatTimestamp(item.createdAt)}</p>
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : <p className="text-muted-foreground text-sm text-center py-4">No strategies generated yet.</p>}
             </div>
           </TabsContent>
           <TabsContent value="decks" className="mt-4">
              <div className="space-y-4">
-              {mockLatest.decks.map((item) => (
+              {decks && decks.length > 0 ? decks.map((item) => (
                 <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
                   <div className="flex items-center gap-4">
                     <FileText className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">Created {item.date}</p>
+                      <p className="font-medium">{item.businessName}</p>
+                      <p className="text-sm text-muted-foreground">Created {formatTimestamp(item.createdAt)}</p>
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : <p className="text-muted-foreground text-sm text-center py-4">No pitch decks created yet.</p>}
             </div>
           </TabsContent>
         </Tabs>
+        )}
       </CardContent>
     </Card>
   );

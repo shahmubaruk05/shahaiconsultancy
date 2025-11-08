@@ -1,4 +1,6 @@
-import { Card, CardContent } from '@/components/ui/card';
+
+'use client';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usaGuide, bangladeshGuide, Guide } from '@/lib/company-formation-data';
 
@@ -25,6 +27,9 @@ function GuideDisplay({ guide }: { guide: Guide }) {
             <GuideSection title="Formation Steps" content={guide.formationSteps} />
             <GuideSection title="Document Checklist" content={guide.documentChecklist} />
             <GuideSection title="Important Notes" content={guide.notes} />
+             <p className="text-xs text-muted-foreground pt-4">
+                Disclaimer: This is informational only, not legal advice. Always confirm requirements with a qualified professional.
+            </p>
         </div>
     );
 }

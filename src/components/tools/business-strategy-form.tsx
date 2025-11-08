@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useActionState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Link from 'next/link';
 
 import { generateBusinessStrategyAction } from '@/app/actions/generate-business-strategy';
 import {
@@ -27,15 +29,17 @@ import {
 import { Loader2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Separator } from '../ui/separator';
+import { useFirebase } from '@/firebase';
 
 const formSchema = z.object({
-  businessModel: z.string().min(20, 'Please describe your business model in at least 20 characters.'),
-  usp: z.string().min(20, 'Please describe your unique selling proposition in at least 20 characters.'),
-  pricing: z.string().min(10, 'Please describe your pricing in at least 10 characters.'),
-  marketingChannels: z.string().min(10, 'Please describe your marketing channels in at least 10 characters.'),
+  businessModel: z.string().min(10, 'Please describe your business model in at least 10 characters.'),
+  usp: z.string().min(10, 'Please describe your unique selling proposition in at least 10 characters.'),
+  pricing: z.string().min(5, 'Please describe your pricing in at least 5 characters.'),
+  marketingChannels: z.string().min(5, 'Please describe your marketing channels in at least 5 characters.'),
 });
 
 export function BusinessStrategyForm() {
+  const { user, isUserLoading } = useFirebase();
   const [state, formAction] = useActionState(generateBusinessStrategyAction, { success: false });
   const [isPending, startTransition] = useTransition();
 
@@ -49,16 +53,34 @@ export function BusinessStrategyForm() {
     },
   });
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  const handleAction = (data: FormData) => {
+    if (!user) return;
+    data.append('userId', user.uid);
     startTransition(() => {
       formAction(data);
     });
-  };
+  }
+
+  if (isUserLoading) {
+    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!user) {
+    return (
+      <Card className="text-center p-8">
+        <CardTitle>Please Log In</CardTitle>
+        <CardDescription className="mt-2 mb-4">You need to be logged in to generate a business strategy.</CardDescription>
+        <Button asChild>
+          <Link href="/login">Log In</Link>
+        </Button>
+      </Card>
+    );
+  }
 
   return (
     <div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form action={handleAction} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Your Business Details</CardTitle>

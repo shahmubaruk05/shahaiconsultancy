@@ -1,15 +1,16 @@
+
 'use client';
 
 import { useActionState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Link from 'next/link';
 
 import { generatePitchDeckOutlineAction } from '@/app/actions/generate-pitch-deck';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -27,6 +28,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { useFirebase } from '@/firebase';
 
 const formSchema = z.object({
   businessName: z.string().min(1, 'Business name is required.'),
@@ -44,6 +46,7 @@ const formSchema = z.object({
 });
 
 export function PitchDeckForm() {
+  const { user, isUserLoading } = useFirebase();
   const [state, formAction] = useActionState(generatePitchDeckOutlineAction, { success: false });
   const [isPending, startTransition] = useTransition();
 
@@ -64,17 +67,36 @@ export function PitchDeckForm() {
         fundingRequirements: '',
     },
   });
-
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
+  
+  const handleAction = (data: FormData) => {
+    if (!user) return;
+    data.append('userId', user.uid);
     startTransition(() => {
         formAction(data);
     });
   };
 
+  if (isUserLoading) {
+    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!user) {
+    return (
+      <Card className="text-center p-8">
+        <CardTitle>Please Log In</CardTitle>
+        <CardDescription className="mt-2 mb-4">You need to be logged in to generate a pitch deck.</CardDescription>
+        <Button asChild>
+          <Link href="/login">Log In</Link>
+        </Button>
+      </Card>
+    );
+  }
+
+
   return (
     <div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form action={handleAction} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Pitch Deck Inputs</CardTitle>

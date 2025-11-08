@@ -1,3 +1,4 @@
+
 'use client';
 import { useUser } from '@/firebase';
 import React from 'react';
@@ -12,8 +13,13 @@ export function WelcomeHeader() {
     }
   }, [user]);
 
-  if (!name) {
-    return null;
+  if (!user) {
+    return (
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Welcome to Shah Mubaruk – Your Startup Coach</h1>
+        <p className="text-muted-foreground">AI-Powered Business Tools for Visionaries</p>
+      </div>
+    );
   }
 
   return (

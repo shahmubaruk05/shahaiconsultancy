@@ -1,50 +1,59 @@
+
 'use server';
 
 import { z } from 'zod';
-import { generateBusinessStrategy, GenerateBusinessStrategyOutput } from '@/ai/flows/generate-business-strategy';
-// import { db } from '@/lib/firebase';
-// import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-// import { getUser } from '@/lib/auth';
+import { generateBusinessStrategyMock } from '@/lib/aiMock';
+import { db } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { auth } from 'firebase-admin';
 
 const formSchema = z.object({
-  businessModel: z.string().min(20),
-  usp: z.string().min(20),
-  pricing: z.string().min(10),
-  marketingChannels: z.string().min(10),
+  businessModel: z.string().min(10, 'Please provide more detail.'),
+  usp: z.string().min(10, 'Please provide more detail.'),
+  pricing: z.string().min(5, 'Please provide more detail.'),
+  marketingChannels: z.string().min(5, 'Please provide more detail.'),
+  userId: z.string(),
 });
 
 type State = {
   success: boolean;
   message?: string;
-  data?: GenerateBusinessStrategyOutput;
+  data?: Awaited<ReturnType<typeof generateBusinessStrategyMock>>;
 };
 
 export async function generateBusinessStrategyAction(
   prevState: State,
-  formData: z.infer<typeof formSchema>
+  formData: FormData
 ): Promise<State> {
-  const validatedFields = formSchema.safeParse(formData);
+
+  const data = {
+    businessModel: formData.get('businessModel'),
+    usp: formData.get('usp'),
+    pricing: formData.get('pricing'),
+    marketingChannels: formData.get('marketingChannels'),
+    userId: formData.get('userId'),
+  }
+
+  const validatedFields = formSchema.safeParse(data);
 
   if (!validatedFields.success) {
     return {
       success: false,
-      message: 'Invalid form data.',
+      message: 'Invalid form data. Please fill all fields with sufficient detail.',
     };
   }
 
   try {
-    const result = await generateBusinessStrategy(validatedFields.data);
+    const result = await generateBusinessStrategyMock(validatedFields.data);
 
-    // const user = await getUser();
-    // if (user) {
-    //   // Save to Firestore
-    //   await addDoc(collection(db, 'strategies'), {
-    //     userId: user.email,
-    //     createdAt: serverTimestamp(),
-    //     ...validatedFields.data,
-    //     ...result,
-    //   });
-    // }
+    // Save to Firestore
+    const strategyRef = db.collection('strategies').doc();
+    await strategyRef.set({
+      userId: validatedFields.data.userId,
+      ...validatedFields.data,
+      generatedStrategy: result,
+      createdAt: FieldValue.serverTimestamp(),
+    });
 
     return {
       success: true,
