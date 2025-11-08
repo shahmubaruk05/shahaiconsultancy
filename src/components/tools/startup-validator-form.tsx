@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormState } from 'react-dom';
+import { useActionState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,7 +32,7 @@ const formSchema = z.object({
 });
 
 export function StartupValidatorForm() {
-  const [state, formAction] = useFormState(validateStartupIdeaAction, { success: false });
+  const [state, formAction] = useActionState(validateStartupIdeaAction, { success: false });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

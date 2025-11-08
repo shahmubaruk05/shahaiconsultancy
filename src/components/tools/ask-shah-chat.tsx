@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useFormState } from 'react-dom';
+import React, { useState, useRef, useEffect, useActionState } from 'react';
 import { askShahAction, Message } from '@/app/actions/ask-shah';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -26,7 +25,7 @@ export function AskShahChat() {
     },
   ]);
 
-  const [state, formAction] = useFormState(askShahAction, { success: false, messages: [] });
+  const [state, formAction] = useActionState(askShahAction, { success: false, messages: [] });
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { query: '' },
