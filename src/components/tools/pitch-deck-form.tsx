@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -45,6 +45,7 @@ const formSchema = z.object({
 
 export function PitchDeckForm() {
   const [state, formAction] = useActionState(generatePitchDeckOutlineAction, { success: false });
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,12 +65,16 @@ export function PitchDeckForm() {
     },
   });
 
-  const { isSubmitting } = form.formState;
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    startTransition(() => {
+        formAction(data);
+    });
+  };
 
   return (
     <div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(data => formAction(data))} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Pitch Deck Inputs</CardTitle>
@@ -84,22 +89,22 @@ export function PitchDeckForm() {
               <FormField control={form.control} name="uniqueSellingProposition" render={({ field }) => ( <FormItem><FormLabel>Unique Selling Proposition</FormLabel><FormControl><Input placeholder="e.g., Eco-friendly products, 24/7 service" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="valueProposition" render={({ field }) => ( <FormItem><FormLabel>Value Proposition</FormLabel><FormControl><Input placeholder="e.g., Save time, save money, improve health" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="revenueModel" render={({ field }) => ( <FormItem><FormLabel>Revenue Model</FormLabel><FormControl><Input placeholder="e.g., Monthly subscription, pay-per-use" {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="marketSize" render={({ field }) => ( <FormItem><FormLabel>Market Size (TAM, SAM, SOM)</FormLabel><FormControl><Input placeholder="e.g., $1B TAM, $100M SAM" {...field} /></FormControl><FormMessage /></FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="marketSize" render={({ field }) => ( <FormItem><FormLabel>Market Size (TAM, SAM, SOM)</FormLabel><FormControl><Input placeholder="e.g., $1B TAM, $100M SAM" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="competitiveLandscape" render={({ field }) => ( <FormItem><FormLabel>Competitors</FormLabel><FormControl><Input placeholder="e.g., Company A, Company B" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="financialProjections" render={({ field }) => ( <FormItem><FormLabel>Financial Projections</FormLabel><FormControl><Input placeholder="e.g., 3-year revenue forecast" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="fundingRequirements" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Funding Requirements</FormLabel><FormControl><Textarea placeholder="How much are you asking for, and how will you use it?" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
           <div className="flex justify-end">
-            <Button type="submit" disabled={isSubmitting} size="lg">
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isPending} size="lg">
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Generate Pitch Deck Outline
             </Button>
           </div>
         </form>
       </Form>
 
-      {isSubmitting && (
+      {isPending && (
         <div className="mt-8 text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
           <p className="mt-2 text-muted-foreground">AI is building your pitch deck outline...</p>

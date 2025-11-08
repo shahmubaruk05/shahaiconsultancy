@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useActionState } from 'react';
+import React, { useState, useRef, useEffect, useActionState, useTransition } from 'react';
 import { askShahAction, Message } from '@/app/actions/ask-shah';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -30,15 +30,16 @@ export function AskShahChat() {
     resolver: zodResolver(formSchema),
     defaultValues: { query: '' },
   });
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const isPending = form.formState.isSubmitting;
+  const [isPending, startTransition] = useTransition();
 
-  const handleFormSubmit = async (data: z.infer<typeof formSchema>) => {
-    setMessages(prev => [...prev, { role: 'user', content: data.query }]);
-    const formData = new FormData();
-    formData.append('query', data.query);
-    formData.append('conversationHistory', JSON.stringify(messages));
-    await formAction(formData);
+  const handleFormSubmit = async (formData: FormData) => {
+    const query = formData.get('query') as string;
+    if (!query) return;
+
+    setMessages(prev => [...prev, { role: 'user', content: query }]);
+    startTransition(() => {
+        formAction(formData);
+    });
     form.reset();
   };
 
@@ -57,6 +58,8 @@ export function AskShahChat() {
         }
     }
   }, [messages, isPending]);
+
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   return (
     <Card className="flex flex-col flex-1">
@@ -105,7 +108,8 @@ export function AskShahChat() {
         </div>
       </ScrollArea>
       <div className="border-t p-4">
-        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="flex items-center gap-2">
+        <form action={handleFormSubmit} className="flex items-center gap-2">
+          <input type="hidden" name="conversationHistory" value={JSON.stringify(messages)} />
           <Input
             {...form.register('query')}
             autoComplete="off"

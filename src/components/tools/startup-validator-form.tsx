@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,6 +33,7 @@ const formSchema = z.object({
 
 export function StartupValidatorForm() {
   const [state, formAction] = useActionState(validateStartupIdeaAction, { success: false });
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,12 +42,16 @@ export function StartupValidatorForm() {
     },
   });
 
-  const { isSubmitting } = form.formState;
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    startTransition(() => {
+      formAction(data);
+    });
+  };
 
   return (
     <div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(data => formAction(data))} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Describe Your Idea</CardTitle>
@@ -72,15 +77,15 @@ export function StartupValidatorForm() {
             </CardContent>
           </Card>
           <div className="flex justify-end">
-            <Button type="submit" disabled={isSubmitting} size="lg">
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isPending} size="lg">
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Validate Idea
             </Button>
           </div>
         </form>
       </Form>
 
-      {isSubmitting && (
+      {isPending && (
         <div className="mt-8 text-center">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
             <p className="mt-2 text-muted-foreground">AI is analyzing your idea...</p>
