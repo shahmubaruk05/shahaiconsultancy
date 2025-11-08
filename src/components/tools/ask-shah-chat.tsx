@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useTransition } from 'react';
-import { askShahAction, Message } from '@/app/actions/ask-shah';
+import { askShah } from '@/ai/flows/ask-shah';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,13 @@ import { cn } from '@/lib/utils';
 import { Send, User, Bot, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, addDoc, serverTimestamp, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, addDoc, serverTimestamp, limit, getDocs, doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
+
+export type Message = {
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 type FirestoreMessage = {
   id: string;
@@ -27,7 +32,7 @@ export function AskShahChat() {
   const [messages, setMessages] = useState<Message[]>([
       { role: 'assistant', content: 'Hello! I am Shah, your AI startup advisor. How can I help you today?' },
   ]);
-  const [query, setQuery] = useState('');
+  const [queryText, setQueryText] = useState('');
   const [isPending, startTransition] = useTransition();
 
   // Find or create conversation
@@ -55,8 +60,8 @@ export function AskShahChat() {
 
   // Listen for new messages
   const messagesQuery = useMemoFirebase(() => 
-    conversationId && firestore
-      ? query(collection(firestore, 'users', user!.uid, 'conversations', conversationId, 'messages'), orderBy('createdAt', 'asc'))
+    conversationId && firestore && user
+      ? query(collection(firestore, 'users', user.uid, 'conversations', conversationId, 'messages'), orderBy('createdAt', 'asc'))
       : null,
     [firestore, conversationId, user]
   );
@@ -65,27 +70,72 @@ export function AskShahChat() {
   useEffect(() => {
     if (firestoreMessages) {
         const newMessages: Message[] = firestoreMessages.map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text }));
-        setMessages([
-             { role: 'assistant', content: 'Hello! I am Shah, your AI startup advisor. How can I help you today?' },
-            ...newMessages
-        ]);
+        if (newMessages.length > 0) {
+          setMessages([
+              { role: 'assistant', content: 'Hello! I am Shah, your AI startup advisor. How can I help you today?' },
+              ...newMessages
+          ]);
+        }
     }
   }, [firestoreMessages]);
 
 
-  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!conversationId || !user || !query) return;
+    if (!conversationId || !user || !firestore || !queryText) return;
     
-    const formData = new FormData();
-    formData.append('conversationId', conversationId);
-    formData.append('userId', user.uid);
-    formData.append('query', query);
-    
-    startTransition(() => {
-        askShahAction({success: false}, formData);
+    const currentQuery = queryText;
+    setQueryText('');
+
+    startTransition(async () => {
+      try {
+        const messagesCol = collection(firestore, `users/${user.uid}/conversations/${conversationId}/messages`);
+        
+        // 1. Save user message
+        const userMessageRef = doc(messagesCol);
+        const userMessage = {
+          id: userMessageRef.id,
+          conversationId,
+          sender: 'user',
+          text: currentQuery,
+          createdAt: serverTimestamp(),
+        };
+        await setDoc(userMessageRef, userMessage);
+
+        // 2. Fetch conversation history for context
+        const messagesSnapshot = await getDocs(messagesCol);
+        const conversationHistory: Message[] = messagesSnapshot.docs
+            .map(doc => {
+                const data = doc.data();
+                return {
+                    role: data.sender === 'ai' ? 'assistant' : 'user',
+                    content: data.text,
+                };
+            });
+
+        // 3. Generate AI reply
+        const aiReply = await askShah({ query: currentQuery, conversationHistory });
+
+        // 4. Save AI reply
+        const aiMessageRef = doc(messagesCol);
+        const aiMessage = {
+          id: aiMessageRef.id,
+          conversationId,
+          sender: 'ai',
+          text: aiReply.answer,
+          createdAt: serverTimestamp(),
+        };
+        await setDoc(aiMessageRef, aiMessage);
+        
+        // 5. Update conversation timestamp
+        const convoDocRef = doc(firestore, `users/${user.uid}/conversations`, conversationId);
+        await setDoc(convoDocRef, { updatedAt: serverTimestamp() }, { merge: true });
+
+      } catch (error) {
+        console.error('Error in chat action:', error);
+        // Optionally, set an error state to show in the UI
+      }
     });
-    setQuery('');
   };
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -164,13 +214,13 @@ export function AskShahChat() {
       <div className="border-t p-4">
         <form onSubmit={handleFormSubmit} className="flex items-center gap-2">
           <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={queryText}
+            onChange={(e) => setQueryText(e.target.value)}
             autoComplete="off"
             placeholder="Ask about funding, strategy, etc..."
             disabled={isPending || messagesLoading || !conversationId}
           />
-          <Button type="submit" size="icon" disabled={isPending || messagesLoading || !conversationId || !query}>
+          <Button type="submit" size="icon" disabled={isPending || messagesLoading || !conversationId || !queryText}>
             <Send className="h-4 w-4" />
           </Button>
         </form>

@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useActionState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 
-import { generateBusinessStrategyAction } from '@/app/actions/generate-business-strategy';
+import { generateBusinessStrategy } from '@/ai/flows/generate-business-strategy';
 import {
   Form,
   FormControl,
@@ -30,6 +30,7 @@ import { Loader2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Separator } from '../ui/separator';
 import { useFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const formSchema = z.object({
   businessModel: z.string().min(10, 'Please describe your business model in at least 10 characters.'),
@@ -38,12 +39,15 @@ const formSchema = z.object({
   marketingChannels: z.string().min(5, 'Please describe your marketing channels in at least 5 characters.'),
 });
 
-export function BusinessStrategyForm() {
-  const { user, isUserLoading } = useFirebase();
-  const [state, formAction] = useActionState(generateBusinessStrategyAction, { success: false });
-  const [isPending, startTransition] = useTransition();
+type FormData = z.infer<typeof formSchema>;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+export function BusinessStrategyForm() {
+  const { firestore, user, isUserLoading } = useFirebase();
+  const [isPending, startTransition] = useTransition();
+  const [result, setResult] = useState<Awaited<ReturnType<typeof generateBusinessStrategy>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       businessModel: '',
@@ -53,13 +57,31 @@ export function BusinessStrategyForm() {
     },
   });
 
-  const handleAction = (data: FormData) => {
-    if (!user) return;
-    data.append('userId', user.uid);
-    startTransition(() => {
-      formAction(data);
+  const onSubmit = (data: FormData) => {
+    if (!user || !firestore) return;
+    
+    setError(null);
+    setResult(null);
+
+    startTransition(async () => {
+      try {
+        const aiResult = await generateBusinessStrategy(data);
+        setResult(aiResult);
+        
+        const strategyRef = collection(firestore, `users/${user.uid}/businessStrategies`);
+        await addDoc(strategyRef, {
+          userId: user.uid,
+          ...data,
+          ninetyDayActionPlan: aiResult.ninetyDayActionPlan,
+          createdAt: serverTimestamp(),
+        });
+
+      } catch (e) {
+        console.error(e);
+        setError('An unexpected error occurred while generating the strategy. Please try again.');
+      }
     });
-  }
+  };
 
   if (isUserLoading) {
     return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
@@ -80,7 +102,7 @@ export function BusinessStrategyForm() {
   return (
     <div>
       <Form {...form}>
-        <form action={handleAction} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Your Business Details</CardTitle>
@@ -161,7 +183,7 @@ export function BusinessStrategyForm() {
         </div>
       )}
 
-      {state.success && state.data && (
+      {result && (
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>Your Generated Business Strategy</CardTitle>
@@ -169,21 +191,21 @@ export function BusinessStrategyForm() {
           <CardContent className="space-y-6">
             <div>
               <h3 className="text-xl font-semibold mb-2">Comprehensive Business Strategy</h3>
-              <p className="text-muted-foreground whitespace-pre-wrap">{state.data.businessStrategy}</p>
+              <p className="text-muted-foreground whitespace-pre-wrap">{result.businessStrategy}</p>
             </div>
             <Separator />
             <div>
               <h3 className="text-xl font-semibold mb-2">90-Day Action Plan</h3>
-              <p className="text-muted-foreground whitespace-pre-wrap">{state.data.ninetyDayActionPlan}</p>
+              <p className="text-muted-foreground whitespace-pre-wrap">{result.ninetyDayActionPlan}</p>
             </div>
           </CardContent>
         </Card>
       )}
-       {!state.success && state.message && (
+       {error && (
         <Card className="mt-8 border-destructive bg-destructive/10">
             <CardHeader>
                 <CardTitle className="text-destructive">An Error Occurred</CardTitle>
-                <CardDescription className="text-destructive/80">{state.message}</CardDescription>
+                <CardDescription className="text-destructive/80">{error}</CardDescription>
             </CardHeader>
         </Card>
       )}

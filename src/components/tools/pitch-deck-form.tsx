@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useActionState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 
-import { generatePitchDeckOutlineAction } from '@/app/actions/generate-pitch-deck';
+import { generatePitchDeckOutline } from '@/ai/flows/generate-pitch-deck-outline';
 import {
   Form,
   FormControl,
@@ -29,6 +29,7 @@ import { Loader2 } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 import { useFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const formSchema = z.object({
   businessName: z.string().min(1, 'Business name is required.'),
@@ -45,12 +46,15 @@ const formSchema = z.object({
   fundingRequirements: z.string().min(10, 'Please describe your funding requirements.'),
 });
 
-export function PitchDeckForm() {
-  const { user, isUserLoading } = useFirebase();
-  const [state, formAction] = useActionState(generatePitchDeckOutlineAction, { success: false });
-  const [isPending, startTransition] = useTransition();
+type FormData = z.infer<typeof formSchema>;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+export function PitchDeckForm() {
+  const { firestore, user, isUserLoading } = useFirebase();
+  const [isPending, startTransition] = useTransition();
+  const [result, setResult] = useState<Awaited<ReturnType<typeof generatePitchDeckOutline>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
         businessName: '',
@@ -68,11 +72,28 @@ export function PitchDeckForm() {
     },
   });
   
-  const handleAction = (data: FormData) => {
-    if (!user) return;
-    data.append('userId', user.uid);
-    startTransition(() => {
-        formAction(data);
+  const onSubmit = (data: FormData) => {
+    if (!user || !firestore) return;
+
+    setError(null);
+    setResult(null);
+
+    startTransition(async () => {
+      try {
+        const aiResult = await generatePitchDeckOutline(data);
+        setResult(aiResult);
+
+        const pitchDeckRef = collection(firestore, `users/${user.uid}/pitchDecks`);
+        await addDoc(pitchDeckRef, {
+            userId: user.uid,
+            input: data,
+            slides: aiResult,
+            createdAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.error(e);
+        setError('An unexpected error occurred while generating the pitch deck. Please try again.');
+      }
     });
   };
 
@@ -96,7 +117,7 @@ export function PitchDeckForm() {
   return (
     <div>
       <Form {...form}>
-        <form action={handleAction} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Pitch Deck Inputs</CardTitle>
@@ -133,7 +154,7 @@ export function PitchDeckForm() {
         </div>
       )}
 
-      {state.success && state.data && (
+      {result && (
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>Generated Pitch Deck Outline</CardTitle>
@@ -141,7 +162,7 @@ export function PitchDeckForm() {
           </CardHeader>
           <CardContent>
             <Accordion type="single" collapsible className="w-full" defaultValue="item-0">
-              {state.data.map((slide, index) => (
+              {result.map((slide, index) => (
                 <AccordionItem value={`item-${index}`} key={index}>
                   <AccordionTrigger className="text-lg font-semibold">{index + 1}. {slide.slideTitle}</AccordionTrigger>
                   <AccordionContent>
@@ -157,11 +178,11 @@ export function PitchDeckForm() {
           </CardContent>
         </Card>
       )}
-       {!state.success && state.message && (
+       {error && (
         <Card className="mt-8 border-destructive bg-destructive/10">
             <CardHeader>
                 <CardTitle className="text-destructive">An Error Occurred</CardTitle>
-                <CardDescription className="text-destructive/80">{state.message}</CardDescription>
+                <CardDescription className="text-destructive/80">{error}</CardDescription>
             </CardHeader>
         </Card>
       )}
