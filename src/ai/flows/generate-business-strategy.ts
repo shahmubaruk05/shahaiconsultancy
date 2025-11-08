@@ -43,20 +43,15 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateBusinessStrategyOutputSchema},
   prompt: `You are an expert business strategy consultant.
 
-You will generate a comprehensive business strategy, including a business model, unique selling proposition, pricing strategy, and marketing channels.
-
-You will also create a 90-day action plan to help the user get started.
+You will generate a comprehensive business strategy and a 90-day action plan based on the user's input.
+Your output must conform to the specified JSON schema.
 
 Business Model: {{{businessModel}}}
 USP: {{{usp}}}
 Pricing: {{{pricing}}}
 Marketing Channels: {{{marketingChannels}}}
 
-Comprehensive Business Strategy:
-{{#block "businessStrategy"}}{{/block}}
-
-90-Day Action Plan:
-{{#block "ninetyDayActionPlan"}}{{/block}}`,
+Based on the above, generate the 'businessStrategy' and 'ninetyDayActionPlan' fields.`,
 });
 
 const generateBusinessStrategyFlow = ai.defineFlow(
