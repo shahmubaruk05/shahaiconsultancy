@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Button } from '../ui/button';
 import React from 'react';
 import { useUser } from '@/firebase';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -48,22 +47,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     avatarUrl: user.photoURL || PlaceHolderImages.find(p => p.id === 'user-avatar')?.imageUrl || 'https://picsum.photos/seed/user-avatar/100/100',
   } : null;
 
+  React.useEffect(() => {
+    // Redirect logic should be in a useEffect hook.
+    if (!isUserLoading && !user) {
+      if (pathname !== '/login' && pathname !== '/signup') {
+        router.push('/login');
+      }
+    }
+  }, [user, isUserLoading, pathname, router]);
+
   // Render a loading state or nothing on auth pages
   if (pathname === '/login' || pathname === '/signup') {
     return <>{children}</>;
   }
   
-  if (isUserLoading) {
+  if (isUserLoading || !user) {
      return <div className="flex h-screen items-center justify-center">Loading...</div>; // Or a loading spinner
   }
-
-  if (!user) {
-    if (typeof window !== 'undefined') {
-      router.push('/login');
-    }
-    return null;
-  }
-
+  
   return (
     <SidebarProvider>
       <Sidebar>
