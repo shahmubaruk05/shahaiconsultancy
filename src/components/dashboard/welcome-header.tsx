@@ -1,17 +1,16 @@
 'use client';
-import { getUser } from '@/lib/auth';
+import { useUser } from '@/firebase';
 import React from 'react';
 
 export function WelcomeHeader() {
+  const { user } = useUser();
   const [name, setName] = React.useState('');
 
   React.useEffect(() => {
-    getUser().then(user => {
-      if (user) {
-        setName(user.name.split(' ')[0]);
-      }
-    });
-  }, []);
+    if (user) {
+      setName(user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'there');
+    }
+  }, [user]);
 
   if (!name) {
     return null;

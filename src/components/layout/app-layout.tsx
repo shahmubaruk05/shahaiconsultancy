@@ -22,10 +22,11 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
-import { getUser } from '@/lib/auth';
 import React from 'react';
+import { useUser } from '@/firebase';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -38,25 +39,27 @@ const navItems = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [user, setUser] = React.useState<Awaited<ReturnType<typeof getUser>> | null>(null);
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
 
-  React.useEffect(() => {
-    getUser().then(setUser);
-  }, []);
-
+  const userProfile = user ? {
+    name: user.displayName || user.email || 'Anonymous',
+    email: user.email || 'anonymous',
+    avatarUrl: user.photoURL || PlaceHolderImages.find(p => p.id === 'user-avatar')?.imageUrl || 'https://picsum.photos/seed/user-avatar/100/100',
+  } : null;
 
   // Render a loading state or nothing on auth pages
   if (pathname === '/login' || pathname === '/signup') {
     return <>{children}</>;
   }
   
+  if (isUserLoading) {
+     return <div className="flex h-screen items-center justify-center">Loading...</div>; // Or a loading spinner
+  }
+
   if (!user) {
-     // Or a loading spinner
     if (typeof window !== 'undefined') {
-        const nonAuthRoutes = ['/login', '/signup'];
-        if (!nonAuthRoutes.includes(window.location.pathname)) {
-            window.location.href = '/login';
-        }
+      router.push('/login');
     }
     return null;
   }
@@ -89,13 +92,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <UserNav user={user} />
+          {userProfile && <UserNav user={userProfile} />}
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6 md:justify-end">
           <SidebarTrigger className="md:hidden" />
-          <UserNav user={user} />
+          {userProfile && <UserNav user={userProfile} />}
         </header>
         <main className="p-4 sm:p-6">{children}</main>
       </SidebarInset>

@@ -4,13 +4,23 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useAuth, initiateEmailSignIn } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 export function LoginForm() {
+  const auth = useAuth();
+  const router = useRouter();
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // In a real app, you'd handle form submission here.
-    // For this mock, we'll just redirect.
-    window.location.href = '/';
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    
+    if (email && password) {
+      initiateEmailSignIn(auth, email, password);
+      router.push('/');
+    }
   };
 
   return (
@@ -19,11 +29,11 @@ export function LoginForm() {
         <CardContent className="space-y-4 pt-6">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" placeholder="alex@example.com" required />
+            <Input id="email" name="email" type="email" placeholder="alex@example.com" required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required />
+            <Input id="password" name="password" type="password" required />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
