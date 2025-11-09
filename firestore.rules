@@ -9,6 +9,7 @@
  * /users/{userId}/businessStrategies/{businessStrategyId} (BusinessStrategy)
  * /users/{userId}/pitchDecks/{pitchDeckId} (PitchDeck)
  * /users/{userId}/companyFormationGuides/{companyFormationGuideId} (CompanyFormationGuide)
+ * /users/{userId}/companyProfiles/{companyProfileId} (CompanyProfile)
  * /users/{userId}/conversations/{conversationId} (Conversation)
  * /users/{userId}/conversations/{conversationId}/messages/{messageId} (Message)
  *
@@ -145,6 +146,30 @@ service cloud.firestore {
     }
 
     /**
+     * @description Rule for the `/users/{userId}/companyProfiles/{companyProfileId}` collection.
+     * @path `/users/{userId}/companyProfiles/{companyProfileId}`
+     * @allow (create) User with ID 'user_abc' can create a company profile under their profile.
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_abc'`
+     * @deny (create) User with ID 'user_abc' cannot create a company profile under another user's profile ('user_xyz').
+     *   - Request: `auth.uid = 'user_abc'`, `resource.data.userId = 'user_xyz'`
+     * @allow (get) User with ID 'user_abc' can read a company profile under their profile.
+     *   - Request: `auth.uid = 'user_abc'`
+     * @deny (get) User with ID 'user_xyz' cannot read a company profile under user 'user_abc''s profile.
+     *   - Request: `auth.uid = 'user_xyz'`
+     * @principle Enforces document ownership and prevents unauthorized access to company profiles.
+     */
+    match /users/{userId}/companyProfiles/{companyProfileId} {
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(userId) && resource.data.userId == userId && resource != null;
+      allow delete: if isOwner(userId) && resource != null;
+    }
+
+    /**
      * @description Rule for the `/users/{userId}/conversations/{conversationId}` collection.
      * @path `/users/{userId}/conversations/{conversationId}`
      * @allow (create) User with ID 'user_abc' can create a conversation under their profile.
@@ -193,3 +218,4 @@ service cloud.firestore {
     }
   }
 }
+    

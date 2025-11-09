@@ -131,3 +131,83 @@ export async function generateAskShahReplyMock(
       input.query
   };
 }
+
+
+export type CompanyProfileInput = {
+  companyName: string;
+  industry: string;
+  country: string;
+  targetCustomers: string;
+  servicesOrProducts: string;
+  brandTone: "Formal" | "Friendly" | "Mixed";
+  language: "English" | "Bangla";
+};
+
+export type CompanyProfileResult = {
+  about: string;
+  mission: string;
+  vision: string;
+  servicesSummary: string;
+  targetCustomersSection: string;
+  whyChooseUs: string;
+  callToAction: string;
+};
+
+export async function generateCompanyProfileMock(
+  input: CompanyProfileInput
+): Promise<CompanyProfileResult> {
+  // TODO: later replace with real AI API (OpenAI / Gemini).
+  const isBangla = input.language === "Bangla";
+
+  if (isBangla) {
+    return {
+      about:
+        `${input.companyName} হচ্ছে একটি ${input.industry} ভিত্তিক প্রতিষ্ঠান, ` +
+        `যা ${input.country} থেকে পরিচালিত হয়ে ${input.targetCustomers} এর জন্য ` +
+        `বিশ্বস্ত ও প্রফেশনাল সেবা প্রদান করে। আমরা বাস্তব সমস্যাকে বুঝে, সেই অনুযায়ী ` +
+        `প্র্যাকটিক্যাল সমাধান দিতে বিশ্বাসী।`,
+      mission:
+        "আমাদের মিশন হলো উদ্যোক্তা ও ব্যবসাগুলোকে সঠিক গাইডলাইন, মানসম্মত সেবা এবং দীর্ঘমেয়াদী ভ্যালু দিয়ে টেকসই সফলতা অর্জনে সাহায্য করা।",
+      vision:
+        "বাংলাদেশ ও গ্লোবাল মার্কেটে একটি ট্রাস্টেড ব্র্যান্ড হিসেবে প্রতিষ্ঠিত হয়ে, আরও বেশি উদ্যোক্তা ও ব্যবসা প্রতিষ্ঠানের গ্রোথ পার্টনার হওয়া।",
+      servicesSummary:
+        `আমরা মূলত ${input.servicesOrProducts} এই সেবা/প্রডাক্টগুলোকে কেন্দ্র করে কাজ করি, ` +
+        `যেখানে ক্লায়েন্টদের নির্দিষ্ট প্রয়োজন অনুযায়ী কাস্টমাইজড সল্যুশন দেওয়া হয়।`,
+      targetCustomersSection:
+        `আমাদের প্রধান গ্রাহকরা হল ${input.targetCustomers} – যারা প্রফেশনাল সেবা, ` +
+        `বিশ্বাসযোগ্যতা এবং দীর্ঘমেয়াদী বিজনেস রিলেশনশিপকে গুরুত্ব দেন।`,
+      whyChooseUs:
+        "• প্র্যাকটিক্যাল এক্সপেরিয়েন্স ও ইন্ডাস্ট্রি নলেজ\n" +
+        "• স্টেপ–বাই–স্টেপ গাইডলাইন ও সাপোর্ট\n" +
+        "• ক্লায়েন্ট–ফোকাসড সার্ভিস ও কাস্টম সল্যুশন\n" +
+        "• লং–টার্ম পার্টনারশিপ ও গ্রোথ–মাইন্ডসেট",
+      callToAction:
+        "আপনি যদি আপনার ব্যবসাকে পরের ধাপে নিয়ে যেতে চান, আমাদের সঙ্গে কথা বলুন এবং আপনার প্রয়োজন অনুযায়ী সল্যুশন জেনে নিন।",
+    };
+  }
+
+  // English default
+  return {
+    about:
+      `${input.companyName} is a ${input.industry} focused company based in ${input.country}, ` +
+      `serving ${input.targetCustomers} with practical, execution-driven solutions. We focus on ` +
+      `real business problems and clear, measurable outcomes.`,
+    mission:
+      "Our mission is to help entrepreneurs and businesses grow through clear strategy, reliable services, and long-term value.",
+    vision:
+      "To be a trusted growth partner for founders and businesses in Bangladesh and around the world.",
+    servicesSummary:
+      `Our core offerings include ${input.servicesOrProducts}, tailored to the specific needs of each client.`,
+    targetCustomersSection:
+      `We primarily serve ${input.targetCustomers}, who value professional support, clarity, and sustainable growth.`,
+    whyChooseUs:
+      "• Practical, real-world experience\n" +
+      "• Step-by-step guidance and support\n" +
+      "• Client-focused, customized solutions\n" +
+      "• Long-term partnership mindset",
+    callToAction:
+      "If you’re ready to take your business to the next level, reach out and let’s discuss the right solution for you.",
+  };
+}
+
+    

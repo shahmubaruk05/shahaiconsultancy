@@ -2,9 +2,9 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Lightbulb, Target } from 'lucide-react';
+import { FileText, Lightbulb, Target, Building2 } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 
 function formatTimestamp(timestamp: any) {
@@ -40,7 +40,16 @@ export function LatestItems() {
   );
   const { data: decks, isLoading: decksLoading } = useCollection(decksQuery);
 
-  const isLoading = ideasLoading || strategiesLoading || decksLoading;
+  const profilesQuery = useMemoFirebase(() =>
+    user && firestore
+      ? query(collection(firestore, `users/${user.uid}/companyProfiles`), orderBy('createdAt', 'desc'), limit(3))
+      : null,
+    [firestore, user]
+  );
+  const { data: profiles, isLoading: profilesLoading } = useCollection(profilesQuery);
+
+
+  const isLoading = ideasLoading || strategiesLoading || decksLoading || profilesLoading;
 
 
   return (
@@ -53,10 +62,11 @@ export function LatestItems() {
           <p>Loading your latest work...</p>
         ) : (
         <Tabs defaultValue="ideas">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="ideas">Ideas</TabsTrigger>
             <TabsTrigger value="strategies">Strategies</TabsTrigger>
             <TabsTrigger value="decks">Decks</TabsTrigger>
+            <TabsTrigger value="profiles">Profiles</TabsTrigger>
           </TabsList>
           <TabsContent value="ideas" className="mt-4">
             <div className="space-y-4">
@@ -107,9 +117,30 @@ export function LatestItems() {
               )) : <p className="text-muted-foreground text-sm text-center py-4">No pitch decks created yet.</p>}
             </div>
           </TabsContent>
+           <TabsContent value="profiles" className="mt-4">
+            <div className="space-y-4">
+              {profiles && profiles.length > 0 ? profiles.map((item: any) => (
+                <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
+                  <div className="flex items-center gap-4">
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{item.companyName}</p>
+                      <p className="text-sm text-muted-foreground">Created {formatTimestamp(item.createdAt)}</p>
+                    </div>
+                  </div>
+                   <div className="text-right">
+                     <p className="font-semibold text-primary truncate">{item.industry}</p>
+                     <p className="text-sm text-muted-foreground">Industry</p>
+                  </div>
+                </div>
+              )) : <p className="text-muted-foreground text-sm text-center py-4">No company profiles created yet.</p>}
+            </div>
+          </TabsContent>
         </Tabs>
         )}
       </CardContent>
     </Card>
   );
 }
+
+    

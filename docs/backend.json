@@ -187,6 +187,95 @@
         "createdAt"
       ]
     },
+    "CompanyProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CompanyProfile",
+      "type": "object",
+      "description": "Represents a generated company profile.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CompanyProfile entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N CompanyProfile)"
+        },
+        "companyName": {
+          "type": "string"
+        },
+        "industry": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "targetCustomers": {
+          "type": "string"
+        },
+        "servicesOrProducts": {
+          "type": "string"
+        },
+        "brandTone": {
+          "type": "string",
+          "enum": [
+            "Formal",
+            "Friendly",
+            "Mixed"
+          ]
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "English",
+            "Bangla"
+          ]
+        },
+        "about": {
+          "type": "string"
+        },
+        "mission": {
+          "type": "string"
+        },
+        "vision": {
+          "type": "string"
+        },
+        "servicesSummary": {
+          "type": "string"
+        },
+        "targetCustomersSection": {
+          "type": "string"
+        },
+        "whyChooseUs": {
+          "type": "string"
+        },
+        "callToAction": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "companyName",
+        "industry",
+        "country",
+        "targetCustomers",
+        "servicesOrProducts",
+        "brandTone",
+        "language",
+        "about",
+        "mission",
+        "vision",
+        "servicesSummary",
+        "targetCustomersSection",
+        "whyChooseUs",
+        "callToAction",
+        "createdAt"
+      ]
+    },
     "Conversation": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Conversation",
@@ -387,6 +476,26 @@
         }
       },
       {
+        "path": "/users/{userId}/companyProfiles/{companyProfileId}",
+        "definition": {
+          "entityName": "CompanyProfile",
+          "schema": {
+            "$ref": "#/backend/entities/CompanyProfile"
+          },
+          "description": "Collection of company profiles owned by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "companyProfileId",
+              "description": "The unique identifier of the company profile."
+            }
+          ]
+        }
+      },
+      {
         "path": "/users/{userId}/conversations/{conversationId}",
         "definition": {
           "entityName": "Conversation",
@@ -434,3 +543,4 @@
     "reasoning": "The Firestore structure is designed to ensure Authorization Independence, clarity, and scalability. User-owned data is stored under the `/users/{userId}` path, creating a clear ownership model. This enables secure and efficient security rules based on `request.auth.uid`. Each entity, such as `StartupIdea`, `BusinessStrategy`, `PitchDeck`, `CompanyFormationGuide`, `Conversation`, and `Message` are stored as subcollections of `/users/{userId}`. This approach ensures that all documents in a collection share the same security requirements (Structural Segregation) and eliminates the need for complex rule logic.  The `Conversation` and `Message` collections follow the same pattern.  This design allows us to use path-based rules effectively without needing `get()` calls to parent documents, thus maintaining Authorization Independence.\n\nQAPs (Rules are not Filters): The path-based ownership model ensures secure list operations because rules can easily filter based on the `userId` in the path. A user can only list resources owned by them without additional filtering within the rules themselves.\n\nThe structure explicitly models the relationships between entities. This adheres to the principle of Data Clarity and Predictability, which simplifies debugging and maintenance."
   }
 }
+    
