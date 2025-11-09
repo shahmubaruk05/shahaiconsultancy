@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType } from "docx";
+import { useToast } from "@/hooks/use-toast";
 
 import { generateCompanyProfileMock, CompanyProfileResult, CompanyProfileInput } from '@/lib/aiMock';
 import {
@@ -326,6 +327,7 @@ async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputVa
 
 export function CompanyProfileForm() {
   const { firestore, user, isUserLoading } = useFirebase();
+  const { toast } = useToast();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<CompanyProfileResult | null>(null);
@@ -381,6 +383,27 @@ export function CompanyProfileForm() {
         setError('An unexpected error occurred. Please try again.');
       }
     });
+  };
+
+  const handleDownload = () => {
+    if (plan === 'free') {
+      toast({
+        variant: "destructive",
+        title: "Upgrade Required",
+        description: (
+          <div>
+            DOCX export is available for Pro & Premium users only.
+             <Button variant="link" asChild className="p-0 h-auto ml-2 text-white">
+                <Link href="/pricing">Upgrade Now</Link>
+            </Button>
+          </div>
+        ),
+      });
+      return;
+    }
+    if (result && formValues) {
+      downloadCompanyProfileDocx(result, formValues);
+    }
   };
 
   if (isUserLoading) {
@@ -471,17 +494,15 @@ export function CompanyProfileForm() {
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row gap-2">
                         <div className="w-full">
-                            <Button
-                                onClick={() => downloadCompanyProfileDocx(result, formValues)}
-                                disabled={plan === 'free'}
+                           <Button
+                                onClick={handleDownload}
                                 className="w-full sm:w-auto"
                             >
                                <Download className="mr-2" /> Download as Word (.docx)
                             </Button>
                              {plan === 'free' && (
-                                <p className="mt-2 text-xs text-destructive">
-                                    DOCX export is available on the Pro plan.
-                                    <Button variant="link" size="sm" asChild className="p-1 h-auto"><Link href="/pricing">Upgrade now <ExternalLink className='ml-1' /></Link></Button>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    DOCX export is available on Pro/Premium plans.
                                 </p>
                             )}
                         </div>
