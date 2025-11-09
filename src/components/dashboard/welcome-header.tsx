@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '../ui/button';
 import { setDoc, doc } from 'firebase/firestore';
+import { PlanBadge } from '@/components/PlanBadge';
 
 export function WelcomeHeader() {
   const { user, firestore } = useFirebase();
@@ -12,7 +13,6 @@ export function WelcomeHeader() {
 
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
   const { data: userData } = useDoc(userDocRef);
-  const plan = (userData?.plan || 'free') as 'free' | 'pro' | 'premium';
   
   useEffect(() => {
     if (user && !userData?.plan && userDocRef) {
@@ -42,12 +42,7 @@ export function WelcomeHeader() {
         <p className="text-muted-foreground">Here's your command center for your next big idea.</p>
       </div>
        <div>
-        <p className="text-sm mt-2">
-            Plan: <span className={`font-semibold ${plan === "pro" ? "text-primary" : plan === "premium" ? "text-accent" : "text-muted-foreground"}`}>
-                {plan.toUpperCase()}
-            </span>{" "}
-            <Link href="/pricing" className="underline text-primary">Manage Plan</Link>
-        </p>
+        <PlanBadge />
       </div>
     </div>
   );
