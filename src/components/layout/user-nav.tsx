@@ -1,3 +1,4 @@
+'use client';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,9 +19,10 @@ import Link from 'next/link';
 
 type UserNavProps = {
   user: AppUser;
+  isMobile?: boolean;
 };
 
-export function UserNav({ user }: UserNavProps) {
+export function UserNav({ user, isMobile = false }: UserNavProps) {
   const auth = useAuth();
   const router = useRouter();
 
@@ -30,6 +32,33 @@ export function UserNav({ user }: UserNavProps) {
       router.push('/login');
     }
   };
+
+  if (isMobile) {
+     return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatarUrl} alt={user.name} />
+                        <AvatarFallback>
+                            {user.name.split(' ').map((n) => n[0]).join('')}
+                        </AvatarFallback>
+                    </Avatar>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+                {/* Mobile view only shows menu items */}
+                <DropdownMenuGroup>
+                    <DropdownMenuItem asChild><Link href="/dashboard">Dashboard</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/pricing">Billing</Link></DropdownMenuItem>
+                    <DropdownMenuItem asChild><Link href="/tools">All Tools</Link></DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+  }
 
   return (
     <DropdownMenu>
@@ -66,11 +95,9 @@ export function UserNav({ user }: UserNavProps) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>Profile</DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/pricing">Billing</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>Settings</DropdownMenuItem>
+          <DropdownMenuItem asChild><Link href="/dashboard">Dashboard</Link></DropdownMenuItem>
+          <DropdownMenuItem asChild><Link href="/pricing">Billing</Link></DropdownMenuItem>
+           <DropdownMenuItem asChild><Link href="/tools">All Tools</Link></DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
