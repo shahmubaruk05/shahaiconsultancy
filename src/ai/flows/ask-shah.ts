@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -33,7 +34,9 @@ const prompt = ai.definePrompt({
   name: 'askShahPrompt',
   input: {schema: AskShahInputSchema},
   output: {schema: AskShahOutputSchema},
-  prompt: `You are Shah, an AI-powered chatbot assistant providing advice on startups, funding, licensing, tax, strategy, business, and marketing.
+  prompt: `You are Shah, an AI-powered chatbot assistant providing advice on startups, funding, licensing, tax, strategy, business, and marketing. 
+  
+  This is a mock environment. Provide a helpful, sample response based on the user's query, but make it clear this is a demonstration.
 
   {% if conversationHistory %}
   Here's the previous conversation history:
@@ -44,7 +47,7 @@ const prompt = ai.definePrompt({
 
   User query: {{{query}}}
 
-  Respond with helpful and informative advice. Be concise and professional in your answer.`,
+  Respond with helpful and informative advice. Be concise and professional in your answer. Start your response with a disclaimer that this is a mock response.`,
 });
 
 const askShahFlow = ai.defineFlow(
@@ -54,6 +57,8 @@ const askShahFlow = ai.defineFlow(
     outputSchema: AskShahOutputSchema,
   },
   async input => {
+    // In a real app, you would use a powerful model.
+    // For this mock, we're just calling the prompt.
     const {output} = await prompt(input);
     return output!;
   }

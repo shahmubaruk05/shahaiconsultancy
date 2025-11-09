@@ -12,6 +12,7 @@ import { Card } from '../ui/card';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, addDoc, serverTimestamp, getDocs, doc, setDoc, limit } from 'firebase/firestore';
 import Link from 'next/link';
+import { askShah } from '@/ai/flows/ask-shah';
 
 export type Message = {
   role: 'user' | 'assistant';
@@ -96,7 +97,6 @@ export function AskShahChat() {
       try {
         const messagesCol = collection(firestore, `users/${user.uid}/conversations/${conversationId}/messages`);
         
-        // 1. Save user message to Firestore
         await addDoc(messagesCol, {
           conversationId,
           userId: user.uid,
@@ -105,32 +105,21 @@ export function AskShahChat() {
           createdAt: serverTimestamp(),
         });
 
-        // 2. Call the API to get AI reply
         const apiHistory = currentMessages
           .filter(m => m.role === 'user' || m.role === 'assistant')
-          .slice(1) // Exclude initial greeting
+          .slice(1)
           .map(m => ({
             role: m.role,
             content: m.content,
           }));
 
-        const response = await fetch("/api/ask-shah", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            question: currentQuery,
-            history: apiHistory,
-          }),
+        const response = await askShah({
+            query: currentQuery,
+            conversationHistory: apiHistory,
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to get AI response');
-        }
+        const aiText = response.answer ?? "Sorry, I could not generate a reply.";
 
-        const data = await response.json();
-        const aiText = data.answer ?? "Sorry, I could not generate a reply.";
-
-        // 3. Save AI reply to Firestore
         await addDoc(messagesCol, {
           conversationId,
           userId: user.uid,
@@ -139,14 +128,13 @@ export function AskShahChat() {
           createdAt: serverTimestamp(),
         });
         
-        // 4. Update conversation timestamp
         const convoDocRef = doc(firestore, `users/${user.uid}/conversations`, conversationId);
         await setDoc(convoDocRef, { updatedAt: serverTimestamp() }, { merge: true });
 
       } catch (error) {
         console.error('Error in chat action:', error);
         const errorMessage: Message = { role: 'assistant', content: 'There was an error processing your request. Please try again.' };
-        setMessages(prev => [...prev.slice(0,-1), errorMessage]); // Replace optimistic user message with error
+        setMessages(prev => [...prev, errorMessage]);
       }
     });
   };
