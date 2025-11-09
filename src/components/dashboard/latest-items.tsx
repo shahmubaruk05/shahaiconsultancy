@@ -2,7 +2,7 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Lightbulb, Target, Building2 } from 'lucide-react';
+import { FileText, Lightbulb, Target, Building2, ClipboardList } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,6 +32,14 @@ export function LatestItems() {
   );
   const { data: strategies, isLoading: strategiesLoading } = useCollection(strategiesQuery);
   
+  const plansQuery = useMemoFirebase(() => 
+    user && firestore 
+      ? query(collection(firestore, `users/${user.uid}/businessPlans`), orderBy('createdAt', 'desc'), limit(3))
+      : null, 
+    [firestore, user]
+  );
+  const { data: plans, isLoading: plansLoading } = useCollection(plansQuery);
+
   const decksQuery = useMemoFirebase(() => 
     user && firestore 
       ? query(collection(firestore, `users/${user.uid}/pitchDecks`), orderBy('createdAt', 'desc'), limit(3))
@@ -49,7 +57,7 @@ export function LatestItems() {
   const { data: profiles, isLoading: profilesLoading } = useCollection(profilesQuery);
 
 
-  const isLoading = ideasLoading || strategiesLoading || decksLoading || profilesLoading;
+  const isLoading = ideasLoading || strategiesLoading || decksLoading || profilesLoading || plansLoading;
 
 
   return (
@@ -62,9 +70,10 @@ export function LatestItems() {
           <p>Loading your latest work...</p>
         ) : (
         <Tabs defaultValue="ideas">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="ideas">Ideas</TabsTrigger>
             <TabsTrigger value="strategies">Strategies</TabsTrigger>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="decks">Decks</TabsTrigger>
             <TabsTrigger value="profiles">Profiles</TabsTrigger>
           </TabsList>
@@ -100,6 +109,25 @@ export function LatestItems() {
                   </div>
                 </div>
               )) : <p className="text-muted-foreground text-sm text-center py-4">No strategies generated yet.</p>}
+            </div>
+          </TabsContent>
+          <TabsContent value="plans" className="mt-4">
+             <div className="space-y-4">
+              {plans && plans.length > 0 ? plans.map((item: any) => (
+                <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
+                  <div className="flex items-center gap-4">
+                    <ClipboardList className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{item.businessName}</p>
+                      <p className="text-sm text-muted-foreground">Generated {formatTimestamp(item.createdAt)}</p>
+                    </div>
+                  </div>
+                   <div className="text-right">
+                     <p className="font-semibold text-primary truncate">{item.industry}</p>
+                     <p className="text-sm text-muted-foreground">Industry</p>
+                  </div>
+                </div>
+              )) : <p className="text-muted-foreground text-sm text-center py-4">No business plans generated yet.</p>}
             </div>
           </TabsContent>
           <TabsContent value="decks" className="mt-4">
@@ -142,5 +170,4 @@ export function LatestItems() {
     </Card>
   );
 }
-
     

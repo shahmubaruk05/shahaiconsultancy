@@ -21,6 +21,7 @@ import {
   Library,
   MessageCircle,
   Building2,
+  ClipboardList,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -32,6 +33,7 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/tools/startup-validator', label: 'Startup Validator', icon: FlaskConical },
   { href: '/tools/business-strategy', label: 'Business Strategy', icon: Target },
+  { href: '/tools/business-plan', label: 'Business Plan', icon: ClipboardList },
   { href: '/tools/pitch-deck', label: 'Pitch Deck Assistant', icon: FileText },
   { href: '/tools/company-profile', label: 'Company Profile', icon: Building2 },
   { href: '/tools/company-formation', label: 'Company Formation', icon: Library },
@@ -108,5 +110,4 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
     

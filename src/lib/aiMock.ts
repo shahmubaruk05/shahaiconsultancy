@@ -210,4 +210,56 @@ export async function generateCompanyProfileMock(
   };
 }
 
+export type BusinessPlanInput = {
+    businessName: string;
+    industry: string;
+    country: string;
+    targetAudience: string;
+    problem: string;
+    solution: string;
+    revenueModel: string;
+    fundingNeed: string;
+  };
+
+  export type BusinessPlanResult = {
+    executiveSummary: string;
+    marketAnalysis: string;
+    marketingPlan: string;
+    operationsPlan: string;
+    financialOverview: string;
+    nextSteps: string[];
+  };
+
+  export async function generateBusinessPlanMock(
+    input: BusinessPlanInput
+  ): Promise<BusinessPlanResult> {
+    // TODO: later replace with a real AI API (OpenAI / Gemini).
+    const baseDescription =
+      `The business "${input.businessName}" operates in the ${input.industry} sector in ${input.country}. ` +
+      `It serves ${input.targetAudience} by solving the problem: ${input.problem}, ` +
+      `through the solution: ${input.solution}.`;
+
+    return {
+      executiveSummary:
+        baseDescription +
+        ` The goal is to build a sustainable business using a ${input.revenueModel} model and gradually validate the market before scaling.`,
+      marketAnalysis:
+        "The target market shows growing interest in practical, outcome-focused solutions. The space is somewhat competitive, but there is room for a niche, founder-friendly offering that speaks the local language and context. Start with a clear niche and validate demand with early adopters.",
+      marketingPlan:
+        "Focus first on low-cost, high-trust channels: educational content, community groups, referrals, and 1:1 conversations. Use social media (Facebook, LinkedIn, YouTube) to share case studies and simple explainers. Later experiment with small paid campaigns once basic conversion metrics are understood.",
+      operationsPlan:
+        "Start lean with a small core team or even a solo founder using freelancers/partners where needed. Document simple processes for client onboarding, delivery, and follow-up. Set monthly and quarterly goals so you can track progress and adjust quickly based on feedback.",
+      financialOverview:
+        `Initial funding need: ${input.fundingNeed || "Bootstrapped / small initial budget"}. ` +
+        "Plan for very basic fixed costs in the beginning (tools, legal, minimal team) and focus on early revenue from paying customers. Track unit economics before investing heavily in growth.",
+      nextSteps: [
+        "Validate problem and solution with at least 10–20 real conversations.",
+        "Define a minimum viable offer (MVP) and test it with early customers.",
+        "Set up simple tracking for leads, conversions, revenue, and churn.",
+        "Refine pricing and packages based on feedback.",
+        "Prepare a lightweight pitch deck and financial projection if external funding is needed.",
+      ],
+    };
+  }
+
     

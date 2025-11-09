@@ -1,5 +1,90 @@
 {
   "entities": {
+    "BusinessPlan": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BusinessPlan",
+      "type": "object",
+      "description": "Represents a generated business plan.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the BusinessPlan entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N BusinessPlan)"
+        },
+        "businessName": {
+          "type": "string"
+        },
+        "industry": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "targetAudience": {
+          "type": "string"
+        },
+        "problem": {
+          "type": "string"
+        },
+        "solution": {
+          "type": "string"
+        },
+        "revenueModel": {
+          "type": "string"
+        },
+        "fundingNeed": {
+          "type": "string"
+        },
+        "executiveSummary": {
+          "type": "string"
+        },
+        "marketAnalysis": {
+          "type": "string"
+        },
+        "marketingPlan": {
+          "type": "string"
+        },
+        "operationsPlan": {
+          "type": "string"
+        },
+        "financialOverview": {
+          "type": "string"
+        },
+        "nextSteps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time the plan was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "businessName",
+        "industry",
+        "country",
+        "targetAudience",
+        "problem",
+        "solution",
+        "revenueModel",
+        "fundingNeed",
+        "executiveSummary",
+        "marketAnalysis",
+        "marketingPlan",
+        "operationsPlan",
+        "financialOverview",
+        "nextSteps",
+        "createdAt"
+      ]
+    },
     "BusinessStrategy": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "BusinessStrategy",
@@ -431,6 +516,26 @@
             {
               "name": "businessStrategyId",
               "description": "The unique identifier of the business strategy."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/businessPlans/{businessPlanId}",
+        "definition": {
+          "entityName": "BusinessPlan",
+          "schema": {
+            "$ref": "#/backend/entities/BusinessPlan"
+          },
+          "description": "Collection of business plans owned by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "businessPlanId",
+              "description": "The unique identifier of the business plan."
             }
           ]
         }
