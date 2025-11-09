@@ -16,8 +16,8 @@ export function WelcomeHeader() {
   
   useEffect(() => {
     // Only set the plan to 'free' if the user exists, the document reference is available,
-    // and the 'plan' field is missing from their document data.
-    if (user && userData && userDocRef && !userData.plan) {
+    // and the 'plan' field is explicitly missing from their document data.
+    if (user && userDocRef && userData && !('plan' in userData)) {
         setDoc(userDocRef, { plan: 'free' }, { merge: true });
     }
   }, [user, userData, userDocRef])
