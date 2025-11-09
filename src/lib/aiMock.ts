@@ -120,19 +120,6 @@ export type AskShahMessage = {
   content: string;
 };
 
-export async function generateAskShahReplyMock(
-  input: AskShahInput
-): Promise<{ answer: string }> {
-  // TODO: later replace with real AI API (OpenAI/Gemini).
-  return {
-    answer: "এটি একটি ডেমো উত্তর, যেখানে আমি Shah Mubaruk – Your Startup Coach হিসেবে " +
-      "আপনার স্টার্টআপ, ফান্ডিং, লাইসেন্সিং ও বিজনেস স্ট্র্যাটেজি বিষয়ে সাধারণ দিকনির্দেশনা দিচ্ছি। " +
-      "রিয়াল অ্যাপে এখানে আসল AI যুক্ত হবে। আপনার বর্তমান প্রশ্ন ছিল: " +
-      input.query
-  };
-}
-
-
 export type CompanyProfileInput = {
     companyName: string;
     industry: string;

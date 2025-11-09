@@ -116,6 +116,7 @@ export function AskShahChat() {
         const response = await askShah({
             query: currentQuery,
             conversationHistory: apiHistory,
+            userName: user.displayName,
         });
 
         const aiText = response.answer ?? "Sorry, I could not generate a reply.";

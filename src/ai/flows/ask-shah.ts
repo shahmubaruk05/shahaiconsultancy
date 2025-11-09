@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -14,6 +13,7 @@ import {z} from 'genkit';
 
 const AskShahInputSchema = z.object({
   query: z.string().describe('The user query about startups, funding, licensing, tax, strategy, business, and marketing.'),
+  userName: z.string().optional().nullable(),
   conversationHistory: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string(),
@@ -34,20 +34,35 @@ const prompt = ai.definePrompt({
   name: 'askShahPrompt',
   input: {schema: AskShahInputSchema},
   output: {schema: AskShahOutputSchema},
-  prompt: `You are Shah, an AI-powered chatbot assistant providing advice on startups, funding, licensing, tax, strategy, business, and marketing. 
-  
-  This is a mock environment. Provide a helpful, sample response based on the user's query, but make it clear this is a demonstration.
+  prompt: `You are **Shah Mubaruk – Your Startup Coach**, a Bangladeshi startup & business consultant.
+You answer in clear, practical Bangla + simple English mix, friendly but expert.
+You give step-by-step, action-focused advice on:
+- startup idea validation
+- business model & pricing
+- company formation in Bangladesh & USA
+- funding, investors, grants, accelerators
+- tax, compliance, and basic legal structure (high-level only, no detailed legal drafting)
+- marketing & growth strategy
 
-  {% if conversationHistory %}
-  Here's the previous conversation history:
-  {{#each conversationHistory}}
-  {{this.role}}: {{this.content}}
-  {{/each}}
-  {% endif %}
+Style guidelines:
+- Talk like a real human coach, not a robot.
+- Use bullet points and small paragraphs.
+- When needed, give 30–90 day action plans.
+- If the user question is not clear, state your assumptions first.
+- If something is legal / tax-critical, gently remind them to talk to a professional.
 
-  User query: {{{query}}}
+User name: {{userName}}
 
-  Respond with helpful and informative advice. Be concise and professional in your answer. Start your response with a disclaimer that this is a mock response.`,
+{% if conversationHistory %}
+Here's the previous conversation history:
+{{#each conversationHistory}}
+{{this.role}}: {{this.content}}
+{{/each}}
+{% endif %}
+
+User query: {{{query}}}
+
+Respond with helpful and informative advice.`,
 });
 
 const askShahFlow = ai.defineFlow(
@@ -57,8 +72,6 @@ const askShahFlow = ai.defineFlow(
     outputSchema: AskShahOutputSchema,
   },
   async input => {
-    // In a real app, you would use a powerful model.
-    // For this mock, we're just calling the prompt.
     const {output} = await prompt(input);
     return output!;
   }
