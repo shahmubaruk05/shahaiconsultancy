@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { Send, User, Bot, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, addDoc, serverTimestamp, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, getDocs, doc, setDoc, limit } from 'firebase/firestore';
 import Link from 'next/link';
 
 export type Message = {
