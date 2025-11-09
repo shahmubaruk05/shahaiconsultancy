@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-import { Document, Packer, Paragraph, HeadingLevel } from "docx";
+import { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType } from "docx";
 
 import { generateCompanyProfileMock, CompanyProfileResult, CompanyProfileInput } from '@/lib/aiMock';
 import {
@@ -63,68 +63,250 @@ const ResultSection = ({ title, content }: { title: string; content: string }) =
 };
 
 async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputValues: FormData) {
+    const {
+      companyName,
+      industry,
+      country,
+      foundedYear,
+      companySize,
+      marketFocus,
+      coreValue,
+      targetCustomers,
+      servicesOrProducts,
+    } = inputValues;
+
+    const title = companyName || "Company Profile";
+    const bizSparkBrand = "BizSpark – Shah Mubaruk – Your Startup Coach";
+
     const doc = new Document({
       sections: [
         {
           children: [
+            // Cover / Header
             new Paragraph({
-              text: "BizSpark – Shah Mubaruk – Your Startup Coach",
-              heading: HeadingLevel.TITLE,
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  text: bizSparkBrand,
+                  bold: true,
+                  size: 32,
+                }),
+              ],
             }),
             new Paragraph({
-              text: inputValues.companyName || "Company Profile",
-              heading: HeadingLevel.HEADING_1,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 200 },
+              children: [
+                new TextRun({
+                  text: title,
+                  bold: true,
+                  size: 30,
+                }),
+              ],
             }),
-            new Paragraph(" "),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 400 },
+              children: [
+                new TextRun({
+                  text: industry ? `Industry: ${industry}` : "",
+                  italics: true,
+                  size: 22,
+                }),
+              ],
+            }),
+
+            // Company quick info table
+            new Paragraph({
+              text: "Company Snapshot",
+              heading: HeadingLevel.HEADING_2,
+              spacing: { before: 200, after: 100 },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph("Company Name")],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph(companyName || "Not specified"),
+                      ],
+                    }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph("Industry / Sector")],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph(industry || "Not specified"),
+                      ],
+                    }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph("Country")],
+                    }),
+                    new TableCell({
+                      children: [new Paragraph(country || "Not specified")],
+                    }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph("Founded Year")],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph(foundedYear || "Not specified"),
+                      ],
+                    }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph("Company Size")],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph(companySize || "Not specified"),
+                      ],
+                    }),
+                  ],
+                }),
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [new Paragraph("Market Focus")],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph(marketFocus || "Not specified"),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+
+            new Paragraph({ text: "" }),
+
+            // Core Value / Motto
+            ...(coreValue
+              ? [
+                  new Paragraph({
+                    text: "Core Value / Motto",
+                    heading: HeadingLevel.HEADING_2,
+                    spacing: { before: 200, after: 100 },
+                  }),
+                  new Paragraph(coreValue),
+                ]
+              : []),
+
+            // About Us
             new Paragraph({
               text: "About Us",
               heading: HeadingLevel.HEADING_2,
+              spacing: { before: 200, after: 100 },
             }),
             new Paragraph(profile.about || ""),
-             new Paragraph(" "),
+
+            // Mission
             new Paragraph({
               text: "Mission",
               heading: HeadingLevel.HEADING_2,
+              spacing: { before: 200, after: 100 },
             }),
             new Paragraph(profile.mission || ""),
-             new Paragraph(" "),
+
+            // Vision
             new Paragraph({
               text: "Vision",
               heading: HeadingLevel.HEADING_2,
+              spacing: { before: 200, after: 100 },
             }),
             new Paragraph(profile.vision || ""),
-             new Paragraph(" "),
+
+            // Our Services
             new Paragraph({
               text: "Our Services",
               heading: HeadingLevel.HEADING_2,
+              spacing: { before: 200, after: 100 },
             }),
+            ...(servicesOrProducts
+              ? [new Paragraph(servicesOrProducts)]
+              : []),
             new Paragraph(profile.servicesSummary || ""),
-             new Paragraph(" "),
+
+            // Our Customers
             new Paragraph({
               text: "Our Customers",
               heading: HeadingLevel.HEADING_2,
+              spacing: { before: 200, after: 100 },
             }),
+            ...(targetCustomers ? [new Paragraph(targetCustomers)] : []),
             new Paragraph(profile.targetCustomersSection || ""),
-             new Paragraph(" "),
+
+            // Why Choose Us
             new Paragraph({
               text: "Why Choose Us",
               heading: HeadingLevel.HEADING_2,
+              spacing: { before: 200, after: 100 },
             }),
-            new Paragraph(profile.whyChooseUs || ""),
-            ...(profile.socialImpact ? [
-                new Paragraph(" "),
-                new Paragraph({
-                    text: "Sustainability / Social Impact",
+            ...String(profile.whyChooseUs || "")
+              .split("\n")
+              .filter((line) => line.trim().length > 0)
+              .map(
+                (line) =>
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: "• ", bold: true }),
+                      new TextRun(line.replace(/^•\s*/, "")),
+                    ],
+                  })
+              ),
+
+            // Sustainability / Social Impact (if any)
+            ...(profile.socialImpact
+              ? [
+                  new Paragraph({
+                    text: "Sustainability & Social Impact",
                     heading: HeadingLevel.HEADING_2,
-                }),
-                new Paragraph(profile.socialImpact),
-            ] : []),
-             new Paragraph(" "),
+                    spacing: { before: 200, after: 100 },
+                  }),
+                  new Paragraph(profile.socialImpact),
+                ]
+              : []),
+
+            // Call to Action
             new Paragraph({
               text: "Call to Action",
               heading: HeadingLevel.HEADING_2,
+              spacing: { before: 200, after: 100 },
             }),
             new Paragraph(profile.callToAction || ""),
+
+            // Footer / Signature
+            new Paragraph({ text: "" }),
+            new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [
+                new TextRun({
+                  text: "Prepared with BizSpark – Shah Mubaruk – Your Startup Coach",
+                  italics: true,
+                  size: 20,
+                }),
+              ],
+            }),
           ],
         },
       ],
@@ -134,7 +316,7 @@ async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputVa
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${inputValues.companyName || "company-profile"}-shah-mubaruk.docx`;
+    a.download = `${companyName || "company-profile"}-shah-mubaruk.docx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
