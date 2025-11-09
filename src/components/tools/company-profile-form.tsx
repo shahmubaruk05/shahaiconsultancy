@@ -77,7 +77,7 @@ async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputVa
     } = inputValues;
 
     const title = companyName || "Company Profile";
-    const bizSparkBrand = "BizSpark – Shah Mubaruk – Your Startup Coach";
+    const bizSparkBrand = "Shah Mubaruk – Your Startup Coach";
 
     const doc = new Document({
       sections: [
@@ -302,7 +302,7 @@ async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputVa
               alignment: AlignmentType.RIGHT,
               children: [
                 new TextRun({
-                  text: "Prepared with BizSpark – Shah Mubaruk – Your Startup Coach",
+                  text: "Prepared with Shah Mubaruk – Your Startup Coach",
                   italics: true,
                   size: 20,
                 }),

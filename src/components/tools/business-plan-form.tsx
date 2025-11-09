@@ -67,7 +67,7 @@ async function downloadBusinessPlanDocx(plan: BusinessPlanResult, inputValues: F
         {
           children: [
             new Paragraph({
-              text: "BizSpark – Shah Mubaruk – Your Startup Coach",
+              text: "Shah Mubaruk – Your Startup Coach",
               heading: HeadingLevel.TITLE,
               style: "Title"
             }),

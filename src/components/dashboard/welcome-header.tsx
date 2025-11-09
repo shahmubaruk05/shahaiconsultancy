@@ -13,17 +13,18 @@ export function WelcomeHeader() {
   
   useEffect(() => {
     // Wait until user and document data are loaded to avoid race conditions.
-    if (isUserLoading || isUserDocLoading || !user || !userDocRef || !firestore) {
+    if (!user || !userDocRef || !firestore || isUserLoading || isUserDocLoading) {
       return;
     }
-
-    // `userData` can be null if the document doesn't exist yet, or it can be a document that exists but lacks the 'plan' field.
-    // We only want to write to Firestore if the 'plan' field is missing.
-    // A non-existent document (userData === null) is the same as a document with a missing 'plan' field for this logic.
+  
+    // `userData` can be null if the document doesn't exist yet.
+    // We only want to write to Firestore if the document exists and the 'plan' field is missing.
     const planExists = userData && 'plan' in userData;
-
+  
     if (!planExists) {
-        setDoc(userDocRef, { plan: 'free' }, { merge: true });
+      // Use { merge: true } to avoid overwriting the whole document.
+      // This will create the document if it doesn't exist, or just add the 'plan' field if it does.
+      setDoc(userDocRef, { plan: 'free' }, { merge: true });
     }
   }, [user, userData, userDocRef, isUserLoading, isUserDocLoading, firestore]);
 
@@ -36,7 +37,7 @@ export function WelcomeHeader() {
   if (!user) {
     return (
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Welcome to BizSpark</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Welcome to Shah Mubaruk</h1>
         <p className="text-muted-foreground">AI-Powered Business Tools for Visionaries</p>
       </div>
     );

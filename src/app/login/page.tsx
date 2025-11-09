@@ -7,7 +7,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center">
             <Logo className="w-16 h-16 mb-4 text-primary" />
-            <h1 className="text-3xl font-bold">Welcome back to BizSpark</h1>
+            <h1 className="text-3xl font-bold">Welcome back to Shah Mubaruk</h1>
             <p className="text-muted-foreground">Enter your credentials to access your account</p>
         </div>
         <LoginForm />

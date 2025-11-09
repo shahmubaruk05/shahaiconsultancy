@@ -174,7 +174,7 @@ export async function generateCompanyProfileMock(input: CompanyProfileInput): Pr
   let callToAction = "";
   let socialImpact = "";
 
-  const brandHeader = `BizSpark – Shah Mubaruk – Your Startup Coach`;
+  const brandHeader = `Shah Mubaruk – Your Startup Coach`;
 
   switch (industry.toLowerCase()) {
     case "agro":
