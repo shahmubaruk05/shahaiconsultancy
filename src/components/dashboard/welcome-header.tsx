@@ -25,7 +25,7 @@ export function WelcomeHeader() {
     if (!planExists) {
         setDoc(userDocRef, { plan: 'free' }, { merge: true });
     }
-  }, [user, userData, userDocRef, isUserLoading, isUserDocLoading]);
+  }, [user, userData, userDocRef, isUserLoading, isUserDocLoading, firestore]);
 
   React.useEffect(() => {
     if (user) {
@@ -36,7 +36,7 @@ export function WelcomeHeader() {
   if (!user) {
     return (
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Welcome to Shah Mubaruk – Your Startup Coach</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Welcome to BizSpark</h1>
         <p className="text-muted-foreground">AI-Powered Business Tools for Visionaries</p>
       </div>
     );
