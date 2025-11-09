@@ -134,14 +134,20 @@ export async function generateAskShahReplyMock(
 
 
 export type CompanyProfileInput = {
-  companyName: string;
-  industry: string;
-  country: string;
-  targetCustomers: string;
-  servicesOrProducts: string;
-  brandTone: "Formal" | "Friendly" | "Mixed";
-  language: "English" | "Bangla";
-};
+    companyName: string;
+    industry: string;
+    country: string;
+    targetCustomers: string;
+    servicesOrProducts: string;
+    brandTone: "Formal" | "Friendly" | "Mixed";
+    language: "English" | "Bangla";
+    companySize: "Startup (1–10)" | "SME (11–50)" | "Growing (51–200)" | "Corporate (200+)";
+    foundedYear?: string;
+    coreValue?: string;
+    marketFocus: "Local" | "Regional" | "International";
+    sustainability?: string;
+    keyStrengths?: string;
+  };
 
 export type CompanyProfileResult = {
   about: string;
@@ -151,64 +157,125 @@ export type CompanyProfileResult = {
   targetCustomersSection: string;
   whyChooseUs: string;
   callToAction: string;
+  socialImpact?: string;
 };
 
-export async function generateCompanyProfileMock(
-  input: CompanyProfileInput
-): Promise<CompanyProfileResult> {
-  // TODO: later replace with real AI API (OpenAI / Gemini).
-  const isBangla = input.language === "Bangla";
+export async function generateCompanyProfileMock(input: CompanyProfileInput): Promise<CompanyProfileResult> {
+  const { companyName, industry, country, targetCustomers, servicesOrProducts, brandTone, language, foundedYear, keyStrengths, sustainability } = input;
 
-  if (isBangla) {
-    return {
-      about:
-        `${input.companyName} হচ্ছে একটি ${input.industry} ভিত্তিক প্রতিষ্ঠান, ` +
-        `যা ${input.country} থেকে পরিচালিত হয়ে ${input.targetCustomers} এর জন্য ` +
-        `বিশ্বস্ত ও প্রফেশনাল সেবা প্রদান করে। আমরা বাস্তব সমস্যাকে বুঝে, সেই অনুযায়ী ` +
-        `প্র্যাকটিক্যাল সমাধান দিতে বিশ্বাসী।`,
-      mission:
-        "আমাদের মিশন হলো উদ্যোক্তা ও ব্যবসাগুলোকে সঠিক গাইডলাইন, মানসম্মত সেবা এবং দীর্ঘমেয়াদী ভ্যালু দিয়ে টেকসই সফলতা অর্জনে সাহায্য করা।",
-      vision:
-        "বাংলাদেশ ও গ্লোবাল মার্কেটে একটি ট্রাস্টেড ব্র্যান্ড হিসেবে প্রতিষ্ঠিত হয়ে, আরও বেশি উদ্যোক্তা ও ব্যবসা প্রতিষ্ঠানের গ্রোথ পার্টনার হওয়া।",
-      servicesSummary:
-        `আমরা মূলত ${input.servicesOrProducts} এই সেবা/প্রডাক্টগুলোকে কেন্দ্র করে কাজ করি, ` +
-        `যেখানে ক্লায়েন্টদের নির্দিষ্ট প্রয়োজন অনুযায়ী কাস্টমাইজড সল্যুশন দেওয়া হয়।`,
-      targetCustomersSection:
-        `আমাদের প্রধান গ্রাহকরা হল ${input.targetCustomers} – যারা প্রফেশনাল সেবা, ` +
-        `বিশ্বাসযোগ্যতা এবং দীর্ঘমেয়াদী বিজনেস রিলেশনশিপকে গুরুত্ব দেন।`,
-      whyChooseUs:
-        "• প্র্যাকটিক্যাল এক্সপেরিয়েন্স ও ইন্ডাস্ট্রি নলেজ\n" +
-        "• স্টেপ–বাই–স্টেপ গাইডলাইন ও সাপোর্ট\n" +
-        "• ক্লায়েন্ট–ফোকাসড সার্ভিস ও কাস্টম সল্যুশন\n" +
-        "• লং–টার্ম পার্টনারশিপ ও গ্রোথ–মাইন্ডসেট",
-      callToAction:
-        "আপনি যদি আপনার ব্যবসাকে পরের ধাপে নিয়ে যেতে চান, আমাদের সঙ্গে কথা বলুন এবং আপনার প্রয়োজন অনুযায়ী সল্যুশন জেনে নিন।",
-    };
+  const tone = brandTone === "Friendly" ? "friendly and inspiring" : brandTone === "Mixed" ? "balanced professional yet human" : "formal and polished";
+
+  // Choose template based on industry
+  let about = "";
+  let mission = "";
+  let vision = "";
+  let servicesSummary = "";
+  let whyChooseUs = "";
+  let callToAction = "";
+  let socialImpact = "";
+
+  const brandHeader = `BizSpark – Shah Mubaruk – Your Startup Coach`;
+
+  switch (industry.toLowerCase()) {
+    case "agro":
+    case "agriculture":
+      about = `${companyName} is an ${industry}-focused organization based in ${country}, connecting farmers and consumers through a transparent and efficient supply chain. Founded in ${foundedYear || "recent years"}, it helps both producers and customers access fair prices and reliable quality.`;
+      mission = `To empower farmers and deliver fresh, safe food to consumers by modernizing Bangladesh’s agro distribution system.`;
+      vision = `To become the most trusted ${industry} network in South Asia, improving farmer income and ensuring food security.`;
+      servicesSummary = `We provide farm-to-table delivery, produce collection, quality control, and logistics solutions. Our services ensure traceability, freshness, and fair pricing.`;
+      whyChooseUs = `• Direct sourcing from farmers\n• Fair pricing model\n• Food safety & quality focus\n• Transparent operations\n• Social impact-driven`;
+      socialImpact = `By reducing middlemen and waste, ${companyName} helps improve farmer livelihoods and promote sustainable agriculture.`;
+      break;
+
+    case "technology":
+    case "it":
+    case "software":
+      about = `${companyName} is a ${industry}-driven startup from ${country}, specializing in software development, digital transformation, and automation. Founded in ${foundedYear || "recent years"}, it focuses on helping SMEs and enterprises build scalable, secure, and efficient solutions.`;
+      mission = `To empower businesses through modern technology and data-driven decision-making.`;
+      vision = `To become a global tech partner from Bangladesh, delivering innovation that transforms industries.`;
+      servicesSummary = `We develop custom software, SaaS products, and integration services. Our expertise includes web apps, AI automation, and cloud infrastructure.`;
+      whyChooseUs = `• Experienced development team\n• Scalable architecture mindset\n• Transparent communication\n• End-to-end digital support`;
+      socialImpact = `${companyName} trains young developers and promotes tech entrepreneurship within ${country}.`;
+      break;
+
+    case "education":
+      about = `${companyName} is an ${industry}-focused organization from ${country}, providing modern learning experiences and skill development solutions.`;
+      mission = `To make quality education accessible, affordable, and outcome-based for all learners.`;
+      vision = `To become Bangladesh’s most impactful education platform through innovation and mentorship.`;
+      servicesSummary = `We offer online and offline courses, workshops, and career mentoring programs.`;
+      whyChooseUs = `• Expert trainers and mentors\n• Practical, job-oriented curriculum\n• Hybrid learning models\n• Measurable learning outcomes`;
+      socialImpact = `${companyName} bridges the gap between academic education and employability for youth.`;
+      break;
+
+    case "health":
+    case "medical":
+      about = `${companyName} operates in the ${industry} sector of ${country}, focusing on accessible healthcare and preventive wellness.`;
+      mission = `To make primary healthcare affordable, technology-enabled, and patient-focused.`;
+      vision = `To build a healthier nation by empowering people with timely medical support and awareness.`;
+      servicesSummary = `Our offerings include telemedicine, diagnostics, health monitoring, and corporate wellness programs.`;
+      whyChooseUs = `• Qualified medical professionals\n• Secure teleconsultation platform\n• Affordable and reliable care\n• Community health programs`;
+      socialImpact = `${companyName} supports rural healthcare awareness and preventive initiatives.`;
+      break;
+
+    case "fashion":
+    case "clothing":
+    case "textile":
+      about = `${companyName} is a ${industry}-brand from ${country}, blending creative design with sustainable production.`;
+      mission = `To redefine Bangladeshi fashion by combining quality, culture, and conscious craftsmanship.`;
+      vision = `To be recognized globally as a responsible, trend-forward fashion brand.`;
+      servicesSummary = `We design and produce clothing lines, accessories, and lifestyle products with eco-friendly materials.`;
+      whyChooseUs = `• Ethical sourcing & fair trade\n• Trend-driven design\n• High-quality materials\n• Sustainability commitment`;
+      socialImpact = `${companyName} promotes women empowerment and rural artisan development.`;
+      break;
+
+    case "real estate":
+      about = `${companyName} is a ${industry}-driven company from ${country}, providing trusted property development and housing solutions.`;
+      mission = `To make real estate investment transparent, secure, and value-driven.`;
+      vision = `To shape urban landscapes with innovation and integrity.`;
+      servicesSummary = `We offer property sales, land development, construction management, and investment consultancy.`;
+      whyChooseUs = `• Transparent documentation\n• Legal due diligence\n• Quality construction standards\n• On-time delivery`;
+      socialImpact = `${companyName} creates jobs and contributes to sustainable urban growth.`;
+      break;
+
+    default:
+      about = `${companyName} is a ${industry}-based company in ${country}, focusing on providing reliable and innovative solutions to ${targetCustomers}.`;
+      mission = `To deliver measurable impact and sustainable growth through practical strategies and innovation.`;
+      vision = `To become a trusted name in ${industry}, known for excellence, integrity, and innovation.`;
+      servicesSummary = `We provide ${servicesOrProducts} tailored to meet the needs of ${targetCustomers}.`;
+      whyChooseUs = keyStrengths
+        ? keyStrengths
+        : `• Proven expertise\n• Customer-centric approach\n• Strong team\n• Long-term partnership mindset`;
+      socialImpact = sustainability || "";
   }
 
-  // English default
-  return {
-    about:
-      `${input.companyName} is a ${input.industry} focused company based in ${input.country}, ` +
-      `serving ${input.targetCustomers} with practical, execution-driven solutions. We focus on ` +
-      `real business problems and clear, measurable outcomes.`,
-    mission:
-      "Our mission is to help entrepreneurs and businesses grow through clear strategy, reliable services, and long-term value.",
-    vision:
-      "To be a trusted growth partner for founders and businesses in Bangladesh and around the world.",
-    servicesSummary:
-      `Our core offerings include ${input.servicesOrProducts}, tailored to the specific needs of each client.`,
-    targetCustomersSection:
-      `We primarily serve ${input.targetCustomers}, who value professional support, clarity, and sustainable growth.`,
-    whyChooseUs:
-      "• Practical, real-world experience\n" +
-      "• Step-by-step guidance and support\n" +
-      "• Client-focused, customized solutions\n" +
-      "• Long-term partnership mindset",
-    callToAction:
-      "If you’re ready to take your business to the next level, reach out and let’s discuss the right solution for you.",
+  callToAction = `If you are looking for a trusted partner in the ${industry} sector, connect with us today. ${companyName} – powered by ${brandHeader} – is ready to help you grow.`;
+
+  const result: CompanyProfileResult = {
+    about,
+    mission,
+    vision,
+    servicesSummary,
+    targetCustomersSection: `We primarily serve ${targetCustomers}, offering customized solutions with a ${tone} approach.`,
+    whyChooseUs,
+    callToAction,
+    socialImpact,
   };
+  
+  if (language === 'Bangla') {
+      result.about = "বাংলায় রূপান্তর করা হয়নি";
+      result.mission = "বাংলায় রূপান্তর করা হয়নি";
+      result.vision = "বাংলায় রূপান্তর করা হয়নি";
+      result.servicesSummary = "বাংলায় রূপান্তর করা হয়নি";
+      result.targetCustomersSection = "বাংলায় রূপান্তর করা হয়নি";
+      result.whyChooseUs = "বাংলায় রূপান্তর করা হয়নি";
+      result.callToAction = "বাংলায় রূপান্তর করা হয়নি";
+      result.socialImpact = "বাংলায় রূপান্তর করা হয়নি";
+  }
+
+
+  return result;
 }
+
 
 export type BusinessPlanInput = {
     businessName: string;

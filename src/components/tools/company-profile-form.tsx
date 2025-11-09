@@ -42,16 +42,25 @@ const formSchema = z.object({
   servicesOrProducts: z.string().min(10, 'Please list your services or products.'),
   brandTone: z.enum(['Formal', 'Friendly', 'Mixed']),
   language: z.enum(['English', 'Bangla']),
+  companySize: z.enum(['Startup (1–10)', 'SME (11–50)', 'Growing (51–200)', 'Corporate (200+)']),
+  foundedYear: z.string().min(4, 'Please enter a valid year.').optional().or(z.literal('')),
+  coreValue: z.string().optional(),
+  marketFocus: z.enum(['Local', 'Regional', 'International']),
+  sustainability: z.string().optional(),
+  keyStrengths: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const ResultSection = ({ title, content }: { title: string; content: string }) => (
-  <div>
-    <h3 className="text-xl font-semibold text-primary mb-2">{title}</h3>
-    <p className="text-muted-foreground whitespace-pre-wrap">{content}</p>
-  </div>
-);
+const ResultSection = ({ title, content }: { title: string; content: string }) => {
+    if (!content) return null;
+    return (
+        <div>
+            <h3 className="text-xl font-semibold text-primary mb-2">{title}</h3>
+            <p className="text-muted-foreground whitespace-pre-wrap">{content}</p>
+        </div>
+    );
+};
 
 async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputValues: FormData) {
     const doc = new Document({
@@ -102,6 +111,14 @@ async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputVa
               heading: HeadingLevel.HEADING_2,
             }),
             new Paragraph(profile.whyChooseUs || ""),
+            ...(profile.socialImpact ? [
+                new Paragraph(" "),
+                new Paragraph({
+                    text: "Sustainability / Social Impact",
+                    heading: HeadingLevel.HEADING_2,
+                }),
+                new Paragraph(profile.socialImpact),
+            ] : []),
              new Paragraph(" "),
             new Paragraph({
               text: "Call to Action",
@@ -137,12 +154,18 @@ export function CompanyProfileForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       companyName: '',
-      industry: '',
+      industry: 'Technology',
       country: 'Bangladesh',
       targetCustomers: '',
       servicesOrProducts: '',
       brandTone: 'Friendly',
       language: 'English',
+      companySize: 'Startup (1–10)',
+      foundedYear: '',
+      coreValue: '',
+      marketFocus: 'Local',
+      sustainability: '',
+      keyStrengths: '',
     },
   });
 
@@ -196,53 +219,22 @@ export function CompanyProfileForm() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <Card>
                     <CardHeader>
-                    <CardTitle>Your Company Details</CardTitle>
+                        <CardTitle>Your Company Details</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <FormField control={form.control} name="companyName" render={({ field }) => ( <FormItem><FormLabel>Company Name</FormLabel><FormControl><Input placeholder="e.g., Spark Innovators Ltd." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="industry" render={({ field }) => ( <FormItem><FormLabel>Industry / Sector</FormLabel><FormControl><Input placeholder="e.g., Tech Education, SaaS, E-commerce" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <CardContent className="grid md:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="companyName" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Company Name</FormLabel><FormControl><Input placeholder="e.g., Spark Innovators Ltd." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="industry" render={({ field }) => ( <FormItem><FormLabel>Industry / Sector</FormLabel><FormControl><Input placeholder="e.g., Technology, Agro, Education" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="country" render={({ field }) => ( <FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="targetCustomers" render={({ field }) => ( <FormItem><FormLabel>Target Customers</FormLabel><FormControl><Textarea placeholder="e.g., early-stage founders, SMEs, local entrepreneurs" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="servicesOrProducts" render={({ field }) => ( <FormItem><FormLabel>Services / Products</FormLabel><FormControl><Textarea placeholder="e.g., Business consulting, software development, online courses" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField
-                            control={form.control}
-                            name="brandTone"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Brand Tone</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select a tone" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="Formal">Formal</SelectItem>
-                                    <SelectItem value="Friendly">Friendly</SelectItem>
-                                    <SelectItem value="Mixed">Mixed</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="language"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Language</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select a language" /></SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="English">English</SelectItem>
-                                    <SelectItem value="Bangla">Bangla</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        <FormField control={form.control} name="targetCustomers" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Target Customers</FormLabel><FormControl><Textarea placeholder="e.g., early-stage founders, SMEs, local entrepreneurs" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="servicesOrProducts" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Services / Products</FormLabel><FormControl><Textarea placeholder="e.g., Business consulting, software development, online courses" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="brandTone" render={({ field }) => ( <FormItem><FormLabel>Brand Tone</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Formal">Formal</SelectItem><SelectItem value="Friendly">Friendly</SelectItem><SelectItem value="Mixed">Mixed</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="language" render={({ field }) => ( <FormItem><FormLabel>Language</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="English">English</SelectItem><SelectItem value="Bangla">Bangla</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="companySize" render={({ field }) => ( <FormItem><FormLabel>Company Size</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Startup (1–10)">Startup (1–10)</SelectItem><SelectItem value="SME (11–50)">SME (11–50)</SelectItem><SelectItem value="Growing (51–200)">Growing (51–200)</SelectItem><SelectItem value="Corporate (200+)">Corporate (200+)</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="marketFocus" render={({ field }) => ( <FormItem><FormLabel>Market Focus</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="Local">Local</SelectItem><SelectItem value="Regional">Regional</SelectItem><SelectItem value="International">International</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="foundedYear" render={({ field }) => ( <FormItem><FormLabel>Founded Year</FormLabel><FormControl><Input placeholder="e.g., 2023" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="coreValue" render={({ field }) => ( <FormItem><FormLabel>Core Value / Motto</FormLabel><FormControl><Input placeholder="e.g., Innovation for Impact" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="keyStrengths" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Key Strengths (Optional)</FormLabel><FormControl><Textarea placeholder="e.g., Experienced team, patented technology, strong distribution network" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="sustainability" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Sustainability or Social Impact (Optional)</FormLabel><FormControl><Textarea placeholder="Describe your social or environmental initiatives" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     </CardContent>
                 </Card>
                  <div className="flex justify-between items-center">
@@ -287,6 +279,7 @@ export function CompanyProfileForm() {
                         <ResultSection title="Our Services" content={result.servicesSummary} />
                         <ResultSection title="Our Customers" content={result.targetCustomersSection} />
                         <ResultSection title="Why Choose Us" content={result.whyChooseUs} />
+                        <ResultSection title="Sustainability / Social Impact" content={result.socialImpact} />
                         <ResultSection title="Call to Action" content={result.callToAction} />
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row gap-2">

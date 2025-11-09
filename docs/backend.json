@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "BusinessPlan": {
@@ -340,6 +341,38 @@
         "createdAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "companySize": {
+          "type": "string",
+          "enum": [
+            "Startup (1–10)",
+            "SME (11–50)",
+            "Growing (51–200)",
+            "Corporate (200+)"
+          ]
+        },
+        "foundedYear": {
+          "type": "string"
+        },
+        "coreValue": {
+          "type": "string"
+        },
+        "marketFocus": {
+          "type": "string",
+          "enum": [
+            "Local",
+            "Regional",
+            "International"
+          ]
+        },
+        "sustainability": {
+          "type": "string"
+        },
+        "keyStrengths": {
+          "type": "string"
+        },
+        "socialImpact": {
+          "type": "string"
         }
       },
       "required": [
@@ -358,7 +391,9 @@
         "targetCustomersSection",
         "whyChooseUs",
         "callToAction",
-        "createdAt"
+        "createdAt",
+        "companySize",
+        "marketFocus"
       ]
     },
     "Conversation": {
@@ -648,4 +683,3 @@
     "reasoning": "The Firestore structure is designed to ensure Authorization Independence, clarity, and scalability. User-owned data is stored under the `/users/{userId}` path, creating a clear ownership model. This enables secure and efficient security rules based on `request.auth.uid`. Each entity, such as `StartupIdea`, `BusinessStrategy`, `PitchDeck`, `CompanyFormationGuide`, `Conversation`, and `Message` are stored as subcollections of `/users/{userId}`. This approach ensures that all documents in a collection share the same security requirements (Structural Segregation) and eliminates the need for complex rule logic.  The `Conversation` and `Message` collections follow the same pattern.  This design allows us to use path-based rules effectively without needing `get()` calls to parent documents, thus maintaining Authorization Independence.\n\nQAPs (Rules are not Filters): The path-based ownership model ensures secure list operations because rules can easily filter based on the `userId` in the path. A user can only list resources owned by them without additional filtering within the rules themselves.\n\nThe structure explicitly models the relationships between entities. This adheres to the principle of Data Clarity and Predictability, which simplifies debugging and maintenance."
   }
 }
-    
