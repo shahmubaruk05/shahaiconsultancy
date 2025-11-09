@@ -1,19 +1,27 @@
-import * as React from 'react';
 
-export const Logo = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <path
-      d="M13.63 4.37L10.71 10.2H14.2L12.43 14.65L14.47 11.23H11.5L13.63 4.37Z"
-      className="fill-primary"
-    />
-    <path
-      d="M10.37 19.63L13.29 13.8H9.8L11.57 9.35L9.53 12.77H12.5L10.37 19.63Z"
-      className="fill-accent"
-    />
-  </svg>
-);
+"use client";
+
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+export function Logo({ className }: { className?: string }) {
+  return (
+    <Link href="/" className={cn("flex items-center gap-2", className)}>
+      {/* SM icon */}
+      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-700 text-xs font-semibold text-white shadow-md">
+        SM
+      </div>
+
+      {/* Text logo */}
+      <div className="flex flex-col leading-tight">
+        <span className="text-lg font-bold tracking-tight">
+          <span className="text-sky-500">Shah</span>{" "}
+          <span className="text-slate-900 dark:text-slate-200">Mubaruk</span>
+        </span>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+          Your startup coach
+        </span>
+      </div>
+    </Link>
+  );
+}

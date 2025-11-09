@@ -55,11 +55,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader>
-          <Link href="/dashboard" className="flex items-center gap-2 p-2">
-            <Logo className="w-8 h-8" />
-            <span className="text-xl font-semibold">Shah Mubaruk</span>
-          </Link>
+        <SidebarHeader className='p-2'>
+          <Logo />
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
