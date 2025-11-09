@@ -13,7 +13,7 @@ export function WelcomeHeader() {
   
   useEffect(() => {
     // Wait until user and document data are loaded to avoid race conditions.
-    if (isUserLoading || isUserDocLoading || !user || !userDocRef) {
+    if (isUserLoading || isUserDocLoading || !user || !userDocRef || !firestore) {
       return;
     }
 
