@@ -7,12 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Document, Packer, Paragraph, HeadingLevel } from "docx";
 
-import { generateBusinessPlanMock, BusinessPlanResult } from '@/lib/aiMock';
+import { generateBusinessPlanMock, BusinessPlanResult, BusinessPlanInput } from '@/lib/aiMock';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,8 +26,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download, Printer } from 'lucide-react';
 import { Input } from '../ui/input';
 import { useFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -58,11 +59,84 @@ const ResultSection = ({ title, content }: { title: string; content: string | st
   </div>
 );
 
+async function downloadBusinessPlanDocx(plan: BusinessPlanResult, inputValues: FormData) {
+    const doc = new Document({
+      sections: [
+        {
+          children: [
+            new Paragraph({
+              text: "BizSpark – Shah Mubaruk – Your Startup Coach",
+              heading: HeadingLevel.TITLE,
+              style: "Title"
+            }),
+            new Paragraph({
+              text: inputValues.businessName || "Business Plan",
+              heading: HeadingLevel.HEADING_1,
+            }),
+            new Paragraph(" "),
+            new Paragraph({
+              text: "Executive Summary",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(plan.executiveSummary || ""),
+            new Paragraph(" "),
+            new Paragraph({
+              text: "Market Analysis",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(plan.marketAnalysis || ""),
+            new Paragraph(" "),
+            new Paragraph({
+              text: "Marketing Plan",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(plan.marketingPlan || ""),
+            new Paragraph(" "),
+            new Paragraph({
+              text: "Operations Plan",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(plan.operationsPlan || ""),
+            new Paragraph(" "),
+            new Paragraph({
+              text: "Financial Overview",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(plan.financialOverview || ""),
+            new Paragraph(" "),
+            new Paragraph({
+              text: "Next Steps",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            ...(plan.nextSteps || []).map(
+              (step: string) =>
+                new Paragraph({
+                  text: step,
+                  bullet: { level: 0 },
+                })
+            ),
+          ],
+        },
+      ],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${inputValues.businessName || "business-plan"}-shah-mubaruk.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
 export function BusinessPlanForm() {
   const { firestore, user, isUserLoading } = useFirebase();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<BusinessPlanResult | null>(null);
+  const [formValues, setFormValues] = useState<FormData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<FormData>({
@@ -84,6 +158,7 @@ export function BusinessPlanForm() {
     
     setError(null);
     setResult(null);
+    setFormValues(data);
 
     startTransition(async () => {
       try {
@@ -171,7 +246,7 @@ export function BusinessPlanForm() {
               </Card>
             )}
 
-            {result && (
+            {result && formValues && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Generated Business Plan</CardTitle>
@@ -185,6 +260,14 @@ export function BusinessPlanForm() {
                         <ResultSection title="Financial Overview" content={result.financialOverview} />
                         <ResultSection title="Next Steps" content={result.nextSteps} />
                     </CardContent>
+                    <CardFooter className="flex-col sm:flex-row gap-2">
+                        <Button onClick={() => downloadBusinessPlanDocx(result, formValues)} className='w-full sm:w-auto'>
+                           <Download className="mr-2" /> Download as Word (.docx)
+                        </Button>
+                         <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto'>
+                           <Printer className="mr-2" /> Print / Save as PDF
+                        </Button>
+                    </CardFooter>
                 </Card>
             )}
 
@@ -200,4 +283,3 @@ export function BusinessPlanForm() {
     </div>
   );
 }
-    

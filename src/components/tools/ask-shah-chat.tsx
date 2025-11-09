@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useTransition } from 'react';
-import { askShah } from '@/ai/flows/ask-shah';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { Send, User, Bot, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, addDoc, serverTimestamp, limit, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, getDocs, doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
 
 export type Message = {
@@ -39,7 +38,7 @@ export function AskShahChat() {
   useEffect(() => {
     if (user && firestore) {
       const convosRef = collection(firestore, 'users', user.uid, 'conversations');
-      const q = query(convosRef, limit(1));
+      const q = query(convosRef, orderBy('createdAt', 'desc'), limit(1));
       
       getDocs(q).then(snapshot => {
         if (snapshot.empty) {
@@ -75,6 +74,8 @@ export function AskShahChat() {
               { role: 'assistant', content: 'Hello! I am Shah, your AI startup advisor. How can I help you today?' },
               ...newMessages
           ]);
+        } else {
+            setMessages([{ role: 'assistant', content: 'Hello! I am Shah, your AI startup advisor. How can I help you today?' }])
         }
     }
   }, [firestoreMessages]);
@@ -86,54 +87,66 @@ export function AskShahChat() {
     
     const currentQuery = queryText;
     setQueryText('');
+    
+    const userMessageForUI: Message = { role: 'user', content: currentQuery };
+    const currentMessages = [...messages, userMessageForUI];
+    setMessages(currentMessages);
 
     startTransition(async () => {
       try {
         const messagesCol = collection(firestore, `users/${user.uid}/conversations/${conversationId}/messages`);
         
-        // 1. Save user message
-        const userMessageRef = doc(messagesCol);
-        const userMessage = {
-          id: userMessageRef.id,
+        // 1. Save user message to Firestore
+        await addDoc(messagesCol, {
           conversationId,
+          userId: user.uid,
           sender: 'user',
           text: currentQuery,
           createdAt: serverTimestamp(),
-        };
-        await setDoc(userMessageRef, userMessage);
+        });
 
-        // 2. Fetch conversation history for context
-        const messagesSnapshot = await getDocs(messagesCol);
-        const conversationHistory: Message[] = messagesSnapshot.docs
-            .map(doc => {
-                const data = doc.data();
-                return {
-                    role: data.sender === 'ai' ? 'assistant' : 'user',
-                    content: data.text,
-                };
-            });
+        // 2. Call the API to get AI reply
+        const apiHistory = currentMessages
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .slice(1) // Exclude initial greeting
+          .map(m => ({
+            role: m.role,
+            content: m.content,
+          }));
 
-        // 3. Generate AI reply
-        const aiReply = await askShah({ query: currentQuery, conversationHistory });
+        const response = await fetch("/api/ask-shah", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: currentQuery,
+            history: apiHistory,
+          }),
+        });
 
-        // 4. Save AI reply
-        const aiMessageRef = doc(messagesCol);
-        const aiMessage = {
-          id: aiMessageRef.id,
+        if (!response.ok) {
+            throw new Error('Failed to get AI response');
+        }
+
+        const data = await response.json();
+        const aiText = data.answer ?? "Sorry, I could not generate a reply.";
+
+        // 3. Save AI reply to Firestore
+        await addDoc(messagesCol, {
           conversationId,
+          userId: user.uid,
           sender: 'ai',
-          text: aiReply.answer,
+          text: aiText,
           createdAt: serverTimestamp(),
-        };
-        await setDoc(aiMessageRef, aiMessage);
+        });
         
-        // 5. Update conversation timestamp
+        // 4. Update conversation timestamp
         const convoDocRef = doc(firestore, `users/${user.uid}/conversations`, conversationId);
         await setDoc(convoDocRef, { updatedAt: serverTimestamp() }, { merge: true });
 
       } catch (error) {
         console.error('Error in chat action:', error);
-        // Optionally, set an error state to show in the UI
+        const errorMessage: Message = { role: 'assistant', content: 'There was an error processing your request. Please try again.' };
+        setMessages(prev => [...prev.slice(0,-1), errorMessage]); // Replace optimistic user message with error
       }
     });
   };

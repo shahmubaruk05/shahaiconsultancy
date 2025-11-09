@@ -6,12 +6,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
+import { Document, Packer, Paragraph, HeadingLevel } from "docx";
 
-import { generateCompanyProfileMock, CompanyProfileResult } from '@/lib/aiMock';
+import { generateCompanyProfileMock, CompanyProfileResult, CompanyProfileInput } from '@/lib/aiMock';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,8 +25,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download, Printer } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useFirebase } from '@/firebase';
@@ -52,12 +53,84 @@ const ResultSection = ({ title, content }: { title: string; content: string }) =
   </div>
 );
 
+async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputValues: FormData) {
+    const doc = new Document({
+      sections: [
+        {
+          children: [
+            new Paragraph({
+              text: "BizSpark – Shah Mubaruk – Your Startup Coach",
+              heading: HeadingLevel.TITLE,
+            }),
+            new Paragraph({
+              text: inputValues.companyName || "Company Profile",
+              heading: HeadingLevel.HEADING_1,
+            }),
+            new Paragraph(" "),
+            new Paragraph({
+              text: "About Us",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(profile.about || ""),
+             new Paragraph(" "),
+            new Paragraph({
+              text: "Mission",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(profile.mission || ""),
+             new Paragraph(" "),
+            new Paragraph({
+              text: "Vision",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(profile.vision || ""),
+             new Paragraph(" "),
+            new Paragraph({
+              text: "Our Services",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(profile.servicesSummary || ""),
+             new Paragraph(" "),
+            new Paragraph({
+              text: "Our Customers",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(profile.targetCustomersSection || ""),
+             new Paragraph(" "),
+            new Paragraph({
+              text: "Why Choose Us",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(profile.whyChooseUs || ""),
+             new Paragraph(" "),
+            new Paragraph({
+              text: "Call to Action",
+              heading: HeadingLevel.HEADING_2,
+            }),
+            new Paragraph(profile.callToAction || ""),
+          ],
+        },
+      ],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${inputValues.companyName || "company-profile"}-shah-mubaruk.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
 
 export function CompanyProfileForm() {
   const { firestore, user, isUserLoading } = useFirebase();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<CompanyProfileResult | null>(null);
+  const [formValues, setFormValues] = useState<FormData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm<FormData>({
@@ -78,6 +151,7 @@ export function CompanyProfileForm() {
     
     setError(null);
     setResult(null);
+    setFormValues(data);
 
     startTransition(async () => {
       try {
@@ -193,7 +267,14 @@ export function CompanyProfileForm() {
                 </Card>
             )}
 
-            {result && (
+            {!isPending && !result && (
+              <Card className="flex flex-col items-center justify-center p-8 h-full text-center">
+                  <CardTitle>Your Profile Awaits</CardTitle>
+                  <CardDescription className="mt-2">Fill in the form and click 'Generate Profile' to see your company profile here.</CardDescription>
+              </Card>
+            )}
+
+            {result && formValues && (
                 <Card>
                     <CardHeader>
                         <CardTitle>Generated Company Profile</CardTitle>
@@ -208,6 +289,14 @@ export function CompanyProfileForm() {
                         <ResultSection title="Why Choose Us" content={result.whyChooseUs} />
                         <ResultSection title="Call to Action" content={result.callToAction} />
                     </CardContent>
+                    <CardFooter className="flex-col sm:flex-row gap-2">
+                        <Button onClick={() => downloadCompanyProfileDocx(result, formValues)} className='w-full sm:w-auto'>
+                           <Download className="mr-2" /> Download as Word (.docx)
+                        </Button>
+                         <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto'>
+                           <Printer className="mr-2" /> Print / Save as PDF
+                        </Button>
+                    </CardFooter>
                 </Card>
             )}
 
@@ -223,5 +312,3 @@ export function CompanyProfileForm() {
     </div>
   );
 }
-
-    
