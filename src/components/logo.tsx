@@ -11,10 +11,10 @@ export function Logo({ className }: { className?: string }) {
         SM
       </div>
 
-      {/* Text logo */}
+      {/* ব্র্যান্ড টেক্সট */}
       <div className="flex flex-col leading-tight">
-        <span className="text-lg font-bold tracking-tight">
-          <span className="text-sky-500">Shah Mubaruk</span>
+        <span className="text-lg font-bold tracking-tight text-sky-500">
+          Shah Mubaruk
         </span>
         <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
           Your startup coach
