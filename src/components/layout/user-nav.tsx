@@ -13,6 +13,7 @@ import type { User as AppUser } from '@/lib/auth';
 import { useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 
 type UserNavProps = {
@@ -66,6 +67,9 @@ export function UserNav({ user }: UserNavProps) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem>Profile</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/pricing">Billing</Link>
+          </DropdownMenuItem>
           <DropdownMenuItem>Settings</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
