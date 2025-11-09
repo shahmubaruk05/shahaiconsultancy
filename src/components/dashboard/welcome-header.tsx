@@ -1,26 +1,31 @@
 'use client';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import React, { useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
-import { Button } from '../ui/button';
-import { setDoc, doc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { PlanBadge } from '@/components/PlanBadge';
 
 export function WelcomeHeader() {
-  const { user, firestore } = useFirebase();
+  const { user, firestore, isUserLoading } = useFirebase();
   const [name, setName] = React.useState('');
 
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-  const { data: userData } = useDoc(userDocRef);
+  const { data: userData, isLoading: isUserDocLoading } = useDoc(userDocRef);
   
   useEffect(() => {
-    // Only set the plan to 'free' if the user exists, the document reference is available,
-    // and the 'plan' field is explicitly missing from their document data.
-    if (user && userDocRef && userData && !('plan' in userData)) {
+    // Wait until user and document data are loaded to avoid race conditions.
+    if (isUserLoading || isUserDocLoading || !user || !userDocRef) {
+      return;
+    }
+
+    // `userData` can be null if the document doesn't exist yet, or it can be a document that exists but lacks the 'plan' field.
+    // We only want to write to Firestore if the 'plan' field is missing.
+    // A non-existent document (userData === null) is the same as a document with a missing 'plan' field for this logic.
+    const planExists = userData && 'plan' in userData;
+
+    if (!planExists) {
         setDoc(userDocRef, { plan: 'free' }, { merge: true });
     }
-  }, [user, userData, userDocRef])
+  }, [user, userData, userDocRef, isUserLoading, isUserDocLoading]);
 
   React.useEffect(() => {
     if (user) {

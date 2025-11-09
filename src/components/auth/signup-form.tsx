@@ -33,11 +33,12 @@ export function SignupForm() {
             name: name,
             email: user.email,
             createdAt: new Date().toISOString(),
-            plan: 'free',
+            plan: 'free', // Set default plan on creation
           };
 
           const userDocRef = doc(firestore, 'users', user.uid);
-          setDocumentNonBlocking(userDocRef, userProfile, { merge: true });
+          // Use a blocking setDoc here to ensure the profile is created before redirecting
+          await setDoc(userDocRef, userProfile, { merge: true });
 
           router.push('/');
         } catch (error) {
