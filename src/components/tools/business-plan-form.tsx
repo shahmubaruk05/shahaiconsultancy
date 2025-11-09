@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -28,10 +27,10 @@ import {
   CardTitle,
   CardFooter
 } from '@/components/ui/card';
-import { Loader2, Download, Printer } from 'lucide-react';
+import { Loader2, Download, Printer, ExternalLink } from 'lucide-react';
 import { Input } from '../ui/input';
-import { useFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 
 const formSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters.'),
@@ -45,6 +44,8 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+type UserPlan = 'free' | 'pro' | 'premium';
+
 
 const ResultSection = ({ title, content }: { title: string; content: string | string[] }) => (
   <div>
@@ -138,6 +139,11 @@ export function BusinessPlanForm() {
   const [result, setResult] = useState<BusinessPlanResult | null>(null);
   const [formValues, setFormValues] = useState<FormData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userData } = useDoc(userDocRef);
+  const plan = (userData?.plan as UserPlan) || 'free';
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -261,10 +267,22 @@ export function BusinessPlanForm() {
                         <ResultSection title="Next Steps" content={result.nextSteps} />
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row gap-2">
-                        <Button onClick={() => downloadBusinessPlanDocx(result, formValues)} className='w-full sm:w-auto'>
-                           <Download className="mr-2" /> Download as Word (.docx)
-                        </Button>
-                         <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto'>
+                        <div className="w-full">
+                            <Button
+                                onClick={() => downloadBusinessPlanDocx(result, formValues)}
+                                disabled={plan === 'free'}
+                                className="w-full sm:w-auto"
+                            >
+                                <Download className="mr-2" /> Download as Word (.docx)
+                            </Button>
+                            {plan === 'free' && (
+                                <p className="mt-2 text-xs text-destructive">
+                                    DOCX export is available on the Pro plan.
+                                    <Button variant="link" size="sm" asChild className="p-1 h-auto"><Link href="/pricing">Upgrade now <ExternalLink className='ml-1' /></Link></Button>
+                                </p>
+                            )}
+                        </div>
+                        <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto'>
                            <Printer className="mr-2" /> Print / Save as PDF
                         </Button>
                     </CardFooter>

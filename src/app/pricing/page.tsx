@@ -1,42 +1,59 @@
 'use client';
-import { useState } from 'react';
-import { useUser } from '@/firebase';
+import { useState, useEffect, useTransition } from 'react';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { doc, setDoc } from 'firebase/firestore';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+
+type UserPlan = 'free' | 'pro' | 'premium';
 
 export default function PricingPage() {
-  const [selectedPlan, setPlan] = useState<'pro' | 'premium'>('pro');
-  const { user } = useUser();
+  const { firestore, user, isUserLoading } = useFirebase();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
-  const checkout = async (plan: 'pro' | 'premium') => {
-    if (!user) {
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userData, isLoading: isUserDocLoading } = useDoc(userDocRef);
+  const currentPlan = (userData?.plan as UserPlan) || 'free';
+
+  const checkout = async (plan: UserPlan) => {
+    if (!user || !userDocRef) {
       router.push('/login');
       return;
     }
 
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ plan: plan }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        console.error('Checkout session creation failed:', data.error);
-      }
-    } catch (error) {
-        console.error('An error occurred during checkout:', error);
-    }
+    startTransition(async () => {
+        try {
+            await setDoc(userDocRef, { plan: plan }, { merge: true });
+            // Optionally, show a success toast
+        } catch (error) {
+            console.error('An error occurred during checkout:', error);
+             // Optionally, show an error toast
+        }
+    });
   };
+
+  const isLoading = isUserLoading || isUserDocLoading;
+
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
+  }
+
+  if (!user) {
+    return (
+        <div className="p-4 sm:p-8 text-center">
+            <h1 className="text-3xl font-bold">Please Log In</h1>
+            <p className="text-muted-foreground mt-2 mb-4">You need to be logged in to manage your plan.</p>
+            <Button asChild>
+                <Link href="/login">Log In</Link>
+            </Button>
+        </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-8">
@@ -61,13 +78,19 @@ export default function PricingPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button onClick={() => checkout('pro')} className="w-full" size="lg">
-              Subscribe to Pro
+            <Button 
+                onClick={() => checkout('pro')} 
+                className="w-full" 
+                size="lg"
+                disabled={isPending || currentPlan === 'pro'}
+            >
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {currentPlan === 'pro' ? 'Current Plan' : 'Subscribe to Pro'}
             </Button>
           </CardFooter>
         </Card>
 
-        <Card className="w-full max-w-sm shadow-xl border-2 border-primary relative overflow-hidden">
+        <Card className={cn("w-full max-w-sm shadow-xl relative overflow-hidden", currentPlan === 'premium' && 'border-2 border-primary')}>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 text-sm font-semibold rounded-b-md">
                 Most Popular
             </div>
@@ -87,12 +110,27 @@ export default function PricingPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button onClick={() => checkout('premium')} className="w-full bg-accent hover:bg-accent/90" size="lg">
-              Subscribe to Premium
+            <Button 
+                onClick={() => checkout('premium')} 
+                className="w-full bg-accent hover:bg-accent/90" 
+                size="lg"
+                disabled={isPending || currentPlan === 'premium'}
+            >
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {currentPlan === 'premium' ? 'Current Plan' : 'Subscribe to Premium'}
             </Button>
           </CardFooter>
         </Card>
       </div>
+       <div className="text-center mt-8">
+            <Button
+                onClick={() => checkout('free')}
+                variant="link"
+                disabled={isPending || currentPlan === 'free'}
+            >
+                {currentPlan !== 'free' && 'Downgrade to Free plan'}
+            </Button>
+        </div>
     </div>
   );
 }

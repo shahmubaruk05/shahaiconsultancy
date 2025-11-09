@@ -33,6 +33,7 @@ export function SignupForm() {
             name: name,
             email: user.email,
             createdAt: new Date().toISOString(),
+            plan: 'free',
           };
 
           const userDocRef = doc(firestore, 'users', user.uid);

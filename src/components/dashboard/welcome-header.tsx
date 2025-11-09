@@ -1,11 +1,24 @@
-
 'use client';
-import { useUser } from '@/firebase';
-import React from 'react';
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import React, { useEffect } from 'react';
+import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
+import { Button } from '../ui/button';
+import { setDoc, doc } from 'firebase/firestore';
 
 export function WelcomeHeader() {
-  const { user } = useUser();
+  const { user, firestore } = useFirebase();
   const [name, setName] = React.useState('');
+
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userData } = useDoc(userDocRef);
+  const plan = userData?.plan || 'free';
+  
+  useEffect(() => {
+    if (user && !userData?.plan && userDocRef) {
+        setDoc(userDocRef, { plan: 'free' }, { merge: true });
+    }
+  }, [user, userData, userDocRef])
 
   React.useEffect(() => {
     if (user) {
@@ -23,9 +36,20 @@ export function WelcomeHeader() {
   }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold tracking-tight">Welcome back, {name}!</h1>
-      <p className="text-muted-foreground">Here's your command center for your next big idea.</p>
+    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Welcome back, {name}!</h1>
+        <p className="text-muted-foreground">Here's your command center for your next big idea.</p>
+      </div>
+       <div>
+        <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">Plan:</p>
+            <Badge variant={plan === 'free' ? 'secondary' : 'default'} className={plan === 'premium' ? 'bg-accent text-accent-foreground' : ''}>{plan.toUpperCase()}</Badge>
+             <Button asChild variant="outline" size="sm">
+                <Link href="/pricing">Manage Plan</Link>
+            </Button>
+        </div>
+      </div>
     </div>
   );
 }
