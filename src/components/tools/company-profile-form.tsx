@@ -7,6 +7,7 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType } from "docx";
 import { useToast } from "@/hooks/use-toast";
+import { saveAs } from 'file-saver';
 
 import { generateCompanyProfileMock, CompanyProfileResult, CompanyProfileInput } from '@/lib/aiMock';
 import {
@@ -314,14 +315,7 @@ async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputVa
     });
 
     const blob = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${companyName || "company-profile"}-shah-mubaruk.docx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    saveAs(blob, `${companyName || "company-profile"}-shah-mubaruk.docx`);
   }
 
 

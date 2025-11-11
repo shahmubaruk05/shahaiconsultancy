@@ -1,8 +1,8 @@
 
 'use client';
-import { Packer, Document, Paragraph } from 'docx';
 import { saveAs } from 'file-saver';
-import htmlToDocx from 'html-to-docx';
+import { exportToDocxServer } from '@/app/actions/export';
+
 
 /**
  * Converts an HTML string to a DOCX file and triggers a download.
@@ -11,12 +11,9 @@ import htmlToDocx from 'html-to-docx';
  */
 export async function exportToDocx(htmlContent: string, fileName: string): Promise<void> {
   try {
-    const fileBuffer = await htmlToDocx(htmlContent, undefined, {
-      font: 'Calibri',
-      fontSize: 22, // Corresponds to 11pt
-    });
-    
-    saveAs(fileBuffer as Blob, `${fileName}.docx`);
+    const fileBuffer = await exportToDocxServer(htmlContent);
+    const blob = new Blob([fileBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    saveAs(blob, `${fileName}.docx`);
   } catch (error) {
     console.error("Error generating DOCX:", error);
     // You might want to show a toast notification to the user here

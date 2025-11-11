@@ -32,6 +32,7 @@ import { Loader2, Download, Printer, ExternalLink } from 'lucide-react';
 import { Input } from '../ui/input';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { saveAs } from 'file-saver';
 
 const formSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters.'),
@@ -123,14 +124,7 @@ async function downloadBusinessPlanDocx(plan: BusinessPlanResult, inputValues: F
     });
 
     const blob = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${inputValues.businessName || "business-plan"}-shah-mubaruk.docx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    saveAs(blob, `${inputValues.businessName || "business-plan"}-shah-mubaruk.docx`);
   }
 
 export function BusinessPlanForm() {
