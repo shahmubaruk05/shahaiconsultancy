@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useTransition } from 'react';
@@ -7,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Send, User, Bot, Loader2 } from 'lucide-react';
+import { Send, User, Bot, Loader2, Download, Printer } from 'lucide-react';
 import { Card } from '../ui/card';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, addDoc, serverTimestamp, getDocs, doc, setDoc, limit } from 'firebase/firestore';
 import Link from 'next/link';
 import { askShah } from '@/ai/flows/ask-shah';
+import { exportToDocx, exportToPdf } from '@/lib/export';
 
 export type Message = {
   role: 'user' | 'assistant';
@@ -26,6 +26,53 @@ type FirestoreMessage = {
   createdAt: any;
 }
 
+function buildCoachingNoteHtml(messages: Message[]): string {
+    let html = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; color: #111827; line-height: 1.6; }
+            h1 { font-size: 24px; margin-bottom: 8px; color: #1E3A8A; }
+            .meta { font-size: 12px; color: #6B7280; margin-bottom: 24px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; }
+            .message { margin-bottom: 16px; }
+            .role-user { font-weight: 600; color: #1E3A8A; margin-bottom: 4px; }
+            .role-assistant { font-weight: 600; color: #008C9E; margin-bottom: 4px; }
+            .content { margin-top: 4px; white-space: pre-wrap; background-color: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #f3f4f6; }
+            footer { margin-top: 32px; font-size: 11px; color: #9CA3AF; text-align: center; border-top: 1px solid #E5E7EB; padding-top: 8px; }
+          </style>
+        </head>
+        <body>
+          <h1>Ask Shah: Coaching Note</h1>
+          <div class="meta">
+            Generated from Ask Shah – Your Startup Coach assistant.<br/>
+            Date: ${new Date().toLocaleDateString()}
+          </div>
+    `;
+  
+    // Skip the initial greeting message from the export
+    messages.slice(1).forEach((msg) => {
+      const label = msg.role === "user" ? "Founder" : "Shah (AI Coach)";
+      const roleClass = msg.role === "user" ? "role-user" : "role-assistant";
+      html += `
+        <div class="message">
+          <div class="${roleClass}">${label}</div>
+          <div class="content">${msg.content}</div>
+        </div>
+      `;
+    });
+  
+    html += `
+          <footer>
+            Coaching note generated with Shah Mubaruk – Your Startup Coach.
+          </footer>
+        </body>
+      </html>
+    `;
+  
+    return html;
+}
+
 export function AskShahChat() {
   const { firestore, user, isUserLoading } = useFirebase();
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -34,6 +81,7 @@ export function AskShahChat() {
   ]);
   const [queryText, setQueryText] = useState('');
   const [isPending, startTransition] = useTransition();
+  const [isExporting, setIsExporting] = useState(false);
 
   // Find or create conversation
   useEffect(() => {
@@ -140,6 +188,26 @@ export function AskShahChat() {
     });
   };
 
+  const handleExport = async (format: 'docx' | 'pdf') => {
+      if (messages.length <= 1) return;
+      setIsExporting(true);
+      const htmlContent = buildCoachingNoteHtml(messages);
+      const fileName = `ask-shah-coaching-note-${new Date().toISOString().split('T')[0]}`;
+      
+      try {
+        if (format === 'docx') {
+          await exportToDocx(htmlContent, fileName);
+        } else {
+          exportToPdf(htmlContent, fileName);
+        }
+      } catch (err) {
+        console.error("Export failed:", err);
+      } finally {
+        setIsExporting(false);
+      }
+  };
+
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -169,6 +237,18 @@ export function AskShahChat() {
 
   return (
     <Card className="flex flex-col flex-1">
+        {messages.length > 1 && (
+            <div className="p-4 border-b flex items-center justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={isExporting}>
+                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Download DOCX
+                </Button>
+                 <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={isExporting}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print / Save PDF
+                </Button>
+            </div>
+        )}
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-6">
           {messages.map((message, index) => (
