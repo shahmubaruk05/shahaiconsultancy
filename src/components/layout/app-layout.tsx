@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 const authRoutes = ['/login', '/signup', '/forgot-password'];
 const dashboardRoutes = [
     '/dashboard',
+    '/academy',
     '/tools/ask-shah',
     '/tools/business-plan',
     '/tools/business-strategy',

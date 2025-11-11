@@ -23,6 +23,7 @@ import {
   Building2,
   ClipboardList,
   Flame,
+  GraduationCap
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -32,6 +33,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/academy', label: 'Academy', icon: GraduationCap },
   { href: '/tools/ask-shah', label: 'Ask Shah', icon: MessageCircle },
   { href: '/tools/startup-validator', label: 'Startup Validator', icon: FlaskConical },
   { href: '/tools/business-strategy', label: 'Business Strategy', icon: Target },
@@ -64,7 +66,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem key={item.label}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.href}
+                  isActive={pathname.startsWith(item.href) && (item.href !== '/tools' || pathname === '/tools')}
                   tooltip={item.label}
                 >
                   <Link href={item.href}>

@@ -11,6 +11,7 @@ import { useUser } from '@/firebase';
 
 const navItems = [
   { href: '/', label: 'Home' },
+  { href: '/academy', label: 'Academy' },
   { href: '/tools', label: 'Tools' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/blog', label: 'Blog' },
