@@ -61,6 +61,27 @@ export default function AcademyPage() {
                 </CardFooter>
             </Card>
           </Link>
+           <Link
+            href="/academy/funding-readiness"
+            className="group"
+          >
+            <Card className="flex flex-col h-full transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1">
+                <CardHeader>
+                    <div className="flex items-center justify-between mb-2">
+                        <CardTitle className="text-xl">Funding & Investor Readiness</CardTitle>
+                         <Badge variant="default">
+                            Pro
+                        </Badge>
+                    </div>
+                    <CardDescription>Learn how to prepare your startup for funding with decks, financials, and investor-ready communication.</CardDescription>
+                </CardHeader>
+                <CardFooter className="mt-auto">
+                    <span className="text-sm font-semibold text-primary group-hover:underline">
+                        Start Learning <ArrowRight className="inline-block h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </span>
+                </CardFooter>
+            </Card>
+          </Link>
       </div>
     </div>
   );
