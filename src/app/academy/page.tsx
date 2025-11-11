@@ -18,22 +18,20 @@ export default function AcademyPage() {
         </p>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {modules.map((m) => (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Link
-            key={m.slug}
-            href={`/academy/${m.slug}`}
+            href="/academy/startup-foundation"
             className="group"
           >
             <Card className="flex flex-col h-full transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1">
                 <CardHeader>
                     <div className="flex items-center justify-between mb-2">
-                        <CardTitle className="text-xl">{m.title}</CardTitle>
-                         <Badge variant={m.access === 'free' ? 'secondary' : 'default'}>
-                            {m.access === 'free' ? 'Free Demo' : 'Pro'}
+                        <CardTitle className="text-xl">Startup Foundation 101</CardTitle>
+                         <Badge variant="secondary">
+                            Free Demo
                         </Badge>
                     </div>
-                    <CardDescription>{m.description}</CardDescription>
+                    <CardDescription>Understand idea validation, problem-solution fit, and early execution.</CardDescription>
                 </CardHeader>
                 <CardFooter className="mt-auto">
                     <span className="text-sm font-semibold text-primary group-hover:underline">
@@ -42,8 +40,28 @@ export default function AcademyPage() {
                 </CardFooter>
             </Card>
           </Link>
-        ))}
-      </section>
+          <Link
+            href="/academy/company-formation"
+            className="group"
+          >
+            <Card className="flex flex-col h-full transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1">
+                <CardHeader>
+                    <div className="flex items-center justify-between mb-2">
+                        <CardTitle className="text-xl">Company Formation (BD & USA)</CardTitle>
+                         <Badge variant="default">
+                            Pro
+                        </Badge>
+                    </div>
+                    <CardDescription>Step-by-step guidance on choosing structure, registering, and staying compliant in BD & USA.</CardDescription>
+                </CardHeader>
+                <CardFooter className="mt-auto">
+                    <span className="text-sm font-semibold text-primary group-hover:underline">
+                        Start Learning <ArrowRight className="inline-block h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </span>
+                </CardFooter>
+            </Card>
+          </Link>
+      </div>
     </div>
   );
 }
