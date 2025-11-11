@@ -2,11 +2,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { ACADEMY_MODULES } from "@/lib/academy-data";
 
 export default function AcademyPage() {
-  const modules = Object.values(ACADEMY_MODULES);
-
   return (
     <div className="container py-12 md:py-16">
       <section className="text-center mb-12">
@@ -74,6 +71,27 @@ export default function AcademyPage() {
                         </Badge>
                     </div>
                     <CardDescription>Learn how to prepare your startup for funding with decks, financials, and investor-ready communication.</CardDescription>
+                </CardHeader>
+                <CardFooter className="mt-auto">
+                    <span className="text-sm font-semibold text-primary group-hover:underline">
+                        Start Learning <ArrowRight className="inline-block h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </span>
+                </CardFooter>
+            </Card>
+          </Link>
+          <Link
+            href="/academy/marketing-growth"
+            className="group"
+          >
+            <Card className="flex flex-col h-full transition-all duration-300 ease-in-out hover:shadow-lg hover:-translate-y-1">
+                <CardHeader>
+                    <div className="flex items-center justify-between mb-2">
+                        <CardTitle className="text-xl">Marketing & Early Growth</CardTitle>
+                         <Badge variant="default">
+                            Pro
+                        </Badge>
+                    </div>
+                    <CardDescription>Master traction, brand strategy, acquisition, retention, and data-driven growth experiments for your startup.</CardDescription>
                 </CardHeader>
                 <CardFooter className="mt-auto">
                     <span className="text-sm font-semibold text-primary group-hover:underline">
