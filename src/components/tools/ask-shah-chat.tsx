@@ -188,26 +188,6 @@ export function AskShahChat() {
     });
   };
 
-  const handleExport = async (format: 'docx' | 'pdf') => {
-      if (messages.length <= 1) return;
-      setIsExporting(true);
-      const htmlContent = buildCoachingNoteHtml(messages);
-      const fileName = `ask-shah-coaching-note-${new Date().toISOString().split('T')[0]}`;
-      
-      try {
-        if (format === 'docx') {
-          await exportToDocx(htmlContent, fileName);
-        } else {
-          exportToPdf(htmlContent, fileName);
-        }
-      } catch (err) {
-        console.error("Export failed:", err);
-      } finally {
-        setIsExporting(false);
-      }
-  };
-
-
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -237,18 +217,6 @@ export function AskShahChat() {
 
   return (
     <Card className="flex flex-col flex-1 h-full">
-        {messages.length > 1 && (
-            <div className="p-4 border-b flex items-center justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={isExporting}>
-                    {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Download DOCX
-                </Button>
-                 <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} disabled={isExporting}>
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print / Save PDF
-                </Button>
-            </div>
-        )}
       <ScrollArea className="flex-1 p-4 min-h-[220px] max-h-[420px] overflow-y-auto" ref={scrollAreaRef}>
         <div className="space-y-6">
           {messages.map((message, index) => (
