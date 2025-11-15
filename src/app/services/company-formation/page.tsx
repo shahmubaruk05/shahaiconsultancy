@@ -157,7 +157,7 @@ export default function CompanyFormationServicePage() {
   useEffect(() => {
     if (user && firestore) {
       const convosRef = collection(firestore, 'users', user.uid, 'conversations');
-      const q = query(convosRef, orderBy('updatedAt', 'desc'), limit(1));
+      const q = query(convosRef, orderBy('createdAt', 'desc'), limit(1));
 
       getDocs(q).then(snapshot => {
         if (snapshot.empty) {
@@ -175,6 +175,7 @@ export default function CompanyFormationServicePage() {
       });
     }
   }, [user, firestore]);
+
 
   useEffect(() => {
     // keep email defaulted if user logs in later
