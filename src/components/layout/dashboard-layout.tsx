@@ -10,6 +10,11 @@ import {
   SidebarFooter,
   SidebarInset,
   SidebarTrigger,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { UserNav } from '@/components/layout/user-nav';
@@ -23,7 +28,8 @@ import {
   Building2,
   ClipboardList,
   Flame,
-  GraduationCap
+  GraduationCap,
+  Briefcase
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -34,15 +40,21 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/academy', label: 'Academy', icon: GraduationCap },
-  { href: '/tools/ask-shah', label: 'Ask Shah', icon: MessageCircle },
+];
+
+const servicesItems = [
+    { href: '/services/company-formation', label: 'Company Formation (BD)'},
+]
+
+const toolsItems = [
+    { href: '/tools/ask-shah', label: 'Ask Shah', icon: MessageCircle },
   { href: '/tools/startup-validator', label: 'Startup Validator', icon: FlaskConical },
   { href: '/tools/business-strategy', label: 'Business Strategy', icon: Target },
   { href: '/tools/business-plan', label: 'Business Plan', icon: ClipboardList },
   { href: '/tools/pitch-deck', label: 'Pitch Deck Assistant', icon: FileText },
   { href: '/tools/company-profile', label: 'Company Profile', icon: Building2 },
-  { href: '/tools/company-formation', label: 'Company Formation', icon: Library },
-  { href: '/tools', label: 'All Tools', icon: Flame },
-];
+  { href: '/tools/company-formation', label: 'Company Formation Guide', icon: Library },
+]
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -66,7 +78,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem key={item.label}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname.startsWith(item.href) && (item.href !== '/tools' || pathname === '/tools')}
+                  isActive={pathname === item.href}
                   tooltip={item.label}
                 >
                   <Link href={item.href}>
@@ -76,6 +88,44 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                    isCollapsible={true}
+                    isActive={pathname.startsWith('/services')}
+                    tooltip="Services"
+                    >
+                    <Briefcase />
+                    <span>Services</span>
+                </SidebarMenuButton>
+                <SidebarMenuSub>
+                    {servicesItems.map((item) => (
+                    <SidebarMenuSubItem key={item.href}>
+                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                            <Link href={item.href}>{item.label}</Link>
+                        </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    ))}
+                </SidebarMenuSub>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+                <SidebarMenuButton
+                    isCollapsible={true}
+                    isActive={pathname.startsWith('/tools')}
+                    tooltip="AI Tools"
+                    >
+                    <Flame />
+                    <span>AI Tools</span>
+                </SidebarMenuButton>
+                <SidebarMenuSub>
+                    {toolsItems.map((item) => (
+                    <SidebarMenuSubItem key={item.href}>
+                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                            <Link href={item.href}>{item.label}</Link>
+                        </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    ))}
+                </SidebarMenuSub>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>

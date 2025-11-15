@@ -8,6 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
 
 const navItems = [
   { href: '/', label: 'Home' },
@@ -18,6 +25,10 @@ const navItems = [
   { href: '/about', label: 'About' },
   { href: '/contact', label: 'Contact' },
 ];
+
+const servicesItems = [
+    { href: '/services/company-formation', label: 'Company Formation (BD)'},
+]
 
 export function PublicHeader() {
   const pathname = usePathname();
@@ -42,6 +53,21 @@ export function PublicHeader() {
                 {item.label}
               </Link>
             ))}
+             <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className={cn(
+                  'transition-colors hover:text-foreground/80 px-0',
+                  pathname.startsWith('/services') ? 'text-foreground' : 'text-foreground/60'
+                )}>Services</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {servicesItems.map(item => (
+                    <DropdownMenuItem key={item.href} asChild>
+                        <Link href={item.href}>{item.label}</Link>
+                    </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
         </div>
         
@@ -69,6 +95,20 @@ export function PublicHeader() {
                     onClick={() => setIsSheetOpen(false)}
                     className={cn(
                       'transition-colors hover:text-foreground/80',
+                       pathname === item.href ? 'text-foreground' : 'text-foreground/60'
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <p className='font-medium'>Services</p>
+                {servicesItems.map(item => (
+                    <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsSheetOpen(false)}
+                    className={cn(
+                      'transition-colors hover:text-foreground/80 pl-4',
                        pathname === item.href ? 'text-foreground' : 'text-foreground/60'
                     )}
                   >
