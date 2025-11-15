@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, getDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
 import Link from "next/link";
 import { AskShahChat } from '@/components/tools/ask-shah-chat';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -146,12 +146,35 @@ export default function CompanyFormationServicePage() {
   const [selectedKey, setSelectedKey] = useState<string>("10_lakh");
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [initialConversationId, setInitialConversationId] = useState<string | null>(null);
 
   // form state
   const [name, setName] = useState(user?.displayName || "");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState(user?.email || "");
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (user && firestore) {
+      const convosRef = collection(firestore, 'users', user.uid, 'conversations');
+      const q = query(convosRef, orderBy('updatedAt', 'desc'), limit(1));
+
+      getDocs(q).then(snapshot => {
+        if (snapshot.empty) {
+          addDoc(convosRef, {
+            userId: user.uid,
+            title: 'Default Conversation',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }).then(docRef => {
+            setInitialConversationId(docRef.id);
+          });
+        } else {
+          setInitialConversationId(snapshot.docs[0].id);
+        }
+      });
+    }
+  }, [user, firestore]);
 
   useEffect(() => {
     // keep email defaulted if user logs in later
@@ -349,17 +372,7 @@ export default function CompanyFormationServicePage() {
         {/* Right column: Ask Shah + contact form */}
         <aside className="space-y-6">
           <div className="sticky top-24 space-y-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Ask about registration</CardTitle>
-                    <CardDescription>Quick questions? Ask Shah — includes this pricing data and will respond with exact breakdowns.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="h-full">
-                         <AskShahChat />
-                    </div>
-                </CardContent>
-            </Card>
+            <AskShahChat initialConversationId={initialConversationId} />
 
             <Card id="inquiry">
                 <CardHeader>
