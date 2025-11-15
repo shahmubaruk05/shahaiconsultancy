@@ -16,7 +16,7 @@ async function getUserId(): Promise<string> {
     // without passing the session token.
     // For this prototype, we'll proceed with a mock or require UID passing.
     // A proper implementation would use NextAuth.js or verify the ID token.
-    return 'mock-user-id'; // This MUST be replaced with real auth logic
+    return 'anonymous'; // This MUST be replaced with real auth logic
   } catch (e) {
     // console.error('Authentication error:', e);
     throw new Error('User not authenticated');
@@ -26,7 +26,6 @@ async function getUserId(): Promise<string> {
 export async function createNewConversationAction(): Promise<{
   conversationId: string;
 }> {
-  // const userId = await getUserId(); // In a real app, you would get the user ID
   const userId = 'anonymous'; // Placeholder until proper auth is set up.
 
   if (!userId) {
