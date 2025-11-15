@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export function CompanyFormationPromo() {
   return (
@@ -24,18 +25,20 @@ export function CompanyFormationPromo() {
             <li>• Guidance on documents, next steps and post-incorporation basics</li>
           </ul>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/services/company-formation"
-              className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90"
-            >
-              View Company Formation Packages
-            </Link>
-            <Link
-              href="/contact"
-              className="inline-flex items-center rounded-lg border border-input bg-background px-4 py-2 text-sm font-semibold text-secondary-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              Book a Free Consultation
-            </Link>
+            <Button asChild>
+                <Link
+                href="/services/company-formation"
+                >
+                View Company Formation Packages
+                </Link>
+            </Button>
+            <Button asChild variant="outline">
+                <Link
+                href="/contact"
+                >
+                Book a Free Consultation
+                </Link>
+            </Button>
           </div>
         </div>
 
