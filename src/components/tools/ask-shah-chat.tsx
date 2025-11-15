@@ -236,7 +236,7 @@ export function AskShahChat() {
   }
 
   return (
-    <Card className="flex flex-col flex-1">
+    <Card className="flex flex-col flex-1 h-full">
         {messages.length > 1 && (
             <div className="p-4 border-b flex items-center justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => handleExport('docx')} disabled={isExporting}>
@@ -249,7 +249,7 @@ export function AskShahChat() {
                 </Button>
             </div>
         )}
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+      <ScrollArea className="flex-1 p-4 min-h-[220px] max-h-[420px] overflow-y-auto" ref={scrollAreaRef}>
         <div className="space-y-6">
           {messages.map((message, index) => (
             <div

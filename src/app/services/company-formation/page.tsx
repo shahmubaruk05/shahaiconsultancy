@@ -354,7 +354,7 @@ export default function CompanyFormationServicePage() {
                     <CardDescription>Quick questions? Ask Shah — includes this pricing data and will respond with exact breakdowns.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-96"> {/* Give AskShahChat a fixed height */}
+                    <div className="h-full">
                          <AskShahChat />
                     </div>
                 </CardContent>

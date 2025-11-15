@@ -10,7 +10,9 @@ export default function AskShahPage() {
                 Your AI-powered chatbot assistant for advice on startups, funding, licensing, tax, strategy, business and marketing.
             </CardDescription>
         </div>
-        <AskShahChat />
+        <div className="flex-1">
+          <AskShahChat />
+        </div>
     </div>
   );
 }
