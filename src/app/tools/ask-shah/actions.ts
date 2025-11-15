@@ -23,15 +23,6 @@ async function getUserId(): Promise<string> {
   }
 }
 
-export async function createNewConversationAction(): Promise<{
-  conversationId: string | null;
-}> {
-  // Reuse the same logic that already works to get a valid conversation ID.
-  const { conversationId } = await getOrCreateDefaultConversationAction();
-  // We don't create a new Firestore document here; we just return a valid ID.
-  return { conversationId };
-}
-
 export async function getOrCreateDefaultConversationAction() {
     // This server-side action ensures a default conversation exists.
     // In a real app, you'd get the user ID from a session.

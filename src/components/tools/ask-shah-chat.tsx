@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Send, User, Bot, Loader2, PlusCircle } from 'lucide-react';
+import { Send, User, Bot, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '../ui/card';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, addDoc, serverTimestamp, getDocs, doc, setDoc, limit } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { askShah } from '@/ai/flows/ask-shah';
-import { createNewConversationAction } from '@/app/tools/ask-shah/actions';
 
 
 export type Message = {
@@ -31,26 +30,16 @@ const GREETING_MESSAGE: Message = { role: 'assistant', content: 'Hello! I am Sha
 
 export function AskShahChat({ initialConversationId }: { initialConversationId: string | null }) {
   const { firestore, user, isUserLoading } = useFirebase();
-  const [conversationId, setConversationId] = useState(initialConversationId);
   const [messages, setMessages] = useState<Message[]>([GREETING_MESSAGE]);
   const [queryText, setQueryText] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [isCreating, startCreating] = useTransition();
-
-  // Re-sync when the initial conversation ID changes from the parent
-  useEffect(() => {
-    setConversationId(initialConversationId);
-    if(initialConversationId) {
-      setMessages([GREETING_MESSAGE]);
-    }
-  }, [initialConversationId]);
 
   // Listen for new messages
   const messagesQuery = useMemoFirebase(() => 
-    conversationId && firestore && user
-      ? query(collection(firestore, 'users', user.uid, 'conversations', conversationId, 'messages'), orderBy('createdAt', 'asc'))
+    initialConversationId && firestore && user
+      ? query(collection(firestore, 'users', user.uid, 'conversations', initialConversationId, 'messages'), orderBy('createdAt', 'asc'))
       : null,
-    [firestore, conversationId, user]
+    [firestore, initialConversationId, user]
   );
   const { data: firestoreMessages, isLoading: messagesLoading } = useCollection<FirestoreMessage>(messagesQuery);
   
@@ -66,7 +55,7 @@ export function AskShahChat({ initialConversationId }: { initialConversationId: 
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!conversationId || !user || !firestore || !queryText) return;
+    if (!initialConversationId || !user || !firestore || !queryText) return;
     
     const currentQuery = queryText;
     setQueryText('');
@@ -77,10 +66,10 @@ export function AskShahChat({ initialConversationId }: { initialConversationId: 
 
     startTransition(async () => {
       try {
-        const messagesCol = collection(firestore, `users/${user.uid}/conversations/${conversationId}/messages`);
+        const messagesCol = collection(firestore, `users/${user.uid}/conversations/${initialConversationId}/messages`);
         
         await addDoc(messagesCol, {
-          conversationId,
+          conversationId: initialConversationId,
           userId: user.uid,
           sender: 'user',
           text: currentQuery,
@@ -104,14 +93,14 @@ export function AskShahChat({ initialConversationId }: { initialConversationId: 
         const aiText = response.answer ?? "Sorry, I could not generate a reply.";
 
         await addDoc(messagesCol, {
-          conversationId,
+          conversationId: initialConversationId,
           userId: user.uid,
           sender: 'ai',
           text: aiText,
           createdAt: serverTimestamp(),
         });
         
-        const convoDocRef = doc(firestore, `users/${user.uid}/conversations`, conversationId);
+        const convoDocRef = doc(firestore, `users/${user.uid}/conversations`, initialConversationId);
         await setDoc(convoDocRef, { updatedAt: serverTimestamp() }, { merge: true });
 
       } catch (error) {
@@ -153,22 +142,6 @@ export function AskShahChat({ initialConversationId }: { initialConversationId: 
     <Card className="flex flex-col flex-1 h-full">
       <CardHeader className='flex-row items-center justify-between p-4 border-b'>
         <CardTitle className='text-base'>Ask Shah</CardTitle>
-        <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-                if (!firestore) return;
-                startCreating(async () => {
-                    const result = await createNewConversationAction();
-                    setConversationId(result.conversationId);
-                    setMessages([GREETING_MESSAGE]); 
-                });
-            }}
-            disabled={isCreating || !firestore}
-        >
-            {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-            New Chat
-        </Button>
       </CardHeader>
       <ScrollArea className="flex-1 p-4 min-h-[220px] max-h-[420px] overflow-y-auto" ref={scrollAreaRef}>
         <div className="space-y-6">
@@ -221,9 +194,9 @@ export function AskShahChat({ initialConversationId }: { initialConversationId: 
             onChange={(e) => setQueryText(e.target.value)}
             autoComplete="off"
             placeholder="Ask about funding, strategy, etc..."
-            disabled={isPending || messagesLoading || !conversationId || isCreating || !firestore}
+            disabled={isPending || messagesLoading || !initialConversationId || !firestore}
           />
-          <Button type="submit" size="icon" disabled={isPending || messagesLoading || !conversationId || !queryText || isCreating || !firestore}>
+          <Button type="submit" size="icon" disabled={isPending || messagesLoading || !initialConversationId || !queryText || !firestore}>
             <Send className="h-4 w-4" />
           </Button>
         </form>
