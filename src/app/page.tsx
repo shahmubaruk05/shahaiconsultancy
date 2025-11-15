@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 import { QuickLinks } from "@/components/dashboard/quick-links";
+import { CompanyFormationPromo } from "@/components/home/company-formation-promo";
 
 export default function HomePage() {
   return (
@@ -26,6 +27,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <CompanyFormationPromo />
 
       {/* How It Works Section */}
       <section className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
