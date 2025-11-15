@@ -1,7 +1,7 @@
 'use server';
 
-import {addDoc, collection, serverTimestamp} from 'firebase/firestore';
-import {auth, db} from '@/lib/firebase-admin';
+import {addDoc, collection, serverTimestamp, getDocs, query, orderBy, limit} from 'firebase/firestore';
+import { db } from '@/lib/firebase-admin';
 
 // This is a placeholder for a more robust user session management.
 async function getUserId(): Promise<string> {
@@ -32,6 +32,11 @@ export async function createNewConversationAction(): Promise<{
     throw new Error('You must be logged in to create a new conversation.');
   }
 
+  // Ensure db is initialized
+  if (!db) {
+    throw new Error("Firestore Admin SDK is not initialized. Check server credentials.");
+  }
+  
   const convosRef = collection(db, 'users', userId, 'conversations');
 
   try {
@@ -46,4 +51,37 @@ export async function createNewConversationAction(): Promise<{
     console.error('Error creating new conversation:', error);
     throw new Error('Could not create a new conversation.');
   }
+}
+
+export async function getOrCreateDefaultConversationAction() {
+    // This server-side action ensures a default conversation exists.
+    // In a real app, you'd get the user ID from a session.
+    // This is a placeholder until full session management is implemented.
+    const userId = 'anonymous'; // Replace with actual user ID from auth session
+
+    if (!userId) {
+        return { conversationId: null, messages: [] };
+    }
+    
+    // Ensure db is initialized
+    if (!db) {
+        throw new Error("Firestore Admin SDK is not initialized. Check server credentials.");
+    }
+
+    const convosRef = collection(db, 'users', userId, 'conversations');
+    const q = query(convosRef, orderBy('updatedAt', 'desc'), limit(1));
+
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+        const docRef = await addDoc(convosRef, {
+            userId: userId,
+            title: 'Default Conversation',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+        return { conversationId: docRef.id, messages: [] };
+    }
+    
+    const conversationDoc = snapshot.docs[0];
+    return { conversationId: conversationDoc.id, messages: [] }; // messages are loaded client-side
 }
