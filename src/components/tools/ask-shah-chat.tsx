@@ -157,13 +157,14 @@ export function AskShahChat({ initialConversationId }: { initialConversationId: 
             variant="outline"
             size="sm"
             onClick={() => {
+                if (!firestore) return;
                 startCreating(async () => {
                     const result = await createNewConversationAction();
                     setConversationId(result.conversationId);
                     setMessages([GREETING_MESSAGE]); 
                 });
             }}
-            disabled={isCreating}
+            disabled={isCreating || !firestore}
         >
             {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
             New Chat
@@ -220,9 +221,9 @@ export function AskShahChat({ initialConversationId }: { initialConversationId: 
             onChange={(e) => setQueryText(e.target.value)}
             autoComplete="off"
             placeholder="Ask about funding, strategy, etc..."
-            disabled={isPending || messagesLoading || !conversationId || isCreating}
+            disabled={isPending || messagesLoading || !conversationId || isCreating || !firestore}
           />
-          <Button type="submit" size="icon" disabled={isPending || messagesLoading || !conversationId || !queryText || isCreating}>
+          <Button type="submit" size="icon" disabled={isPending || messagesLoading || !conversationId || !queryText || isCreating || !firestore}>
             <Send className="h-4 w-4" />
           </Button>
         </form>
