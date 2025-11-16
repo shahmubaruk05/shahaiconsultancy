@@ -96,13 +96,13 @@ async function downloadBusinessPlanDocx(planText: string, businessName: string) 
   }
 
 export function BusinessPlanForm() {
-  const { user, isUserLoading } = useFirebase();
+  const { user, isUserLoading, firestore } = useFirebase();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<{ planText: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  const userDocRef = useMemoFirebase(() => user ? doc(useFirebase().firestore, 'users', user.uid) : null, [user]);
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
   const { data: userData } = useDoc(userDocRef);
   const plan = (userData?.plan as UserPlan) || 'free';
 
