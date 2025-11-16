@@ -141,12 +141,13 @@ const OPTIONS = [
 ];
 
 export default function CompanyFormationServicePage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [selectedKey, setSelectedKey] = useState<string>("10_lakh");
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [initialConversationId, setInitialConversationId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // form state
   const [name, setName] = useState(user?.displayName || "");
@@ -155,7 +156,13 @@ export default function CompanyFormationServicePage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (user && firestore) {
+    if (isUserLoading || !firestore) {
+      return;
+    }
+
+    setIsLoading(false);
+
+    if (user) {
       const convosRef = collection(firestore, 'users', user.uid, 'conversations');
       const q = query(convosRef, orderBy('createdAt', 'desc'), limit(1));
 
@@ -174,7 +181,7 @@ export default function CompanyFormationServicePage() {
         }
       });
     }
-  }, [user, firestore]);
+  }, [user, firestore, isUserLoading]);
 
 
   useEffect(() => {
@@ -246,6 +253,15 @@ export default function CompanyFormationServicePage() {
     link.click();
     link.remove();
   }
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
