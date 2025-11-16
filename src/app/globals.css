@@ -84,3 +84,38 @@
     white-space: normal !important;
   }
 }
+
+.chat-scroll {
+  scrollbar-width: thin;
+}
+
+.chat-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.7);
+  border-radius: 9999px;
+}
+
+/* Markdown / prose tweaks for chat bubbles */
+.prose p {
+  margin-bottom: 0.5rem;
+}
+
+.prose ul,
+.prose ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Small typing dot animation */
+.typing-dot {
+  font-size: 14px;
+}
+
+/* fallback pulse (Tailwind's animate-pulse will also work if enabled) */
+@keyframes typingPulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
