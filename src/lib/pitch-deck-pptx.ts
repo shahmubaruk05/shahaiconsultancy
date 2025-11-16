@@ -51,92 +51,135 @@ export async function createPitchDeckPptxFromMarkdown(
 ): Promise<Uint8Array> {
   const pptx = new PptxGenJS();
 
-  // Shah Mubaruk – Your Startup Coach brand palette
-  const BRAND_BG = "F9FAFB";      // light background
-  const BRAND_ACCENT = "2563EB";  // primary blue
-  const BRAND_TITLE = "0F172A";   // deep slate for titles
-  const BRAND_TEXT = "111827";    // main body text
-  const BRAND_MUTED = "6B7280";   // footer text
+  // ----- Brand palette (Shah Mubaruk – Your Startup Coach) -----
+  const BRAND_BG_LIGHT = "F9FAFB";   // light gray background
+  const BRAND_BG_DARK = "0F172A";    // dark navy for cover
+  const BRAND_PRIMARY = "2563EB";    // primary blue
+  const BRAND_TITLE = "0F172A";      // deep slate for headings
+  const BRAND_TEXT = "111827";       // main body text
+  const BRAND_MUTED = "6B7280";      // subtle footer text
+  const BRAND_FONT = "Arial";
 
-  // If layout property exists, use 16x9
-  // (wrap in try/catch so it doesn’t crash if not supported)
   try {
-    // @ts-ignore
+    // @ts-ignore – layout may not be typed
     pptx.layout = "16x9";
   } catch (e) {
-    // ignore
+    // ignore if not supported
   }
-
+  
   const slides = parseSlides(markdown);
 
-  slides.forEach((slide, index) => {
-    const s = pptx.addSlide();
+  slides.forEach((slideData, index) => {
+    const slide = pptx.addSlide();
 
-    s.background = { color: BRAND_BG };
+    if (index === 0) {
+      // --- Cover Slide ---
+      slide.background = { color: BRAND_BG_DARK };
+      
+      const oneLiner = slideData.body.split('\n')[0].replace(/^- /,'').trim();
 
-    // Title
-    s.addText(slide.title || `Slide ${index + 1}`, {
-      x: 0.5,
-      y: 0.4,
-      w: 9,
-      h: 1,
-      color: BRAND_TITLE,
-      fontFace: "Arial",
-      fontSize: 28,
-      bold: true,
-    });
+      // Main title
+      slide.addText(startupName || slideData.title, {
+        x: 0.7,
+        y: 1.6,
+        w: 8.6,
+        h: 1.5,
+        align: "center",
+        fontFace: BRAND_FONT,
+        fontSize: 40,
+        bold: true,
+        color: "FFFFFF",
+      });
 
-    // Body text as bullets
-    const bodyText = slide.body || "";
-    const bulletLines = bodyText
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+      // Subtitle from first bullet or notes (optional)
+      if (oneLiner) {
+        slide.addText(oneLiner, {
+          x: 1.0,
+          y: 3.0,
+          w: 8.0,
+          h: 1.5,
+          align: "center",
+          fontFace: BRAND_FONT,
+          fontSize: 22,
+          color: "E5E7EB",
+        });
+      }
 
-    if (bulletLines.length > 0) {
-      s.addText(
-        bulletLines.map((t) => ({ text: t, options: { bullet: true } })),
-        {
-          x: 0.7,
-          y: 1.2,
-          w: 8.5,
-          h: 4,
-          color: BRAND_TEXT,
-          fontFace: "Arial",
-          fontSize: 16,
-        }
-      );
+      // Brand tagline at bottom
+      slide.addText("Shah Mubaruk – Your Startup Coach", {
+        x: 0,
+        y: 6.8,
+        w: '100%',
+        h: 0.4,
+        align: 'center',
+        fontFace: BRAND_FONT,
+        fontSize: 12,
+        color: "E5E7EB",
+      });
+
+    } else {
+      // --- Content Slides ---
+      slide.background = { color: BRAND_BG_LIGHT };
+
+      // Title
+      slide.addText(slideData.title, {
+        x: 0.7,
+        y: 0.5,
+        w: 8.6,
+        h: 0.8,
+        fontFace: BRAND_FONT,
+        fontSize: 26,
+        bold: true,
+        color: BRAND_PRIMARY,
+      });
+
+      // Bullet body text
+      const bulletLines = (slideData.body.split('\n') ?? []).map(l => l.trim()).filter(Boolean);
+      if (bulletLines.length > 0) {
+        slide.addText(
+          bulletLines.map(text => ({
+            text: text.replace(/^- /,''),
+            options: {
+              bullet: true,
+            },
+          })),
+          {
+            x: 0.9,
+            y: 1.5,
+            w: 8.2,
+            h: 4.5,
+            fontFace: BRAND_FONT,
+            fontSize: 18,
+            color: BRAND_TEXT,
+            lineSpacing: 28,
+          }
+        );
+      }
+
+      // Footer: brand + slide number
+      const slideNumber = index + 1;
+      slide.addText("Shah Mubaruk – Your Startup Coach", {
+        x: 0.7,
+        y: 6.8,
+        w: 6.0,
+        h: 0.3,
+        fontFace: BRAND_FONT,
+        fontSize: 10,
+        color: BRAND_MUTED,
+      });
+
+      slide.addText(`Slide ${slideNumber}`, {
+        x: 7.5,
+        y: 6.8,
+        w: 2.0,
+        h: 0.3,
+        align: "right",
+        fontFace: BRAND_FONT,
+        fontSize: 10,
+        color: BRAND_MUTED,
+      });
     }
-
-    // Brand footer (left)
-    s.addText("Shah Mubaruk – Your Startup Coach", {
-      x: 0.5,
-      y: 6.8,
-      w: 6,
-      h: 0.4,
-      fontSize: 10,
-      color: BRAND_MUTED,
-      fontFace: "Arial",
-    });
-
-    // Slide number (right)
-    s.addText(`Slide ${index + 1}`, {
-      x: 8.0,
-      y: 6.8,
-      w: 1.5,
-      h: 0.4,
-      align: "right",
-      fontSize: 10,
-      color: BRAND_MUTED,
-      fontFace: "Arial",
-    });
   });
-
-  const fileNameBase =
-    (startupName || "pitch-deck")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "pitch-deck";
 
   const arrayBuffer = await pptx.write("arraybuffer");
   const uint8 = new Uint8Array(arrayBuffer as ArrayBuffer);
