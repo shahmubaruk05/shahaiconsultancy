@@ -7,6 +7,7 @@ import { sendMessageAction } from "@/app/tools/ask-shah/actions";
 type Message = {
   role: "user" | "assistant";
   content: string;
+  actions?: any[];
 };
 
 type AskShahBoxProps = {
@@ -65,6 +66,7 @@ export default function AskShahBox({
         content:
           data.reply ||
           "আমি এখনই উত্তর দিতে পারলাম না। একটু পরে আবার চেষ্টা করুন।",
+        actions: data.actions || [],
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -141,44 +143,73 @@ export default function AskShahBox({
                   </div>
                 )}
 
-                <div
-                  className={
-                    "max-w-[80%] rounded-2xl px-3 py-2 text-sm leading-relaxed " +
-                    (isUser
-                      ? "bg-blue-600 text-white rounded-br-sm"
-                      : "bg-slate-100 text-slate-900 rounded-bl-sm")
-                  }
-                >
-                  <ReactMarkdown
+                <div className={"max-w-[80%]"}>
+                  <div
                     className={
-                      "prose prose-sm max-w-none " +
-                      (isUser ? "prose-invert" : "")
+                      "rounded-2xl px-3 py-2 text-sm leading-relaxed " +
+                      (isUser
+                        ? "bg-blue-600 text-white rounded-br-sm"
+                        : "bg-slate-100 text-slate-900 rounded-bl-sm")
                     }
-                    components={{
-                      p: ({ children }) => (
-                        <p className="mb-2 last:mb-0">{children}</p>
-                      ),
-                      h3: ({ children }) => (
-                        <h3 className="text-[15px] font-semibold mt-2 mb-1">
-                          {children}
-                        </h3>
-                      ),
-                      ul: ({ children }) => (
-                        <ul className="list-disc ml-4 mb-2">{children}</ul>
-                      ),
-                      ol: ({ children }) => (
-                        <ol className="list-decimal ml-4 mb-2">{children}</ol>
-                      ),
-                      li: ({ children }) => (
-                        <li className="mb-0.5">{children}</li>
-                      ),
-                      strong: ({ children }) => (
-                        <strong className="font-semibold">{children}</strong>
-                      ),
-                    }}
                   >
-                    {msg.content}
-                  </ReactMarkdown>
+                    <ReactMarkdown
+                      className={
+                        "prose prose-sm max-w-none " +
+                        (isUser ? "prose-invert" : "")
+                      }
+                      components={{
+                        p: ({ children }) => (
+                          <p className="mb-2 last:mb-0">{children}</p>
+                        ),
+                        h3: ({ children }) => (
+                          <h3 className="text-[15px] font-semibold mt-2 mb-1">
+                            {children}
+                          </h3>
+                        ),
+                        ul: ({ children }) => (
+                          <ul className="list-disc ml-4 mb-2">{children}</ul>
+                        ),
+                        ol: ({ children }) => (
+                          <ol className="list-decimal ml-4 mb-2">{children}</ol>
+                        ),
+                        li: ({ children }) => (
+                          <li className="mb-0.5">{children}</li>
+                        ),
+                        strong: ({ children }) => (
+                          <strong className="font-semibold">{children}</strong>
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+
+                  {/* Actions/CTA cards */}
+                  {!isUser && msg.actions && msg.actions.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {msg.actions.map((act: any, actIdx: number) => (
+                        <div
+                          key={actIdx}
+                          className="p-3 border rounded-lg bg-white shadow-sm"
+                        >
+                          <h4 className="font-semibold text-slate-800 text-sm">
+                            {act.title}
+                          </h4>
+                          <p className="text-xs text-slate-600 mt-1">
+                            {act.description}
+                          </p>
+                          <a
+                            href={act.buttonLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block mt-3 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                          >
+                            {act.buttonText}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* user avatar on right (optional, small circle) */}
