@@ -1,3 +1,4 @@
+
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -47,7 +48,7 @@ Always follow these rules:
 
 3) If the country is USA:
    - Reference LLC / Corporation basics, EIN, state registration, basic sales tax concepts.
-   - Make it clear this is general guidance, not as legal advice.
+   - Make it clear this is general guidance, not legal advice.
 
 4) Use realistic assumptions and clearly label them as estimates.
    - For example: "Assumption: average order size BDT 800", etc.
@@ -83,10 +84,16 @@ export async function generateBusinessPlan(input: BusinessPlanInput): Promise<st
   } = input;
 
   // --------- Detect depth from UI value ----------
-  const depthRaw = (planDepth || "").toLowerCase();
+  const depthRaw = (planDepth || "").toLowerCase().trim();
 
-  // Treat these as "quick"
-  const isQuick = ["quick", "summary", "basic", "short"].includes(depthRaw);
+  // Treat as "quick" if the text contains "quick" or "summary"
+  // e.g. "Quick summary", "Short / quick plan" etc.
+  const isQuick =
+    depthRaw === "" ||
+    depthRaw.includes("quick") ||
+    depthRaw.includes("summary") ||
+    depthRaw.includes("basic") ||
+    depthRaw.includes("short");
 
   // Optional: log for debugging (safe on server)
   console.log("Business plan depth:", planDepth, "=> isQuick:", isQuick);
