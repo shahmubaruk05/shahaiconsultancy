@@ -24,7 +24,7 @@ export default function AskShahBox({
     {
       role: "assistant",
       content:
-        "স্বাগতম! আমি শাহ মুবারুক – আপনার স্টার্টআপ কোচ। 😊\n\nআপনি চাইলে জানতে পারেন:\n- বাংলাদেশে বা USA-তে company registration\n- Startup funding, pitch deck, business plan\n- Tax, licensing, বা business strategy\n\nআজকে আপনাকে কোন বিষয়ে সাহায্য করতে পারি?",
+        "স্বাগতম! আমি শাহ মুবারুক – আপনার AI-powered Startup Coach। 😊\n\nআপনি জানতে পারেন:\n• Startup idea, funding & pitch deck\n• Bangladesh/USA company formation\n• Tax, licensing & compliance\n• Business strategy, marketing বা growth\n\nকীভাবে আপনাকে সাহায্য করতে পারি আজ?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -331,7 +331,7 @@ export default function AskShahBox({
         {/* Input */}
         <div className="border-t px-4 py-3 flex gap-2">
           <input
-            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 focus:border-blue-500"
+            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             placeholder="আপনার প্রশ্ন লিখুন…"
             value={input}
             onChange={(e) => setInput(e.target.value)}
