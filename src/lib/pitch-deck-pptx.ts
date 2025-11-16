@@ -51,62 +51,42 @@ export async function createPitchDeckPptxFromMarkdown(
 ): Promise<Uint8Array> {
   const pptx = new PptxGenJS();
 
-  // 16:9 wide layout
-  pptx.layout = "16x9";
+  // Shah Mubaruk – Your Startup Coach brand palette
+  const BRAND_BG = "F9FAFB";      // light background
+  const BRAND_ACCENT = "2563EB";  // primary blue
+  const BRAND_TITLE = "0F172A";   // deep slate for titles
+  const BRAND_TEXT = "111827";    // main body text
+  const BRAND_MUTED = "6B7280";   // footer text
 
-  // ----- Brand palette (Shah Mubaruk – Your Startup Coach) -----
-  const BRAND_BG = "F9FAFB";        // soft light gray/white background
-  const BRAND_ACCENT = "2563EB";    // primary blue
-  const BRAND_TITLE = "0F172A";     // deep slate for titles
-  const BRAND_TEXT = "111827";      // main body text
-  const BRAND_MUTED = "6B7280";     // footer / subtle text
+  // If layout property exists, use 16x9
+  // (wrap in try/catch so it doesn’t crash if not supported)
+  try {
+    // @ts-ignore
+    pptx.layout = "16x9";
+  } catch (e) {
+    // ignore
+  }
 
   const slides = parseSlides(markdown);
 
   slides.forEach((slide, index) => {
     const s = pptx.addSlide();
 
-    // Background color
     s.background = { color: BRAND_BG };
 
-    // Left accent bar (brand blue)
-    s.addShape(pptx.ShapeType.rect, {
-      x: 0,
-      y: 0,
-      w: 0.25,
-      h: 7.0,
-      fill: { color: BRAND_ACCENT },
-      line: { color: "FFFFFF" },
-    });
-
-    // Top subtle bar (optional header accent)
-    s.addShape(pptx.ShapeType.rect, {
-      x: 0,
-      y: 0,
-      w: 10,
-      h: 0.2,
-      fill: { color: BRAND_ACCENT },
-      line: { color: BRAND_ACCENT },
-    });
-
-    // Slide title
-    const titleText =
-      slide.title || (index === 0 && startupName)
-        ? slide.title || startupName || `Slide ${index + 1}`
-        : `Slide ${index + 1}`;
-
-    s.addText(titleText, {
-      x: 0.6,
-      y: 0.5,
+    // Title
+    s.addText(slide.title || `Slide ${index + 1}`, {
+      x: 0.5,
+      y: 0.4,
       w: 9,
-      h: 0.8,
-      fontSize: 28,
-      bold: true,
+      h: 1,
       color: BRAND_TITLE,
       fontFace: "Arial",
+      fontSize: 28,
+      bold: true,
     });
 
-    // Body text as bullet points
+    // Body text as bullets
     const bodyText = slide.body || "";
     const bulletLines = bodyText
       .split("\n")
@@ -115,25 +95,22 @@ export async function createPitchDeckPptxFromMarkdown(
 
     if (bulletLines.length > 0) {
       s.addText(
-        bulletLines.map((t) => ({
-          text: t,
-          options: { bullet: true },
-        })),
+        bulletLines.map((t) => ({ text: t, options: { bullet: true } })),
         {
-          x: 0.8,
-          y: 1.4,
-          w: 8.8,
-          h: 4.2,
-          fontSize: 16,
+          x: 0.7,
+          y: 1.2,
+          w: 8.5,
+          h: 4,
           color: BRAND_TEXT,
           fontFace: "Arial",
+          fontSize: 16,
         }
       );
     }
 
-    // Footer: brand name (left) + slide number (right)
+    // Brand footer (left)
     s.addText("Shah Mubaruk – Your Startup Coach", {
-      x: 0.6,
+      x: 0.5,
       y: 6.8,
       w: 6,
       h: 0.4,
@@ -142,10 +119,11 @@ export async function createPitchDeckPptxFromMarkdown(
       fontFace: "Arial",
     });
 
+    // Slide number (right)
     s.addText(`Slide ${index + 1}`, {
-      x: 7.8,
+      x: 8.0,
       y: 6.8,
-      w: 2,
+      w: 1.5,
       h: 0.4,
       align: "right",
       fontSize: 10,
