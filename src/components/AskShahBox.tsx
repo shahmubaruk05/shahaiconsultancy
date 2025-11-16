@@ -2,27 +2,20 @@
 
 import { useState } from "react";
 import { sendMessageAction } from "@/app/tools/ask-shah/actions";
-
-type Message = {
-    role: "user" | "assistant";
-    content: string;
-};
+import ReactMarkdown from "react-markdown";
 
 export default function AskShahBox({
   initialMode,
   initialConversationId,
-}: {
-  initialMode: "guest" | "user";
-  initialConversationId: string | null;
 }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSend() {
     if (!input.trim()) return;
 
-    const userMessage: Message = {
+    const userMessage = {
       role: "user",
       content: input,
     };
@@ -61,8 +54,8 @@ export default function AskShahBox({
     <div className="w-full border rounded-xl bg-white shadow p-4 flex flex-col h-[600px]">
       {initialMode === "guest" && (
         <div className="text-xs bg-amber-50 border border-amber-200 text-amber-700 p-2 rounded mb-2">
-          You are chatting in guest mode. Your conversation will not be saved.
-          <a href="/login" className="underline ml-1">Login</a>
+          আপনি guest mode-এ চ্যাট করছেন। আপনার কথোপকথন সংরক্ষিত হবে না।
+          <a href="/login" className="underline ml-1">Login করুন</a>
         </div>
       )}
 
@@ -83,7 +76,18 @@ export default function AskShahBox({
                   : "inline-block bg-slate-100 text-slate-800 px-3 py-2 rounded-lg max-w-xs"
               }
             >
-              {msg.content}
+              <ReactMarkdown
+                className="prose prose-sm max-w-none leading-relaxed"
+                components={{
+                  p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                  h3: ({ children }) => <h3 className="font-semibold text-lg mt-4 mb-2">{children}</h3>,
+                  ul: ({ children }) => <ul className="list-disc ml-6 mb-3">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal ml-6 mb-3">{children}</ol>,
+                  li: ({ children }) => <li className="mb-1">{children}</li>,
+                }}
+              >
+                {msg.content}
+              </ReactMarkdown>
             </div>
           </div>
         ))}

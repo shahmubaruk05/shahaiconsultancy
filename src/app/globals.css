@@ -77,4 +77,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  .prose {
+    word-break: break-word;
+  }
+  .prose p {
+    white-space: normal !important;
+  }
 }
