@@ -192,6 +192,11 @@ export default function AskShahBox({
                           key={actIdx}
                           className="p-3 border rounded-lg bg-white shadow-sm"
                         >
+                            {act.type?.startsWith("contact-") && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium mb-1">
+                                    Contact Option
+                                </span>
+                            )}
                           <h4 className="font-semibold text-slate-800 text-sm">
                             {act.title}
                           </h4>
