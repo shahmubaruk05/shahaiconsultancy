@@ -2,10 +2,11 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Lightbulb, Target, Building2, ClipboardList } from 'lucide-react';
+import { FileText, Lightbulb, Target, Building2, ClipboardList, Loader2 } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 
 function formatTimestamp(timestamp: any) {
   if (!timestamp) return 'Just now';
@@ -58,6 +59,26 @@ export function LatestItems() {
 
 
   const isLoading = ideasLoading || strategiesLoading || decksLoading || profilesLoading || plansLoading;
+
+  if (!user || !firestore) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Your Latest Work</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center text-muted-foreground p-8">
+                { !user ? (
+                    <div>
+                        <p>Please log in to see your work.</p>
+                        <Link href="/login" className="text-primary underline mt-2 inline-block">Log In</Link>
+                    </div>
+                ) : (
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                ) }
+            </CardContent>
+        </Card>
+    );
+  }
 
 
   return (
