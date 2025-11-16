@@ -1,4 +1,3 @@
-
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -80,67 +79,68 @@ export async function generateBusinessPlan(input: BusinessPlanInput): Promise<st
     revenueModel,
     fundingNeed,
     founderBackground,
-    planDepth = "pro",
+    planDepth,
   } = input;
 
-  const isQuick = planDepth === "quick";
+  // --------- Detect depth from UI value ----------
+  const depthRaw = (planDepth || "").toLowerCase();
 
+  // Treat these as "quick"
+  const isQuick = ["quick", "summary", "basic", "short"].includes(depthRaw);
+
+  // Optional: log for debugging (safe on server)
+  console.log("Business plan depth:", planDepth, "=> isQuick:", isQuick);
+
+  // ---------- PROMPTS ----------
+
+  // Short, founder-friendly version
   const quickPrompt = `
-Generate a SHORT, founder-friendly business plan summary.
+Generate a SHORT, FOUNDER-FRIENDLY business plan.
 
-Style:
-- Max ~700 words
-- Very skimmable
-- Use clear headings and bullet points
-- No big tables, no long paragraphs
-
-Structure exactly like this:
-
-1. Overview
-   - 2–3 bullet points: what the business does, where, for whom.
-
-2. Problem & Solution
-   - 2–3 bullets on the main pain points.
-   - 2–3 bullets on how this business solves them.
-
-3. Target Customer & Market Snapshot
-   - 3–5 bullets describing the ideal customer.
-   - 3–5 bullets with an approximate market size (TAM/SAM) in simple language.
-
-4. Simple Go-To-Market Plan (First 6–12 months)
-   - Bullet list of marketing channels, example campaigns, and pricing approach.
-
-5. Basic Numbers (Year 1)
-   - A small bullet list with:
-     - Assumed number of customers
-     - Average order size / monthly revenue
-     - Rough annual revenue
-     - Key monthly costs
-
-6. Next 3 Action Steps
-   - 3 concrete things the founder should do next.
-
-Make everything very practical and to-the-point, not academic.
-Use simple English with occasional Bangla terms if helpful.
+OUTPUT RULES (VERY IMPORTANT):
+- Use EXACTLY these 6 top-level headings, in this order:
+  1) ## Executive Summary
+  2) ## Problem & Solution
+  3) ## Target Customer & Market Snapshot
+  4) ## Go-To-Market Plan (First 6–12 Months)
+  5) ## Simple Year 1 Numbers
+  6) ## Next 3 Action Steps
+- Each heading-এর নিচে 3–6টা bullet / ছোট paragraph রাখো।
+- মোট শব্দ ideally 600–800 এর মধ্যে রাখো (এর বেশি না)।
+- খুব academic না, বাস্তবধর্মী, founder-friendly language ব্যবহার করবে।
 `;
 
+  // Deep, investor-ready version
   const proPrompt = `
-Generate a DEEP, INVESTOR-READY business plan.
+Generate a DETAILED, INVESTOR-READY business plan.
 
-It must follow the 12-section structure from the system prompt
-(Executive Summary, Problem & Opportunity, Target Customer Profile, Market Size,
-Competitor Analysis table, UVP, Product/Service, Marketing & Sales, Operations & Team,
-3-year Financial Projection, SWOT, Legal & Compliance).
+OUTPUT RULES (VERY IMPORTANT):
+- Use EXACTLY these 12 top-level headings, in this order:
 
-Requirements:
-- Length: typically 2000+ words if enough input is provided.
-- Use detailed headings with "##" and subheadings where needed.
-- Include realistic numeric examples for market size and a simple 3-year projection
-  (Year 1, Year 2, Year 3) with revenue and major cost lines.
-- Include a clear competitor comparison in table-like Markdown.
-- Explicitly mention Bangladesh or USA legal / compliance basics where relevant,
-  but always as general guidance (not legal advice).
-- Keep the tone practical and founder-friendly, not too academic.
+  1) ## Executive Summary
+  2) ## Problem & Opportunity
+  3) ## Target Customer Profile
+  4) ## Market Size (TAM / SAM / SOM)
+  5) ## Competitor & Alternative Analysis
+  6) ## Unique Value Proposition (UVP)
+  7) ## Product / Service Offering
+  8) ## Marketing & Sales Strategy
+  9) ## Operations & Team
+  10) ## 3-Year Financial Projection
+  11) ## SWOT Analysis
+  12) ## Legal, Compliance & Risks
+
+- প্রতিটা section-এ 2–4টা sub-heading বা bullet থাকতে পারে।
+- "Competitor & Alternative Analysis" অংশে কমপক্ষে 3টি প্রতিযোগীর তুলনা
+  Markdown-style bullet/table format-এ দাও (e.g. Competitor, Strength, Weakness)।
+- "3-Year Financial Projection"-এ Year 1 / Year 2 / Year 3 এর জন্য:
+  - estimated revenue
+  - gross margin (approx)
+  - key cost blocks (team, marketing, operations)
+  - very simple profit estimate
+- Bangladesh বা USA mention থাকলে সেই context অনুযায়ী সাধারণ legal/compliance পয়েন্ট যোগ করবে,
+  but সবসময় উল্লেখ করবে যে এটা general guidance, formal legal advice নয়।
+- টোন হবে practical, investor-friendly এবং পরিষ্কার।
 `;
 
   const scenarioPrompt = `
@@ -170,14 +170,14 @@ ${founderBackground || "N/A"}
 `;
 
   const userPrompt = `
-You are preparing a ${isQuick ? "QUICK SUMMARY" : "FULL INVESTOR-READY"} business plan.
+You are generating a ${isQuick ? "QUICK SUMMARY" : "FULL INVESTOR-READY"} business plan.
 
 Here is the business context:
 ${scenarioPrompt}
 
-Now follow the specific instructions for ${
-    isQuick ? "the QUICK SUMMARY plan" : "the INVESTOR-READY plan"
-  } below:
+Now follow the rules for the ${
+    isQuick ? "SHORT 6-SECTION PLAN (quick summary)" : "DETAILED 12-SECTION PLAN (investor-ready)"
+  }:
 
 ${isQuick ? quickPrompt : proPrompt}
 `;
@@ -189,6 +189,8 @@ ${isQuick ? quickPrompt : proPrompt}
       { role: "user", content: userPrompt },
     ],
     temperature: 0.7,
+    // investor-ready version যেন কেটে না যায়, তাই একটু বেশি max_tokens
+    max_tokens: isQuick ? 900 : 2600,
   });
 
   return (
