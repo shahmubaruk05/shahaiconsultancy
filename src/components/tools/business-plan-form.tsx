@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,8 +9,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Document, Packer, Paragraph, HeadingLevel } from "docx";
 import { useToast } from "@/hooks/use-toast";
+import { generateBusinessPlanAction } from '@/app/tools/business-plan/actions';
 
-import { generateBusinessPlanMock, BusinessPlanResult, BusinessPlanInput } from '@/lib/aiMock';
 import {
   Form,
   FormControl,
@@ -28,117 +29,80 @@ import {
   CardTitle,
   CardFooter
 } from '@/components/ui/card';
-import { Loader2, Download, Printer, ExternalLink } from 'lucide-react';
+import { Loader2, Download, Printer } from 'lucide-react';
 import { Input } from '../ui/input';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { saveAs } from 'file-saver';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import ReactMarkdown from 'react-markdown';
+
 
 const formSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters.'),
   industry: z.string().min(3, 'Please specify your industry.'),
   country: z.string().min(2, 'Country is required.'),
-  targetAudience: z.string().min(10, 'Please describe your target audience.'),
+  city: z.string().optional(),
+  businessType: z.string().optional(),
+  targetCustomer: z.string().min(10, 'Please describe your target audience.'),
   problem: z.string().min(10, 'Please describe the problem you are solving.'),
   solution: z.string().min(10, 'Please describe your solution.'),
   revenueModel: z.string().min(3, 'Please describe your revenue model.'),
   fundingNeed: z.string().optional(),
-  planDepth: z.enum(['quick', 'pro']),
+  founderBackground: z.string().optional(),
+  planDepth: z.enum(['quick', 'investor']),
 });
 
 type FormData = z.infer<typeof formSchema>;
 type UserPlan = 'free' | 'pro' | 'premium';
 
-
-const ResultSection = ({ title, content }: { title: string; content: string | string[] }) => (
-  <div>
-    <h3 className="text-xl font-semibold text-primary mb-2">{title}</h3>
-    {Array.isArray(content) ? (
-      <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
-        {content.map((item, index) => <li key={index}>{item}</li>)}
-      </ul>
-    ) : (
-      <p className="text-muted-foreground whitespace-pre-wrap">{content}</p>
-    )}
-  </div>
-);
-
-async function downloadBusinessPlanDocx(plan: BusinessPlanResult, inputValues: FormData) {
-    const doc = new Document({
-      sections: [
-        {
-          children: [
-            new Paragraph({
-              text: "Shah Mubaruk – Your Startup Coach",
-              heading: HeadingLevel.TITLE,
-              style: "Title"
-            }),
-            new Paragraph({
-              text: inputValues.businessName || "Business Plan",
+async function downloadBusinessPlanDocx(planText: string, businessName: string) {
+    // A simple parser to convert markdown to docx paragraphs
+    const paragraphs = planText.split('\n').map(line => {
+      if (line.startsWith('## ')) {
+        return new Paragraph({
+          text: line.substring(3),
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 200, after: 100 },
+        });
+      }
+      if (line.startsWith('# ')) {
+          return new Paragraph({
+              text: line.substring(2),
               heading: HeadingLevel.HEADING_1,
-            }),
-            new Paragraph(" "),
-            new Paragraph({
-              text: "Executive Summary",
-              heading: HeadingLevel.HEADING_2,
-            }),
-            new Paragraph(plan.executiveSummary || ""),
-            new Paragraph(" "),
-            new Paragraph({
-              text: "Market Analysis",
-              heading: HeadingLevel.HEADING_2,
-            }),
-            new Paragraph(plan.marketAnalysis || ""),
-            new Paragraph(" "),
-            new Paragraph({
-              text: "Marketing Plan",
-              heading: HeadingLevel.HEADING_2,
-            }),
-            new Paragraph(plan.marketingPlan || ""),
-            new Paragraph(" "),
-            new Paragraph({
-              text: "Operations Plan",
-              heading: HeadingLevel.HEADING_2,
-            }),
-            new Paragraph(plan.operationsPlan || ""),
-            new Paragraph(" "),
-            new Paragraph({
-              text: "Financial Overview",
-              heading: HeadingLevel.HEADING_2,
-            }),
-            new Paragraph(plan.financialOverview || ""),
-            new Paragraph(" "),
-            new Paragraph({
-              text: "Next Steps",
-              heading: HeadingLevel.HEADING_2,
-            }),
-            ...(plan.nextSteps || []).map(
-              (step: string) =>
-                new Paragraph({
-                  text: step,
-                  bullet: { level: 0 },
-                })
-            ),
-          ],
-        },
-      ],
+              spacing: { before: 300, after: 150 },
+          });
+      }
+      if (line.trim().startsWith('- ')) {
+        return new Paragraph({
+          text: line.trim().substring(2),
+          bullet: { level: 0 },
+        });
+      }
+      return new Paragraph(line);
+    });
+
+    const doc = new Document({
+      sections: [{
+        children: [
+            new Paragraph({ text: businessName, heading: HeadingLevel.TITLE }),
+            new Paragraph({ text: "Generated by Shah Mubaruk's AI Startup Coach", style: "IntenseQuote" }),
+            ...paragraphs
+        ],
+      }],
     });
 
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, `${inputValues.businessName || "business-plan"}-shah-mubaruk.docx`);
+    saveAs(blob, `${businessName.replace(/ /g, '_') || "business-plan"}.docx`);
   }
 
 export function BusinessPlanForm() {
-  const { firestore, user, isUserLoading } = useFirebase();
+  const { user, isUserLoading } = useFirebase();
   const { toast } = useToast();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [result, setResult] = useState<BusinessPlanResult | null>(null);
-  const [formValues, setFormValues] = useState<FormData | null>(null);
+  const [result, setResult] = useState<{ planText: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const userDocRef = useMemoFirebase(() => user ? doc(useFirebase().firestore, 'users', user.uid) : null, [user]);
   const { data: userData } = useDoc(userDocRef);
   const plan = (userData?.plan as UserPlan) || 'free';
 
@@ -149,34 +113,32 @@ export function BusinessPlanForm() {
       businessName: '',
       industry: '',
       country: 'Bangladesh',
-      targetAudience: '',
+      city: '',
+      businessType: '',
+      targetCustomer: '',
       problem: '',
       solution: '',
       revenueModel: '',
       fundingNeed: '',
-      planDepth: 'pro',
+      founderBackground: '',
+      planDepth: 'investor',
     },
   });
 
   const onSubmit = (data: FormData) => {
-    if (!user) return;
-    
     setError(null);
     setResult(null);
-    setFormValues(data);
 
     startTransition(async () => {
       try {
-        const aiResult = await generateBusinessPlanMock(data);
-        setResult(aiResult);
-        
-        const planRef = collection(firestore, `users/${user.uid}/businessPlans`);
-        await addDoc(planRef, {
-          userId: user.uid,
-          ...data,
-          ...aiResult,
-          createdAt: serverTimestamp(),
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+            if (value) {
+                formData.append(key, value);
+            }
         });
+        const aiResult = await generateBusinessPlanAction(formData);
+        setResult(aiResult);
 
       } catch (e) {
         console.error(e);
@@ -201,8 +163,8 @@ export function BusinessPlanForm() {
       });
       return;
     }
-    if (result && formValues) {
-      downloadBusinessPlanDocx(result, formValues);
+    if (result && form.getValues().businessName) {
+      downloadBusinessPlanDocx(result.planText, form.getValues().businessName);
     }
   };
 
@@ -237,28 +199,32 @@ export function BusinessPlanForm() {
                         <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem><FormLabel>Business Name</FormLabel><FormControl><Input placeholder="e.g., Spark Innovators Ltd." {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="industry" render={({ field }) => ( <FormItem><FormLabel>Industry / Sector</FormLabel><FormControl><Input placeholder="e.g., Tech Education, SaaS, E-commerce" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="country" render={({ field }) => ( <FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="targetAudience" render={({ field }) => ( <FormItem><FormLabel>Target Audience</FormLabel><FormControl><Textarea placeholder="e.g., early-stage founders, SMEs, local entrepreneurs" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>City (Optional)</FormLabel><FormControl><Input placeholder="e.g., Dhaka" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem><FormLabel>Business Type (Optional)</FormLabel><FormControl><Input placeholder="e.g., SaaS, E-commerce, Service" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="targetCustomer" render={({ field }) => ( <FormItem><FormLabel>Target Customer</FormLabel><FormControl><Textarea placeholder="e.g., early-stage founders, SMEs, local entrepreneurs" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="problem" render={({ field }) => ( <FormItem><FormLabel>Problem Statement</FormLabel><FormControl><Textarea placeholder="What main problem are you solving?" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="solution" render={({ field }) => ( <FormItem><FormLabel>Solution Overview</FormLabel><FormControl><Textarea placeholder="How are you solving this problem?" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="revenueModel" render={({ field }) => ( <FormItem><FormLabel>Revenue Model</FormLabel><FormControl><Input placeholder="e.g., subscription, commission, B2B service" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="fundingNeed" render={({ field }) => ( <FormItem><FormLabel>Funding Need (Optional)</FormLabel><FormControl><Input placeholder="e.g., $10k for MVP, $50k for seed round" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="founderBackground" render={({ field }) => ( <FormItem><FormLabel>Founder Background (Optional)</FormLabel><FormControl><Textarea placeholder="Briefly describe the founder's experience and strengths" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField
                             control={form.control}
                             name="planDepth"
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>Plan depth</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select plan depth" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="quick">Quick summary</SelectItem>
-                                    <SelectItem value="pro">Investor-ready (recommended)</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <select
+                                  {...field}
+                                  name="planDepth"
+                                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                                  defaultValue="investor"
+                                >
+                                  <option value="quick">Quick summary</option>
+                                  <option value="investor">Investor-ready (full plan)</option>
+                                </select>
+                                <p className="text-xs text-muted-foreground">
+                                  Quick summary = ছোট overview. Investor-ready = লম্বা, full investor plan.
+                                </p>
                                 <FormMessage />
                                 </FormItem>
                             )}
@@ -270,11 +236,6 @@ export function BusinessPlanForm() {
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Generate Business Plan
                     </Button>
-                    {result && (
-                        <Button variant="outline" onClick={() => router.push('/')}>
-                            Back to Dashboard
-                        </Button>
-                    )}
                 </div>
                 </form>
             </Form>
@@ -294,19 +255,14 @@ export function BusinessPlanForm() {
               </Card>
             )}
 
-            {result && formValues && (
+            {result && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Generated Business Plan</CardTitle>
+                        <CardTitle>{form.getValues().businessName}</CardTitle>
                         <CardDescription>Here is the AI-generated plan for your business.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <ResultSection title="Executive Summary" content={result.executiveSummary} />
-                        <ResultSection title="Market Analysis" content={result.marketAnalysis} />
-                        <ResultSection title="Marketing Plan" content={result.marketingPlan} />
-                        <ResultSection title="Operations Plan" content={result.operationsPlan} />
-                        <ResultSection title="Financial Overview" content={result.financialOverview} />
-                        <ResultSection title="Next Steps" content={result.nextSteps} />
+                    <CardContent className="prose max-w-none dark:prose-invert">
+                        <ReactMarkdown>{result.planText}</ReactMarkdown>
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row gap-2">
                         <div className="w-full">
@@ -341,3 +297,5 @@ export function BusinessPlanForm() {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -16,108 +17,141 @@ export type BusinessPlanInput = {
   revenueModel: string;
   fundingNeed?: string;
   founderBackground?: string;
-  planDepth?: "quick" | "pro";
+  planDepth?: string; // "quick" | "investor"
 };
 
+const BASE_SYSTEM_PROMPT = `
+You are a senior startup consultant and business plan writer.
 
-export async function generateBusinessPlan(data: any) {
+You must strictly follow the requested template.
+Do NOT mix the quick summary template and the investor-ready template.
+Do NOT add or remove top-level sections that are not in the template.
+`;
+
+const QUICK_TEMPLATE = `
+Generate a SHORT business plan summary.
+
+You MUST use EXACTLY these 5 top-level headings, in this order:
+
+1) ## Business Overview
+2) ## Problem & Solution
+3) ## Target Customers
+4) ## Simple Revenue Model
+5) ## Next 3 Action Steps
+
+Rules:
+- Each section should be 3–6 short bullet points or 1–2 short paragraphs.
+- Total length should be around 600–800 words maximum.
+- Do NOT include any other headings outside these 5.
+- Keep the tone simple, founder-friendly and practical.
+`;
+
+const INVESTOR_TEMPLATE = `
+Generate a FULL INVESTOR-READY business plan.
+
+You MUST use EXACTLY these 18 top-level headings, in this order:
+
+1) ## Executive Summary
+2) ## Company Description
+3) ## Mission & Vision
+4) ## Founder Background
+5) ## Problem Statement
+6) ## Market Opportunity (TAM / SAM / SOM)
+7) ## Target Customer Persona
+8) ## Competitor Analysis
+9) ## Unique Value Proposition
+10) ## Product / Service Offering
+11) ## Business Model & Revenue Streams
+12) ## Go-To-Market (GTM) Strategy
+13) ## Marketing Strategy
+14) ## Operations & Team Plan
+15) ## 3–5 Year Financial Projection
+16) ## Funding Requirements & Use of Funds
+17) ## Key Risks & Mitigation
+18) ## Roadmap & Milestones
+
+Rules:
+- Use all 18 sections. Do NOT skip or merge them.
+- For "Competitor Analysis", include at least 3 competitors and compare them in bullet/table style.
+- For "Financial Projection", include a simple Year 1 / Year 2 / Year 3 revenue & cost breakdown.
+- If country is Bangladesh, mention RJSC, trade license, TIN, VAT in relevant sections (not as legal advice).
+- If country is USA, mention LLC, EIN, state registration, sales tax basics in relevant sections (not as legal advice).
+- Tone must be professional, structured, and investor-friendly.
+- Length should feel like a long, detailed document (roughly 2000+ words if enough info is provided).
+`;
+
+export async function generateBusinessPlan(input: BusinessPlanInput): Promise<string> {
   const {
     businessName,
-    sector,
+    industry,
     country,
-    description,
+    city,
+    businessType,
     targetCustomer,
+    problem,
+    solution,
     revenueModel,
-    competitors,
-    planDepth
-  } = data;
+    fundingNeed,
+    founderBackground,
+    planDepth,
+  } = input;
 
-  // ---- DEPTH-BASED PROMPT ----
-  let depthPrompt = "";
+  const depthRaw = (planDepth || "").toLowerCase().trim();
 
-  if (planDepth === "quick") {
-    depthPrompt = `
-Generate a short 1–2 page lightweight business plan.
-Sections required:
-1. Problem
-2. Solution
-3. Target Customer
-4. Revenue Model
-5. Competitor Overview
-6. Next Steps
-Keep it concise and easy to read.
+  // Only "quick" is quick. Everything else will use investor template.
+  const isQuick = depthRaw === "quick";
+
+  const scenario = `
+Business Name: ${businessName || "N/A"}
+Industry / Sector: ${industry || "N/A"}
+Country: ${country || "N/A"}
+City / Region: ${city || "N/A"}
+Business Type: ${businessType || "N/A"}
+
+Target Customer:
+${targetCustomer || "N/A"}
+
+Problem:
+${problem || "N/A"}
+
+Solution:
+${solution || "N/A"}
+
+Revenue Model:
+${revenueModel || "N/A"}
+
+Funding Need:
+${fundingNeed || "N/A"}
+
+Founder Background:
+${founderBackground || "N/A"}
 `;
-  }
 
-  if (planDepth === "standard") {
-    depthPrompt = `
-Generate a mid-level detailed business plan (4–6 pages).
-Sections required:
-1. Executive Summary
-2. Problem & Opportunity
-3. Product/Service Description
-4. Market Research & Target Customer
-5. Competitors Breakdown
-6. Business Model & Monetization
-7. Go-to-Market Strategy
-8. Marketing Plan
-9. Team & Operations Plan
-10. Risk Analysis
-11. 12-Month Roadmap
-`;
-  }
+  const userPrompt = `
+You will now generate a ${isQuick ? "QUICK SUMMARY (5 sections only)" : "FULL INVESTOR-READY PLAN (18 sections)"}.
 
-  if (planDepth === "investor") {
-    depthPrompt = `
-Generate a full **investor-ready business plan (10–15 pages)**.
-STRICTLY include the following 15 sections:
+Here is the business context:
+${scenario}
 
-1. Executive Summary  
-2. Founder Background  
-3. Vision & Mission  
-4. Problem (with data)  
-5. Market Opportunity (TAM, SAM, SOM)  
-6. Product/Service + Unique Value Proposition  
-7. Business Model & Pricing  
-8. Traction (or expected traction if new)  
-9. Competitor Matrix (table-format text)  
-10. GTM Strategy (step-by-step)  
-11. Marketing Strategy (digital + offline)  
-12. Financial Projection (3 years, table text)  
-13. Funding Ask & Use of Funds  
-14. Risk Factors & Mitigation  
-15. Long-Term Roadmap (3 years)  
+Now follow this template STRICTLY:
 
-Write in clear, structured, investor-friendly tone.
-Make it long and detailed.
-`;
-  }
-
-  const prompt = `
-You are a professional startup business plan writer.
-
-Generate a business plan based on the following inputs:
-
-Business Name: ${businessName}
-Industry: ${sector}
-Country: ${country}
-Business Description: ${description}
-Target Customer: ${targetCustomer}
-Revenue Model: ${revenueModel}
-Competitors: ${competitors}
-
-${depthPrompt}
-
-Return clean markdown formatting.
+${isQuick ? QUICK_TEMPLATE : INVESTOR_TEMPLATE}
 `;
 
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "You are a senior startup consultant." },
-      { role: "user", content: prompt }
+      { role: "system", content: BASE_SYSTEM_PROMPT },
+      { role: "user", content: userPrompt },
     ],
+    temperature: 0.6,
+    max_tokens: isQuick ? 900 : 2800,
   });
 
-  return completion.choices[0].message?.content || "No result.";
+  return (
+    completion.choices?.[0]?.message?.content ??
+    "Sorry, I could not generate a business plan. Please try again."
+  );
 }
+
+    
