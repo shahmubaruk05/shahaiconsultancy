@@ -1,52 +1,27 @@
-'use server';
+"use client";
 
-import { AskShahChat } from '@/components/tools/ask-shah-chat';
-import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getDocs, collection, query, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase-admin';
-
-async function getOrCreateDefaultConversationAction() {
-    // This server-side action ensures a default conversation exists.
-    // In a real app, you'd get the user ID from a session.
-    // This is a placeholder until full session management is implemented.
-    const userId = 'anonymous'; // Replace with actual user ID from auth session
-
-    if (!userId) {
-        return { conversationId: null, messages: [] };
-    }
-
-    const convosRef = collection(db, 'users', userId, 'conversations');
-    const q = query(convosRef, orderBy('updatedAt', 'desc'), limit(1));
-
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        const docRef = await addDoc(convosRef, {
-            userId: userId,
-            title: 'Default Conversation',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-        });
-        return { conversationId: docRef.id, messages: [] };
-    }
-    
-    const conversationDoc = snapshot.docs[0];
-    return { conversationId: conversationDoc.id, messages: [] }; // messages are loaded client-side
-}
-
-
-export default async function AskShahPage() {
-    const { conversationId } = await getOrCreateDefaultConversationAction();
-    return (
-        <div className="flex flex-col h-[calc(100vh-theme(spacing.24))]">
-            <div className='mb-4'>
-                <CardTitle className="text-2xl">Ask Shah</CardTitle>
-                <CardDescription>
-                    Your AI-powered chatbot assistant for advice on startups, funding, licensing, tax, strategy, business and marketing.
-                </CardDescription>
-            </div>
-            <div className="flex-1">
-                <AskShahChat initialConversationId={conversationId} />
-            </div>
-        </div>
-    );
+export default function AskShahMaintenancePage() {
+  return (
+    <div className="max-w-xl mx-auto px-4 py-12">
+      <h1 className="text-2xl md:text-3xl font-extrabold mb-3">
+        Ask Shah – Coming Back Soon
+      </h1>
+      <p className="text-sm md:text-base text-slate-600 mb-4">
+        Ask Shah (AI chat for startup, funding, company formation and business questions)
+        is temporarily under maintenance. All other tools and services are working normally.
+      </p>
+      <p className="text-sm text-slate-600 mb-2">
+        You can still use:
+      </p>
+      <ul className="list-disc list-inside text-sm text-slate-600 space-y-1 mb-4">
+        <li>Business Strategy Generator</li>
+        <li>Startup Idea Validator</li>
+        <li>Business Plan & Company Profile Generator</li>
+        <li>Company Formation Guide (Bangladesh & USA)</li>
+      </ul>
+      <p className="text-xs text-slate-500">
+        If you have an urgent question about company registration or funding, please use the contact form or WhatsApp listed on the site.
+      </p>
+    </div>
+  );
 }
