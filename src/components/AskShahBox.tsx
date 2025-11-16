@@ -20,7 +20,13 @@ export default function AskShahBox({
   initialMode,
   initialConversationId,
 }: AskShahBoxProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      content:
+        "স্বাগতম! আমি শাহ মুবারুক – আপনার স্টার্টআপ কোচ। 😊\n\nআপনি চাইলে জানতে পারেন:\n- বাংলাদেশে বা USA-তে company registration\n- Startup funding, pitch deck, business plan\n- Tax, licensing, বা business strategy\n\nআজকে আপনাকে কোন বিষয়ে সাহায্য করতে পারি?",
+    },
+  ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -72,7 +78,7 @@ export default function AskShahBox({
       content: input.trim(),
     };
 
-    const wasFirstMessage = messages.length === 0;
+    const wasFirstMessage = messages.length === 1; // Now checking for 1 because of welcome message
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
@@ -206,17 +212,6 @@ export default function AskShahBox({
           ref={scrollRef}
           className="flex-1 overflow-y-auto px-4 py-3 space-y-3 chat-scroll"
         >
-          {messages.length === 0 && (
-            <div className="text-xs text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-lg px-3 py-3">
-              উদাহরণ স্বরূপ আপনি জিজ্ঞেস করতে পারেন:
-              <ul className="list-disc ml-5 mt-1 space-y-0.5">
-                <li>“বাংলাদেশে ১০ লাখ টাকার company register করতে কত খরচ হবে?”</li>
-                <li>“USA LLC খুলতে কি কি ডকুমেন্ট লাগবে?”</li>
-                <li>“আমার food delivery startup-এর জন্য ৩০ দিনের marketing plan দিন।”</li>
-              </ul>
-            </div>
-          )}
-
           {messages.map((msg, idx) => {
             const isUser = msg.role === "user";
 
@@ -261,9 +256,7 @@ export default function AskShahBox({
                           <ul className="list-disc ml-4 mb-2">{children}</ul>
                         ),
                         ol: ({ children }) => (
-                          <ol className="list-decimal ml-4 mb-2">
-                            {children}
-                          </ol>
+                          <ol className="list-decimal ml-4 mb-2">{children}</ol>
                         ),
                         li: ({ children }) => (
                           <li className="mb-0.5">{children}</li>
