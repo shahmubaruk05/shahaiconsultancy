@@ -9,6 +9,7 @@ export default function PitchDeckPage() {
   const [isPending, startTransition] = useTransition();
   const [copying, setCopying] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [pptxDownloading, setPptxDownloading] = useState(false);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -46,6 +47,46 @@ export default function PitchDeckPage() {
       URL.revokeObjectURL(url);
     } finally {
       setDownloading(false);
+    }
+  }
+
+  async function handleDownloadPptx() {
+    if (!result) return;
+    try {
+      setPptxDownloading(true);
+
+      const startupNameInput = (
+        document.querySelector('input[name="startupName"]') as HTMLInputElement | null
+      )?.value;
+
+      const res = await fetch("/api/pitch-deck/pptx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: result,
+          startupName: startupNameInput || "pitch-deck",
+        }),
+      });
+
+      if (!res.ok) {
+        alert("PPTX তৈরি করতে সমস্যা হয়েছে। পরে আবার চেষ্টা করুন।");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = (startupNameInput || "pitch-deck") + "-pitch-deck.pptx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+      alert("PPTX download করতে সমস্যা হয়েছে।");
+    } finally {
+      setPptxDownloading(false);
     }
   }
 
@@ -237,6 +278,14 @@ export default function PitchDeckPage() {
                 className="px-3 py-1.5 rounded-md bg-slate-900 text-xs font-medium text-white hover:bg-black disabled:opacity-60"
               >
                 {downloading ? "Downloading..." : "Download .md"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadPptx}
+                disabled={pptxDownloading}
+                className="px-3 py-1.5 rounded-md bg-blue-600 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                {pptxDownloading ? "Creating PPTX..." : "Download PPTX"}
               </button>
             </div>
           </div>
