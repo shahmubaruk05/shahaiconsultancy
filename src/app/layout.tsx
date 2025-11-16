@@ -3,17 +3,27 @@ import './globals.css';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
+import AskShahFloatingWidget from "@/components/AskShahFloatingWidget";
+import { getOrCreateConversation } from "./tools/ask-shah/actions";
 
 export const metadata: Metadata = {
   title: 'Shah Mubaruk – Your Startup Coach',
   description: 'Turn Your Idea Into an Investment-Ready Business.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+    let conversationInfo: { mode: "guest" | "user"; conversationId: string | null } | null = null;
+
+    try {
+      conversationInfo = await getOrCreateConversation();
+    } catch (e) {
+      console.error("Failed to load Ask Shah conversation info in RootLayout:", e);
+    }
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -28,6 +38,14 @@ export default function RootLayout({
           </AppLayout>
           <Toaster />
         </FirebaseClientProvider>
+        
+        {/* Global Ask Shah floating widget, visible on all pages */}
+        {conversationInfo && (
+            <AskShahFloatingWidget
+              initialMode={conversationInfo.mode}
+              initialConversationId={conversationInfo.conversationId}
+            />
+          )}
       </body>
     </html>
   );
