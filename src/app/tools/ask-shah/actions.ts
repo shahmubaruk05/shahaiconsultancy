@@ -1,57 +1,122 @@
-'use server';
+"use server";
 
-import {addDoc, collection, serverTimestamp, getDocs, query, orderBy, limit} from 'firebase/firestore';
-import { db } from '@/lib/firebase-admin';
+import { admin } from "@/lib/firebase-admin";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  getDocs,
+} from "firebase/firestore";
+import { headers } from 'next/headers';
 
-// This is a placeholder for a more robust user session management.
-async function getUserId(): Promise<string> {
-  // In a real app, you'd get this from the session.
-  // For now, let's assume a mock user or handle unauthenticated state.
-  // This part needs to be connected to your actual authentication logic.
-  // For demonstration with Firebase Admin SDK, we can't get client-side auth.
-  // Let's assume you pass the UID from the client or have a session.
-  // This is a placeholder and will need proper implementation.
-  try {
-    // This is not a reliable way to get the current user in a server action
-    // without passing the session token.
-    // For this prototype, we'll proceed with a mock or require UID passing.
-    // A proper implementation would use NextAuth.js or verify the ID token.
-    return 'anonymous'; // This MUST be replaced with real auth logic
-  } catch (e) {
-    // console.error('Authentication error:', e);
-    throw new Error('User not authenticated');
-  }
+// This is a placeholder for a real session management solution.
+// For this environment, we will assume no user is logged in for server actions
+// as we can't securely access client-side auth state without a proper session library.
+// In a production app with NextAuth.js or similar, this would be implemented.
+async function getSessionUser() {
+    // This is a simplified mock. A real implementation would verify a session token.
+    return null;
 }
 
-export async function getOrCreateDefaultConversationAction() {
-    // This server-side action ensures a default conversation exists.
-    // In a real app, you'd get the user ID from a session.
-    // This is a placeholder until full session management is implemented.
-    const userId = 'anonymous'; // Replace with actual user ID from auth session
+// NOTE: This server-side getOrCreateConversation will only work for guests
+// because we cannot securely get the user on the server without a proper auth setup
+// like NextAuth.js. The client-side will handle logged-in user chat.
+export async function getOrCreateConversation() {
+  const user = await getSessionUser();
 
-    if (!userId) {
-        return { conversationId: null, messages: [] };
-    }
-    
-    // Ensure db is initialized
-    if (!db) {
-        throw new Error("Firestore Admin SDK is not initialized. Check server credentials.");
-    }
+  // Guest user → no conversation saved
+  if (!user) {
+    return {
+      mode: "guest",
+      conversationId: null,
+      messages: [],
+    };
+  }
 
-    const convosRef = collection(db, 'users', userId, 'conversations');
-    const q = query(convosRef, orderBy('updatedAt', 'desc'), limit(1));
+  // This part is for a hypothetical future where server-side auth is implemented.
+  // It won't be reached in the current setup.
+  const { db } = await getFirebaseAdmin();
+  if (!db) {
+    return { mode: 'guest', conversationId: null, messages: [] };
+  }
+  const q = query(
+    collection(db, "users", user.uid, "conversations"),
+    orderBy("createdAt", "asc")
+  );
+  const snap = await getDocs(q);
 
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-        const docRef = await addDoc(convosRef, {
-            userId: userId,
-            title: 'Default Conversation',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-        });
-        return { conversationId: docRef.id, messages: [] };
+  if (snap.empty) {
+    const docRef = await addDoc(
+      collection(db, "users", user.uid, "conversations"),
+      {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    );
+    return {
+      mode: "user",
+      conversationId: docRef.id,
+      messages: [],
+    };
+  }
+
+  const first = snap.docs[0];
+  return {
+    mode: "user",
+    conversationId: first.id,
+    messages: [],
+  };
+}
+
+export async function sendMessageAction({
+  conversationId,
+  message,
+}: {
+  conversationId: string | null;
+  message: string;
+}) {
+  const user = await getSessionUser();
+
+  // guest mode — do not save messages
+  if (!user) {
+    return {
+      saved: false,
+    };
+  }
+
+  if (!conversationId) return { saved: false };
+  
+  const { db } = await getFirebaseAdmin();
+  if (!db) return { saved: false };
+
+  await addDoc(
+    collection(
+      db,
+      "users",
+      user.uid,
+      "conversations",
+      conversationId,
+      "messages"
+    ),
+    {
+      role: "user",
+      content: message,
+      createdAt: serverTimestamp(),
     }
-    
-    const conversationDoc = snapshot.docs[0];
-    return { conversationId: conversationDoc.id, messages: [] }; // messages are loaded client-side
+  );
+
+  return {
+    saved: true,
+  };
+}
+
+// Helper to initialize admin SDK on demand
+async function getFirebaseAdmin() {
+  if (admin.apps.length > 0) {
+    return { auth: admin.auth(), db: admin.firestore() };
+  }
+  return { auth: null, db: null };
 }
