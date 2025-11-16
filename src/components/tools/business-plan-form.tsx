@@ -33,6 +33,7 @@ import { Input } from '../ui/input';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { saveAs } from 'file-saver';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const formSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters.'),
@@ -43,6 +44,7 @@ const formSchema = z.object({
   solution: z.string().min(10, 'Please describe your solution.'),
   revenueModel: z.string().min(3, 'Please describe your revenue model.'),
   fundingNeed: z.string().optional(),
+  planDepth: z.enum(['quick', 'pro']),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -152,6 +154,7 @@ export function BusinessPlanForm() {
       solution: '',
       revenueModel: '',
       fundingNeed: '',
+      planDepth: 'pro',
     },
   });
 
@@ -239,6 +242,27 @@ export function BusinessPlanForm() {
                         <FormField control={form.control} name="solution" render={({ field }) => ( <FormItem><FormLabel>Solution Overview</FormLabel><FormControl><Textarea placeholder="How are you solving this problem?" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="revenueModel" render={({ field }) => ( <FormItem><FormLabel>Revenue Model</FormLabel><FormControl><Input placeholder="e.g., subscription, commission, B2B service" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="fundingNeed" render={({ field }) => ( <FormItem><FormLabel>Funding Need (Optional)</FormLabel><FormControl><Input placeholder="e.g., $10k for MVP, $50k for seed round" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField
+                            control={form.control}
+                            name="planDepth"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Plan depth</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select plan depth" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="quick">Quick summary</SelectItem>
+                                    <SelectItem value="pro">Investor-ready (recommended)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     </CardContent>
                 </Card>
                  <div className="flex justify-between items-center">
