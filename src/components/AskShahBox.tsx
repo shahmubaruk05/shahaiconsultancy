@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
-import { sendMessageAction } from "@/app/tools/ask-shah/actions";
+import { sendMessageAction, saveLeadAction } from "@/app/tools/ask-shah/actions";
 
 type Message = {
   role: "user" | "assistant";
@@ -22,14 +23,46 @@ export default function AskShahBox({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Guest lead form state
+  const [leadName, setLeadName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [leadSaving, setLeadSaving] = useState(false);
+  const [leadSaved, setLeadSaved] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(initialMode === "guest");
+
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // always scroll to bottom when new messages come
+  // auto scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
+
+  async function handleLeadSubmit() {
+    if (!leadName.trim() || !leadEmail.trim() || !leadPhone.trim()) {
+      alert("Please enter name, email and phone.");
+      return;
+    }
+    setLeadSaving(true);
+    try {
+      await saveLeadAction({
+        name: leadName.trim(),
+        email: leadEmail.trim(),
+        phone: leadPhone.trim(),
+        topic: "Ask Shah guest chat",
+      });
+      setLeadSaved(true);
+      setShowLeadForm(false);
+    } catch (e) {
+      console.error("Failed to save lead", e);
+      alert("Lead save করতে সমস্যা হয়েছে, পরে আবার চেষ্টা করুন।");
+    } finally {
+      setLeadSaving(false);
+    }
+  }
 
   async function handleSend() {
     if (!input.trim() || loading) return;
@@ -39,12 +72,24 @@ export default function AskShahBox({
       content: input.trim(),
     };
 
+    const wasFirstMessage = messages.length === 0;
+
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
 
     // Save message only for logged-in users
     if (initialMode === "user" && initialConversationId) {
+      // On first message, also create a lead entry for logged-in user
+      if (wasFirstMessage) {
+        await saveLeadAction({
+          name: "",
+          email: "",
+          phone: "",
+          topic: userMessage.content,
+        });
+      }
+
       await sendMessageAction({
         conversationId: initialConversationId,
         message: userMessage.content,
@@ -71,13 +116,13 @@ export default function AskShahBox({
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
+      console.error("Ask Shah error:", error);
       const assistantMessage: Message = {
         role: "assistant",
         content:
-          "Server error হয়েছে। দয়া করে কিছুক্ষণ পর আবার চেষ্টা করুন।",
+          "Server error হয়েছে। দয়া করে কিছুক্ষণ পর আবার চেষ্টা করুন।",
       };
       setMessages((prev) => [...prev, assistantMessage]);
-      console.error("Ask Shah error:", error);
     } finally {
       setLoading(false);
     }
@@ -92,6 +137,7 @@ export default function AskShahBox({
 
   return (
     <div className="w-full max-w-3xl mx-auto">
+      {/* Header */}
       <div className="mb-4">
         <h1 className="text-2xl font-semibold text-slate-900">Ask Shah</h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -110,6 +156,51 @@ export default function AskShahBox({
       </div>
 
       <div className="border rounded-xl bg-white shadow-sm flex flex-col h-[520px]">
+        {/* Lead form for guest */}
+        {initialMode === "guest" && showLeadForm && !leadSaved && (
+          <div className="px-4 pt-3 pb-2 border-b bg-slate-50">
+            <p className="text-xs text-slate-700 mb-2">
+              আপনার জন্য personalized guide তৈরি করতে আপনার কিছু তথ্য দরকার:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+              <input
+                className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                placeholder="নাম"
+                value={leadName}
+                onChange={(e) => setLeadName(e.target.value)}
+              />
+              <input
+                className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                placeholder="ইমেইল"
+                value={leadEmail}
+                onChange={(e) => setLeadEmail(e.target.value)}
+              />
+              <input
+                className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs"
+                placeholder="মোবাইল নম্বর"
+                value={leadPhone}
+                onChange={(e) => setLeadPhone(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={handleLeadSubmit}
+                disabled={leadSaving}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium disabled:opacity-60"
+              >
+                {leadSaving ? "Saving..." : "Submit info"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLeadForm(false)}
+                className="text-[11px] text-slate-500 underline"
+              >
+                পরে দেবো (skip)
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Messages */}
         <div
           ref={scrollRef}
@@ -143,7 +234,7 @@ export default function AskShahBox({
                   </div>
                 )}
 
-                <div className={"max-w-[80%]"}>
+                <div className="flex flex-col max-w-[80%]">
                   <div
                     className={
                       "rounded-2xl px-3 py-2 text-sm leading-relaxed " +
@@ -170,7 +261,9 @@ export default function AskShahBox({
                           <ul className="list-disc ml-4 mb-2">{children}</ul>
                         ),
                         ol: ({ children }) => (
-                          <ol className="list-decimal ml-4 mb-2">{children}</ol>
+                          <ol className="list-decimal ml-4 mb-2">
+                            {children}
+                          </ol>
                         ),
                         li: ({ children }) => (
                           <li className="mb-0.5">{children}</li>
@@ -184,30 +277,30 @@ export default function AskShahBox({
                     </ReactMarkdown>
                   </div>
 
-                  {/* Actions/CTA cards */}
+                  {/* CTA cards under assistant messages */}
                   {!isUser && msg.actions && msg.actions.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {msg.actions.map((act: any, actIdx: number) => (
+                    <div className="mt-2 space-y-3">
+                      {msg.actions.map((act: any, idx2: number) => (
                         <div
-                          key={actIdx}
+                          key={idx2}
                           className="p-3 border rounded-lg bg-white shadow-sm"
                         >
-                            {act.type?.startsWith("contact-") && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium mb-1">
-                                    Contact Option
-                                </span>
-                            )}
-                          <h4 className="font-semibold text-slate-800 text-sm">
+                          {act.type?.startsWith("contact-") && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium mb-1">
+                              Contact Option
+                            </span>
+                          )}
+                          <h4 className="font-semibold text-slate-800">
                             {act.title}
                           </h4>
-                          <p className="text-xs text-slate-600 mt-1">
+                          <p className="text-sm text-slate-600 mt-1">
                             {act.description}
                           </p>
                           <a
                             href={act.buttonLink}
                             target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block mt-3 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
+                            rel="noreferrer"
+                            className="inline-block mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium"
                           >
                             {act.buttonText}
                           </a>
@@ -217,7 +310,7 @@ export default function AskShahBox({
                   )}
                 </div>
 
-                {/* user avatar on right (optional, small circle) */}
+                {/* user avatar */}
                 {isUser && (
                   <div className="w-7 h-7 rounded-full bg-slate-300 text-slate-800 flex items-center justify-center text-[10px] font-medium ml-2 mt-1 flex-shrink-0">
                     You
@@ -245,7 +338,7 @@ export default function AskShahBox({
         {/* Input */}
         <div className="border-t px-4 py-3 flex gap-2">
           <input
-            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 focus:border-blue-500"
             placeholder="আপনার প্রশ্ন লিখুন…"
             value={input}
             onChange={(e) => setInput(e.target.value)}

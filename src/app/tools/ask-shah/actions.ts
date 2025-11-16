@@ -1,8 +1,8 @@
+
 "use server";
 
 import { admin } from "@/lib/firebase-admin";
 import {
-  getFirestore,
   collection,
   addDoc,
   serverTimestamp,
@@ -10,7 +10,8 @@ import {
   orderBy,
   getDocs,
 } from "firebase/firestore";
-import { headers } from 'next/headers';
+import { headers } from "next/headers";
+
 
 // This is a placeholder for a real session management solution.
 // For this environment, we will assume no user is logged in for server actions
@@ -21,27 +22,34 @@ async function getSessionUser() {
     return null;
 }
 
-// NOTE: This server-side getOrCreateConversation will only work for guests
-// because we cannot securely get the user on the server without a proper auth setup
-// like NextAuth.js. The client-side will handle logged-in user chat.
+// Helper to initialize admin SDK on demand
+async function getFirebaseAdmin() {
+  if (admin.apps.length > 0) {
+    return { auth: admin.auth(), db: admin.firestore() };
+  }
+  return { auth: null, db: null };
+}
+
+
 export async function getOrCreateConversation() {
   const user = await getSessionUser();
 
   // Guest user → no conversation saved
   if (!user) {
     return {
-      mode: "guest",
+      mode: "guest" as const,
       conversationId: null,
       messages: [],
     };
   }
 
-  // This part is for a hypothetical future where server-side auth is implemented.
-  // It won't be reached in the current setup.
+  // Logged-in user → load or create a default conversation
   const { db } = await getFirebaseAdmin();
   if (!db) {
-    return { mode: 'guest', conversationId: null, messages: [] };
+    // Return guest mode if db is not available
+    return { mode: 'guest' as const, conversationId: null, messages: [] };
   }
+
   const q = query(
     collection(db, "users", user.uid, "conversations"),
     orderBy("createdAt", "asc")
@@ -57,7 +65,7 @@ export async function getOrCreateConversation() {
       }
     );
     return {
-      mode: "user",
+      mode: "user" as const,
       conversationId: docRef.id,
       messages: [],
     };
@@ -65,7 +73,7 @@ export async function getOrCreateConversation() {
 
   const first = snap.docs[0];
   return {
-    mode: "user",
+    mode: "user" as const,
     conversationId: first.id,
     messages: [],
   };
@@ -113,10 +121,36 @@ export async function sendMessageAction({
   };
 }
 
-// Helper to initialize admin SDK on demand
-async function getFirebaseAdmin() {
-  if (admin.apps.length > 0) {
-    return { auth: admin.auth(), db: admin.firestore() };
+export async function saveLeadAction(form: {
+  name: string;
+  email: string;
+  phone: string;
+  topic?: string;
+}) {
+  const user = await getSessionUser();
+  const { db } = await getFirebaseAdmin();
+
+  if (!db) {
+    throw new Error("Database not available");
   }
-  return { auth: null, db: null };
+
+  const baseData = {
+    name: form.name || "",
+    email: form.email || "",
+    phone: form.phone || "",
+    topic: form.topic || "",
+    createdAt: serverTimestamp(),
+    mode: user ? "user" : "guest",
+    userId: user ? user.uid : null,
+  };
+
+  if (user) {
+    // Logged-in user lead under their user doc
+    await addDoc(collection(db, "users", user.uid, "askShahLeads"), baseData);
+  } else {
+    // Guest lead in a shared collection
+    await addDoc(collection(db, "askShahGuestLeads"), baseData);
+  }
+
+  return { ok: true };
 }
