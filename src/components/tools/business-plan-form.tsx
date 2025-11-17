@@ -101,8 +101,6 @@ export function BusinessPlanForm() {
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<{ planText: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-  const [isGeneratingPreviewImage, setIsGeneratingPreviewImage] = useState(false);
   
   const userDocRef = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -158,7 +156,6 @@ export function BusinessPlanForm() {
   const onSubmit = (data: FormData) => {
     setError(null);
     setResult(null);
-    setPreviewImageUrl(null);
 
     startTransition(async () => {
       try {
@@ -170,30 +167,6 @@ export function BusinessPlanForm() {
         });
         const aiResult = await generateBusinessPlanAction(formData);
         setResult(aiResult);
-
-        if (plan === 'free' && aiResult.planText) {
-          setIsGeneratingPreviewImage(true);
-          try {
-            const res = await fetch("/api/preview-image", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                markdown: aiResult.planText,
-                title: "Business Plan Preview",
-              }),
-            });
-      
-            if (!res.ok) throw new Error("Failed to generate preview image");
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            setPreviewImageUrl(url);
-          } catch (err) {
-            console.error("Preview image generation failed:", err);
-          } finally {
-            setIsGeneratingPreviewImage(false);
-          }
-        }
-
       } catch (e) {
         console.error(e);
         setError('An unexpected error occurred. Please try again.');
@@ -318,24 +291,9 @@ export function BusinessPlanForm() {
                         <CardDescription>Here is the AI-generated plan for your business.</CardDescription>
                     </CardHeader>
                     <CardContent id="preview-area">
-                        {isPro ? (
-                            <div className={cn("prose max-w-none dark:prose-invert", previewClass)}>
-                                <ReactMarkdown>{result.planText}</ReactMarkdown>
-                            </div>
-                        ) : isGeneratingPreviewImage ? (
-                            <div className="flex justify-center items-center h-64">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                <p className="ml-2 text-muted-foreground">Generating secure preview...</p>
-                            </div>
-                        ) : previewImageUrl ? (
-                            <div className="border rounded-md bg-slate-50 p-2 flex justify-center">
-                                <img src={previewImageUrl} alt="Locked preview of business plan" className="max-w-full h-auto rounded-md shadow-sm" />
-                            </div>
-                        ) : (
-                             <div className={cn("prose max-w-none dark:prose-invert", previewClass)}>
-                                <ReactMarkdown>{result.planText}</ReactMarkdown>
-                            </div>
-                        )}
+                        <div className={cn("prose max-w-none dark:prose-invert", previewClass)}>
+                            <ReactMarkdown>{result.planText}</ReactMarkdown>
+                        </div>
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row gap-2">
                         <div className="w-full">

@@ -76,8 +76,6 @@ export function CompanyProfileForm() {
   const [previewMarkdown, setPreviewMarkdown] = useState<string>("");
   const [activeProfileName, setActiveProfileName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-  const [isGeneratingPreviewImage, setIsGeneratingPreviewImage] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -159,7 +157,6 @@ export function CompanyProfileForm() {
     
     setError(null);
     setPreviewMarkdown("");
-    setPreviewImageUrl(null);
     setActiveProfileName(data.companyName);
     setIsGenerating(true);
 
@@ -183,28 +180,6 @@ export function CompanyProfileForm() {
           depth: data.depth,
           profileMarkdown: profileMarkdown,
       });
-
-      if (!isPro && profileMarkdown) {
-        setIsGeneratingPreviewImage(true);
-        try {
-          const imgRes = await fetch("/api/preview-image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              markdown: profileMarkdown,
-              title: "Company Profile Preview",
-            }),
-          });
-          if (!imgRes.ok) throw new Error("Failed to generate preview image");
-          const blob = await imgRes.blob();
-          const url = URL.createObjectURL(blob);
-          setPreviewImageUrl(url);
-        } catch (imgErr) {
-          console.error("Preview image generation failed:", imgErr);
-        } finally {
-          setIsGeneratingPreviewImage(false);
-        }
-      }
 
     } catch (e: any) {
       console.error("Company profile generation failed:", e);
@@ -375,7 +350,7 @@ export function CompanyProfileForm() {
                                     <p className="text-xs text-muted-foreground">
                                         {profile.createdAt && typeof (profile.createdAt as any).toDate === 'function'
                                           ? new Date((profile.createdAt as any).toDate()).toLocaleDateString()
-                                          : 'Date not available'}
+                                          : 'Draft (no date)'}
                                     </p>
                                 </button>
                             ))}
@@ -399,24 +374,9 @@ export function CompanyProfileForm() {
                             <Skeleton className="h-4 w-full" />
                         </div>
                     ) : previewMarkdown ? (
-                         isPro ? (
-                            <article className={cn("prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert", previewClass)}>
-                               <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
-                            </article>
-                         ) : isGeneratingPreviewImage ? (
-                            <div className="flex justify-center items-center h-64">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                <p className="ml-2 text-muted-foreground">Generating secure preview...</p>
-                            </div>
-                         ) : previewImageUrl ? (
-                            <div className="border rounded-md bg-slate-50 p-2 flex justify-center">
-                                <img src={previewImageUrl} alt="Locked preview of company profile" className="max-w-full h-auto rounded-md shadow-sm" />
-                            </div>
-                         ) : (
-                            <article className={cn("prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert", previewClass)}>
-                               <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
-                            </article>
-                         )
+                        <article className={cn("prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert", previewClass)}>
+                           <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+                        </article>
                     ) : (
                         <div className="text-center text-muted-foreground py-8">
                             <FileText className="h-10 w-10 mx-auto mb-2" />

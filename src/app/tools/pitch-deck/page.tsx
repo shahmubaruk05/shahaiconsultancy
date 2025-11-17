@@ -20,8 +20,6 @@ export default function PitchDeckPage() {
   const [copying, setCopying] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [pptxDownloading, setPptxDownloading] = useState(false);
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-  const [isGeneratingPreviewImage, setIsGeneratingPreviewImage] = useState(false);
   
   const { user, isUserLoading, firestore } = useFirebase();
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
@@ -55,32 +53,9 @@ export default function PitchDeckPage() {
 
   function handleSubmit(formData: FormData) {
     setResult("");
-    setPreviewImageUrl(null);
     startTransition(async () => {
       const r = await generatePitchDeckAction(formData);
       setResult(r.output || "");
-
-      if (plan === 'free' && r.output) {
-        setIsGeneratingPreviewImage(true);
-        try {
-          const res = await fetch("/api/preview-image", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              markdown: r.output,
-              title: "Pitch Deck Preview",
-            }),
-          });
-          if (!res.ok) throw new Error("Failed to generate preview image");
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          setPreviewImageUrl(url);
-        } catch (err) {
-          console.error("Preview image generation failed:", err);
-        } finally {
-          setIsGeneratingPreviewImage(false);
-        }
-      }
     });
   }
 
@@ -377,25 +352,9 @@ export default function PitchDeckPage() {
             )}
           </div>
         
-          {isPro ? (
-            <div className={previewClass}>
-              <PitchDeckViewer content={result} />
-            </div>
-          ) : isGeneratingPreviewImage ? (
-            <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-2 text-muted-foreground">Generating secure preview...</p>
-            </div>
-          ) : previewImageUrl ? (
-            <div className="border rounded-md bg-slate-50 p-2 flex justify-center">
-                <img src={previewImageUrl} alt="Locked preview of pitch deck" className="max-w-full h-auto rounded-md shadow-sm" />
-            </div>
-          ) : (
-            <div className={previewClass}>
-              <PitchDeckViewer content={result} />
-            </div>
-          )}
-
+          <div className={previewClass}>
+            <PitchDeckViewer content={result} />
+          </div>
         </div>
       )}
     </div>
