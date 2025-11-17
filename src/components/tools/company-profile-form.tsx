@@ -93,27 +93,9 @@ async function downloadCompanyProfileDocx(profileMarkdown: string, companyName: 
 
 
 export function CompanyProfileForm() {
-  const { user, isUserLoading } = useFirebase();
+  const { user, isUserLoading, firestore } = useFirebase();
 
-  // Conditional rendering MUST happen before hooks are called.
-  if (isUserLoading) {
-    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
-  }
-
-  if (!user) {
-    return (
-      <Card className="text-center p-8">
-        <CardTitle>Please Log In</CardTitle>
-        <CardDescription className="mt-2 mb-4">You need to be logged in to create a company profile.</CardDescription>
-        <Button asChild>
-          <Link href="/login">Log In</Link>
-        </Button>
-      </Card>
-    );
-  }
-
-  // All hooks must be called unconditionally after the early returns.
-  const { firestore } = useFirebase();
+  // All hooks must be called unconditionally before any early returns.
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [previewMarkdown, setPreviewMarkdown] = useState<string | null>(null);
@@ -149,6 +131,23 @@ export function CompanyProfileForm() {
       depth: 'quick'
     },
   });
+
+  // Conditional rendering must happen after all hooks are called.
+  if (isUserLoading) {
+    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!user) {
+    return (
+      <Card className="text-center p-8">
+        <CardTitle>Please Log In</CardTitle>
+        <CardDescription className="mt-2 mb-4">You need to be logged in to create a company profile.</CardDescription>
+        <Button asChild>
+          <Link href="/login">Log In</Link>
+        </Button>
+      </Card>
+    );
+  }
 
   const onSubmit = (data: FormData) => {
     if (!user || !firestore) return;
@@ -347,3 +346,5 @@ export function CompanyProfileForm() {
     </div>
   );
 }
+
+    
