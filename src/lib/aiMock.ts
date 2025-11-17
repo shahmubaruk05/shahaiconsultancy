@@ -255,6 +255,17 @@ export async function generateCompanyProfileMock(input: CompanyProfileInput): Pr
       socialImpact = sustainability || "";
   }
 
+  // Adjust content based on depth
+  if (depth === 'quick') {
+    mission = '';
+    vision = '';
+    socialImpact = '';
+  } else if (depth === 'investor') {
+    // Add more investor-focused details
+    whyChooseUs += `\n• Strong market traction with a clear path to profitability.\n• Scalable business model with high growth potential.`;
+  }
+
+
   callToAction = `If you are looking for a trusted partner in the ${industry} sector, connect with us today. ${companyName} – powered by ${brandHeader} – is ready to help you grow.`;
 
   const result: CompanyProfileResult = {
@@ -335,5 +346,7 @@ export type BusinessPlanInput = {
       ],
     };
   }
+
+    
 
     
