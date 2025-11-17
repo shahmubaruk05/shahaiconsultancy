@@ -232,13 +232,13 @@ export function BusinessPlanForm() {
                             )}
                         />
                     </CardContent>
+                    <CardFooter>
+                        <Button type="submit" disabled={isPending} size="lg" className="w-full md:w-auto ml-auto">
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Generate Business Plan
+                        </Button>
+                    </CardFooter>
                 </Card>
-                 <div className="flex justify-between items-center">
-                    <Button type="submit" disabled={isPending} size="lg">
-                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Generate Business Plan
-                    </Button>
-                </div>
                 </form>
             </Form>
         </div>
@@ -299,5 +299,3 @@ export function BusinessPlanForm() {
     </div>
   );
 }
-
-    

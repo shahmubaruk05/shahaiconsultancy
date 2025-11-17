@@ -70,6 +70,7 @@ export function CompanyProfileForm() {
   const { user, isUserLoading, firestore } = useFirebase();
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [previewMarkdown, setPreviewMarkdown] = useState<string>("");
   const [activeProfileName, setActiveProfileName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +179,47 @@ export function CompanyProfileForm() {
       downloadCompanyProfileDocx(previewMarkdown, activeProfileName);
     }
   };
+  
+  const handleDownloadPdf = async () => {
+    if (!previewMarkdown) return;
+    setIsDownloadingPdf(true);
+    try {
+      const res = await fetch("/api/company-profile/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profileMarkdown: previewMarkdown,
+          companyName: form.getValues().companyName,
+          industry: form.getValues().industry,
+          country: form.getValues().country,
+        }),
+      });
+      if (!res.ok) throw new Error("PDF generation failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const safeName =
+        (form.getValues().companyName || "company-profile")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "company-profile";
+      a.download = `${safeName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error downloading PDF:", err);
+      toast({
+        variant: "destructive",
+        title: "PDF Download Failed",
+        description: "There was an error generating your PDF. Please try again.",
+      });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
 
   async function downloadCompanyProfileDocx(profileMarkdown: string, companyName: string) {
@@ -276,7 +318,7 @@ export function CompanyProfileForm() {
                                     </div>
                                     <p className="text-xs text-muted-foreground">
                                         {profile.createdAt && typeof (profile.createdAt as any).toDate === 'function'
-                                          ? new Date(profile.createdAt.toDate()).toLocaleDateString()
+                                          ? new Date((profile.createdAt as any).toDate()).toLocaleDateString()
                                           : 'Date not available'}
                                     </p>
                                 </button>
@@ -321,8 +363,9 @@ export function CompanyProfileForm() {
                             >
                                <Download className="mr-2" /> Download as Word (.docx)
                             </Button>
-                             <Button onClick={() => window.print()} variant="outline" className='w-full sm-w-auto' disabled={!previewMarkdown}>
-                               <Printer className="mr-2" /> Print / Save as PDF
+                             <Button onClick={handleDownloadPdf} variant="outline" className='w-full sm:w-auto' disabled={!previewMarkdown || isDownloadingPdf}>
+                               {isDownloadingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2" />}
+                               Download as PDF
                             </Button>
                         </div>
                         {plan === 'free' && (
@@ -347,5 +390,3 @@ export function CompanyProfileForm() {
     </div>
   );
 }
-
-    
