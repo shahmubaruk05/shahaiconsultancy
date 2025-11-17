@@ -141,145 +141,6 @@ export type CompanyProfileResult = {
   profileMarkdown: string;
 };
 
-const BASE_PROMPT = `
-You are "Ask Shah" – an AI startup advisor and copywriter helping Shah Mubaruk's clients.
-You write professional, clear company profiles for founders.
-Use a mix of simple English and Bangla when user context is Bangladeshi, but keep headings in English.
-Mention Shah Mubaruk only in the CTA if it makes sense.
-`;
-
-const QUICK_TEMPLATE = `
-Write a SHORT 1–2 page company profile.
-Use these sections as H2 headings:
-1. Company Overview
-2. What We Do
-3. Our Customers
-4. Why Choose Us
-
-Keep each section brief (3–5 short paragraphs total). No financial details or investment ask.
-`;
-
-const DETAILED_TEMPLATE = `
-Write a DETAILED multi-section company profile.
-Use these sections as H2 headings:
-1. Company Overview
-2. Vision & Mission
-3. Products & Services
-4. Target Customers & Market
-5. Competitive Advantage
-6. Operations & Team
-7. Social Impact or Sustainability (if relevant)
-8. Call to Action
-
-Tone: professional but friendly, like a consulting firm's profile. 6–10 paragraphs total.
-`;
-
-const INVESTOR_TEMPLATE = `
-Write an INVESTOR-READY company profile focused on growth and funding potential.
-Use these sections as H2 headings:
-1. Executive Summary
-2. Problem & Opportunity
-3. Our Solution & Business Model
-4. Market Size & Traction (current stage, any numbers or milestones)
-5. Competitive Advantage & Moat
-6. Team & Advisors
-7. Financial Snapshot & Growth Plan (high-level)
-8. Investment Ask & Use of Funds
-9. Call to Action for Investors / Strategic Partners
-
-Tone: confident, data-driven, investor-focused. Make it clearly different from a normal brochure.
-`;
-
-
-export async function generateCompanyProfileMock(input: CompanyProfileInput): Promise<CompanyProfileResult> {
-  const { depth = 'quick' } = input;
-
-  let depthTemplate = QUICK_TEMPLATE;
-  if (depth === "detailed") depthTemplate = DETAILED_TEMPLATE;
-  if (depth === "investor") depthTemplate = INVESTOR_TEMPLATE;
-  
-  const systemPrompt = `${BASE_PROMPT}\n\n${depthTemplate}`;
-
-  // This is a mock implementation. A real AI call would use the systemPrompt.
-  // For now, we simulate different outputs based on the template.
-
-  let markdown = `## Mock Profile for ${input.companyName}\n\nThis is a mock response demonstrating the selected depth: **${depth}**.\n\nThe system prompt that would have been used is:\n\n---\n${systemPrompt}\n---`;
-
-  if (depth === 'quick') {
-    markdown += `
-## Company Overview
-A brief intro to ${input.companyName}.
-
-## What We Do
-Description of services: ${input.servicesOrProducts}.
-
-## Our Customers
-Targeting ${input.targetCustomers}.
-
-## Why Choose Us
-Because we are the best.
-    `;
-  } else if (depth === 'detailed') {
-    markdown += `
-## Company Overview
-A detailed overview of the company.
-
-## Vision & Mission
-Our vision is to conquer the world. Our mission is to start tomorrow.
-
-## Products & Services
-- ${input.servicesOrProducts}
-- More amazing things
-
-## Target Customers & Market
-We target everyone, everywhere.
-
-## Competitive Advantage
-We have no competition.
-
-## Operations & Team
-A great team doing great things.
-
-## Call to Action
-Contact us now!
-    `;
-  } else if (depth === 'investor') {
-    markdown += `
-## Executive Summary
-${input.companyName} is poised to dominate the ${input.industry} market.
-
-## Problem & Opportunity
-The problem is huge, and the opportunity is bigger.
-
-## Our Solution & Business Model
-Our solution is revolutionary. We make money through magic.
-
-## Market Size & Traction
-The market is worth trillions. We have 1000 users.
-
-## Competitive Advantage & Moat
-Our moat is deep and wide.
-
-## Team & Advisors
-Our team includes superheroes and wizards.
-
-## Financial Snapshot & Growth Plan
-We project infinite revenue.
-
-## Investment Ask & Use of Funds
-We need a billion dollars to buy a rocket.
-
-## Call to Action for Investors / Strategic Partners
-Invest now or regret it forever.
-    `;
-  }
-
-  return {
-    profileMarkdown: markdown,
-  };
-}
-
-
 export type BusinessPlanInput = {
     businessName: string;
     industry: string;
@@ -331,6 +192,8 @@ export type BusinessPlanInput = {
       ],
     };
   }
+
+    
 
     
 

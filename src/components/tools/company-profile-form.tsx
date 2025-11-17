@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { saveAs } from 'file-saver';
 import ReactMarkdown from 'react-markdown';
 
-import { generateCompanyProfileMock } from '@/lib/aiMock';
 import { saveCompanyProfile } from '@/lib/company-profile';
 import {
   Form,
@@ -20,7 +19,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -72,7 +70,7 @@ export function CompanyProfileForm() {
   const { user, isUserLoading, firestore } = useFirebase();
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [previewMarkdown, setPreviewMarkdown] = useState<string | null>(null);
+  const [previewMarkdown, setPreviewMarkdown] = useState<string>("");
   const [activeProfileName, setActiveProfileName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
@@ -127,26 +125,34 @@ export function CompanyProfileForm() {
     if (!user || !firestore) return;
     
     setError(null);
-    setPreviewMarkdown(null);
+    setPreviewMarkdown("");
     setActiveProfileName(data.companyName);
     setIsGenerating(true);
 
     try {
-      const aiResult = await generateCompanyProfileMock(data);
-      
-      setPreviewMarkdown(aiResult.profileMarkdown);
+      const res = await fetch("/api/company-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to generate profile");
+
+      const profileMarkdown = result.profile || result.reply || "";
+      setPreviewMarkdown(profileMarkdown);
       
       await saveCompanyProfile(firestore, user.uid, {
           companyName: data.companyName,
           industry: data.industry,
           country: data.country,
           depth: data.depth,
-          profileMarkdown: aiResult.profileMarkdown,
+          profileMarkdown: profileMarkdown,
       });
 
-    } catch (e) {
-      console.error(e);
-      setError('An unexpected error occurred. Please try again.');
+    } catch (e: any) {
+      console.error("Company profile generation failed:", e);
+      setError(e.message || 'An unexpected error occurred. Please try again.');
     } finally {
         setIsGenerating(false);
     }
@@ -295,13 +301,13 @@ export function CompanyProfileForm() {
                             <Skeleton className="h-4 w-full" />
                         </div>
                     ) : previewMarkdown ? (
-                        <div className="prose max-w-none dark:prose-invert">
+                        <article className="prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert">
                            <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
-                        </div>
+                        </article>
                     ) : (
                         <div className="text-center text-muted-foreground py-8">
                             <FileText className="h-10 w-10 mx-auto mb-2" />
-                            <p>Your generated profile will appear here.</p>
+                            <p>Fill in the form on the left and click <strong>Generate Profile</strong>. Your AI-generated company profile will appear here.</p>
                         </div>
                     )}
                 </CardContent>
@@ -342,3 +348,4 @@ export function CompanyProfileForm() {
   );
 }
 
+    
