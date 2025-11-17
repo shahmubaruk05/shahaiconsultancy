@@ -52,12 +52,12 @@ export async function createPitchDeckPptxFromMarkdown(
   const pptx = new PptxGenJS();
 
   // ----- Brand palette (Shah Mubaruk – Your Startup Coach) -----
-  const BRAND_BG_LIGHT = "F9FAFB";   // light gray background
-  const BRAND_BG_DARK = "0F172A";    // dark navy for cover
-  const BRAND_PRIMARY = "2563EB";    // primary blue
-  const BRAND_TITLE = "0F172A";      // deep slate for headings
-  const BRAND_TEXT = "111827";       // main body text
-  const BRAND_MUTED = "6B7280";      // subtle footer text
+  const BRAND_BG_LIGHT = "F9FAFB";
+  const BRAND_BG_DARK = "0F172A";
+  const BRAND_PRIMARY = "2563EB";
+  const BRAND_TITLE = "0F172A";
+  const BRAND_TEXT = "111827";
+  const BRAND_MUTED = "6B7280";
   const BRAND_FONT = "Arial";
 
   try {
@@ -66,7 +66,7 @@ export async function createPitchDeckPptxFromMarkdown(
   } catch (e) {
     // ignore if not supported
   }
-  
+
   const slides = parseSlides(markdown);
 
   slides.forEach((slideData, index) => {
@@ -75,8 +75,6 @@ export async function createPitchDeckPptxFromMarkdown(
     if (index === 0) {
       // --- Cover Slide ---
       slide.background = { color: BRAND_BG_DARK };
-      
-      const oneLiner = slideData.body.split('\n')[0].replace(/^- /,'').trim();
 
       // Main title
       slide.addText(startupName || slideData.title, {
@@ -92,6 +90,7 @@ export async function createPitchDeckPptxFromMarkdown(
       });
 
       // Subtitle from first bullet or notes (optional)
+      const oneLiner = (slideData.body.split('\n')[0] || "").replace(/^- /,'').trim();
       if (oneLiner) {
         slide.addText(oneLiner, {
           x: 1.0,
