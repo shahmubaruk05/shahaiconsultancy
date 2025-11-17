@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -271,7 +271,11 @@ export function CompanyProfileForm() {
                                         <p className="font-medium truncate">{profile.companyName}</p>
                                         <Badge variant="outline" className="capitalize">{profile.depth}</Badge>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">{new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {profile.createdAt && typeof (profile.createdAt as any).toDate === 'function'
+                                          ? new Date(profile.createdAt.toDate()).toLocaleDateString()
+                                          : 'Date not available'}
+                                    </p>
                                 </button>
                             ))}
                         </div>
