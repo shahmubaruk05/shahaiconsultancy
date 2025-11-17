@@ -93,7 +93,27 @@ async function downloadCompanyProfileDocx(profileMarkdown: string, companyName: 
 
 
 export function CompanyProfileForm() {
-  const { firestore, user, isUserLoading } = useFirebase();
+  const { user, isUserLoading } = useFirebase();
+
+  // Conditional rendering MUST happen before hooks are called.
+  if (isUserLoading) {
+    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!user) {
+    return (
+      <Card className="text-center p-8">
+        <CardTitle>Please Log In</CardTitle>
+        <CardDescription className="mt-2 mb-4">You need to be logged in to create a company profile.</CardDescription>
+        <Button asChild>
+          <Link href="/login">Log In</Link>
+        </Button>
+      </Card>
+    );
+  }
+
+  // All hooks must be called unconditionally after the early returns.
+  const { firestore } = useFirebase();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [previewMarkdown, setPreviewMarkdown] = useState<string | null>(null);
@@ -183,21 +203,6 @@ export function CompanyProfileForm() {
     }
   };
 
-  if (isUserLoading) {
-    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
-  }
-
-  if (!user) {
-    return (
-      <Card className="text-center p-8">
-        <CardTitle>Please Log In</CardTitle>
-        <CardDescription className="mt-2 mb-4">You need to be logged in to create a company profile.</CardDescription>
-        <Button asChild>
-          <Link href="/login">Log In</Link>
-        </Button>
-      </Card>
-    );
-  }
 
   return (
     <div className="grid md:grid-cols-3 gap-8">
@@ -316,7 +321,7 @@ export function CompanyProfileForm() {
                             >
                                <Download className="mr-2" /> Download as Word (.docx)
                             </Button>
-                             <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto' disabled={!previewMarkdown}>
+                             <Button onClick={() => window.print()} variant="outline" className='w-full sm-w-auto' disabled={!previewMarkdown}>
                                <Printer className="mr-2" /> Print / Save as PDF
                             </Button>
                         </div>
@@ -342,5 +347,3 @@ export function CompanyProfileForm() {
     </div>
   );
 }
-
-    
