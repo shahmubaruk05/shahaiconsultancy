@@ -227,10 +227,10 @@ export function CompanyProfileForm() {
                         <FormField control={form.control} name="coreValue" render={({ field }) => ( <FormItem><FormLabel>Core Value / Motto</FormLabel><FormControl><Input placeholder="e.g., Innovation for Impact" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="keyStrengths" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Key Strengths (Optional)</FormLabel><FormControl><Textarea placeholder="e.g., Experienced team, patented technology, strong distribution network" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="sustainability" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Sustainability or Social Impact (Optional)</FormLabel><FormControl><Textarea placeholder="Describe your social or environmental initiatives" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                         <FormField 
-                            control={form.control} 
-                            name="depth" 
-                            render={({ field }) => ( 
+                         <FormField
+                            control={form.control}
+                            name="depth"
+                            render={({ field }) => (
                                 <FormItem className="md:col-span-2">
                                 <FormLabel>Profile Depth</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -241,16 +241,16 @@ export function CompanyProfileForm() {
                                         <SelectItem value="investor">Investor-ready profile (3–5 pages, more formal)</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <FormDescription>
-                                  <ul className="text-xs list-disc pl-4 mt-2">
-                                    <li><b>Quick overview:</b> 1 page, good for website About page</li>
-                                    <li><b>Detailed profile:</b> 2–3 pages, good for proposals & brochures</li>
-                                    <li><b>Investor-ready:</b> 3–5 pages, for sharing with serious investors</li>
-                                  </ul>
-                                </FormDescription>
+                                <div className="text-muted-foreground">
+                                    <ul className="text-xs list-disc pl-4 mt-2">
+                                        <li><b>Quick overview:</b> 1 page, good for website About page</li>
+                                        <li><b>Detailed profile:</b> 2–3 pages, good for proposals & brochures</li>
+                                        <li><b>Investor-ready:</b> 3–5 pages, for sharing with serious investors</li>
+                                    </ul>
+                                </div>
                                 <FormMessage />
                                 </FormItem>
-                            )} 
+                            )}
                         />
                     </CardContent>
                     <CardFooter>
@@ -347,5 +347,3 @@ export function CompanyProfileForm() {
     </div>
   );
 }
-
-    
