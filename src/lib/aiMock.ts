@@ -134,6 +134,7 @@ export type CompanyProfileInput = {
     marketFocus: "Local" | "Regional" | "International";
     sustainability?: string;
     keyStrengths?: string;
+    depth?: "quick" | "detailed" | "investor";
   };
 
 export type CompanyProfileResult = {
@@ -148,7 +149,7 @@ export type CompanyProfileResult = {
 };
 
 export async function generateCompanyProfileMock(input: CompanyProfileInput): Promise<CompanyProfileResult> {
-  const { companyName, industry, country, targetCustomers, servicesOrProducts, brandTone, language, foundedYear, keyStrengths, sustainability } = input;
+  const { companyName, industry, country, targetCustomers, servicesOrProducts, brandTone, language, foundedYear, keyStrengths, sustainability, depth = 'quick' } = input;
 
   const tone = brandTone === "Friendly" ? "friendly and inspiring" : brandTone === "Mixed" ? "balanced professional yet human" : "formal and polished";
 
@@ -162,6 +163,25 @@ export async function generateCompanyProfileMock(input: CompanyProfileInput): Pr
   let socialImpact = "";
 
   const brandHeader = `Shah Mubaruk – Your Startup Coach`;
+  
+  let systemPrompt = "";
+
+  switch (depth) {
+    case "detailed":
+        systemPrompt = "You are a senior corporate copywriter. Write a detailed 2–3 page company profile in markdown with clear headings, short paragraphs, and bullet points. Include: Overview, Mission, Vision, Products & Services, Target Customers, Market Positioning, Team & Governance, Sustainability / Social Impact (if relevant), and Contact Details. Tone: polished and business-oriented.";
+        break;
+    case "investor":
+        systemPrompt = "You are an investor-facing corporate writer. Write a 3–5 page investor-ready company profile in markdown with structured sections, short paragraphs, and bullet points. Include: Executive Overview, Problem & Opportunity, Company Overview, Products & Services, Target Customers & Market, Competitive Advantage, Traction & Key Metrics (use reasonable examples if not provided), Team & Governance, Risks & Mitigation (high level), and Contact / Next Steps. Tone: formal, concise, and suitable for sharing with investors.";
+        break;
+    default: // quick
+        systemPrompt = "You are a professional business writer. Write a 1-page company profile in clear, simple language. Use short paragraphs and 4–6 sections max. Tone: friendly but professional.";
+  }
+
+
+  // This is a mock implementation. A real implementation would use an AI model with the system prompt.
+  // For now, we'll just generate content based on the old logic and add a note about the prompt.
+  // The structure of the returned object will depend on the expected output for the selected depth.
+  // For simplicity, we stick to the existing `CompanyProfileResult` type.
 
   switch (industry.toLowerCase()) {
     case "agro":
