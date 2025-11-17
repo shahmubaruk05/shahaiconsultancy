@@ -248,13 +248,13 @@ export function CompanyProfileForm() {
                             )} 
                         />
                     </CardContent>
+                    <CardFooter>
+                      <Button type="submit" disabled={isPending} size="lg" className="w-full md:w-auto ml-auto">
+                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Generate Profile
+                      </Button>
+                    </CardFooter>
                 </Card>
-                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isPending} size="lg">
-                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Generate Profile
-                    </Button>
-                </div>
                 </form>
             </Form>
         </div>
@@ -342,3 +342,5 @@ export function CompanyProfileForm() {
     </div>
   );
 }
+
+    
