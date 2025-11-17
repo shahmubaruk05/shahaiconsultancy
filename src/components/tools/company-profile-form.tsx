@@ -94,8 +94,6 @@ async function downloadCompanyProfileDocx(profileMarkdown: string, companyName: 
 
 export function CompanyProfileForm() {
   const { user, isUserLoading, firestore } = useFirebase();
-
-  // All hooks must be called unconditionally before any early returns.
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [previewMarkdown, setPreviewMarkdown] = useState<string | null>(null);
@@ -132,7 +130,6 @@ export function CompanyProfileForm() {
     },
   });
 
-  // Conditional rendering must happen after all hooks are called.
   if (isUserLoading) {
     return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
   }
@@ -237,7 +234,7 @@ export function CompanyProfileForm() {
                                     <SelectContent>
                                         <SelectItem value="quick">Quick overview (≈ 1 page)</SelectItem>
                                         <SelectItem value="detailed">Detailed company profile (2–3 pages)</SelectItem>
-                                        <SelectItem value="investor">Investor-ready profile (3–5 pages, more formal)</SelectItem>
+                                        <SelectItem value="investor">Investor-ready profile (3–5 pages)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="text-muted-foreground">
