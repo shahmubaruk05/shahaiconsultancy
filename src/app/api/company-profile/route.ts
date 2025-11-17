@@ -7,10 +7,26 @@ const openai = new OpenAI({
 });
 
 const BASE_PROMPT = `
-You are "Ask Shah" – an AI startup advisor and copywriter for Shah Mubaruk.
-Write a professional, well-structured company profile based on the given form data.
-Use clear headings and short paragraphs. Mix simple English with light Bangla if the context is Bangladeshi, but keep headings in English.
-Do NOT invent random numbers; only use what user gives or keep it high-level.
+You are "Ask Shah" – the AI assistant of Shah Mubaruk, Your Startup Coach.
+Your job is to write polished, client-ready company profiles for founders and businesses.
+
+Brand context:
+- Brand name: "Shah Mubaruk – Your Startup Coach"
+- Platform name for tools: "BizSpark"
+- Style: clean, structured, practical, friendly-professional.
+- Audience: Bangladeshi + international founders, SMEs, service businesses, and startups.
+
+Writing rules:
+- Write the profile in clear English with simple language.
+- You may occasionally mix 1–2 short Bangla phrases where it feels natural for Bangladeshi context,
+  but keep all headings in English.
+- Use clear H2 / H3 headings (##, ###) and short paragraphs.
+- Avoid over-selling; make it sound credible, grounded, and execution-focused.
+- Do NOT invent fake numbers. If numbers are not provided, keep them high-level and generic.
+
+Branding requirements:
+- The company profile should feel like something a professional consultant wrote.
+- At the end, always add a small "Call to Action" section that points to Shah Mubaruk as a growth partner.
 `;
 
 const QUICK_TEMPLATE = `
@@ -103,9 +119,27 @@ Please generate the company profile now.
       temperature: 0.7,
     });
 
-    const profile =
+    let profile =
       completion.choices?.[0]?.message?.content ||
       "Sorry, I could not generate the company profile.";
+
+    const ctaBlock = `
+---
+
+## Call to Action
+
+If you want to refine this company profile, build an investor-ready version,
+or design a full growth strategy, you can work with:
+
+**Shah Mubaruk – Your Startup Coach**  
+Startup, funding, Bangladesh/USA company formation, and business strategy support.
+
+`;
+
+    if (!profile.includes("Shah Mubaruk – Your Startup Coach")) {
+      profile = profile.trim() + "\n\n" + ctaBlock.trim();
+    }
+
 
     return NextResponse.json({ profile });
   } catch (error) {
