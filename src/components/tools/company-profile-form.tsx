@@ -37,6 +37,8 @@ import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase'
 import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
 
 const formSchema = z.object({
   companyName: z.string().min(2, 'Company name must be at least 2 characters.'),
@@ -121,6 +123,7 @@ export function CompanyProfileForm() {
   }
 
   const plan = (userData?.plan as UserPlan) || 'free';
+  const previewClass = plan === 'free' ? 'locked-preview' : 'pro-preview';
 
   const onSubmit = async (data: FormData) => {
     if (!user || !firestore) return;
@@ -334,7 +337,7 @@ export function CompanyProfileForm() {
                 <CardHeader>
                     <CardTitle>Generated Company Profile</CardTitle>
                 </CardHeader>
-                 <CardContent className="min-h-[300px] pro-preview">
+                 <CardContent className={cn("min-h-[300px]", previewClass)}>
                     {isGenerating ? (
                         <div className="space-y-4">
                             <Skeleton className="h-6 w-3/4" />

@@ -130,3 +130,15 @@
 .pro-preview * {
   user-select: none !important;
 }
+
+.locked-preview {
+  filter: blur(2px);
+  opacity: 0.65;
+  pointer-events: none;
+  user-select: none;
+}
+
+.locked-preview:hover {
+  filter: blur(3px);
+  opacity: 0.6;
+}

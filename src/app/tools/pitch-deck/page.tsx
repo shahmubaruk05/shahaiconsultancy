@@ -3,6 +3,15 @@
 import { useState, useTransition } from "react";
 import { generatePitchDeckAction } from "./actions";
 import PitchDeckViewer from "@/components/PitchDeckViewer";
+import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
+import Link from "next/link";
+import { Loader2 } from "lucide-react";
+import { Card, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+
+type UserPlan = 'free' | 'pro' | 'premium';
 
 export default function PitchDeckPage() {
   const [result, setResult] = useState("");
@@ -10,6 +19,11 @@ export default function PitchDeckPage() {
   const [copying, setCopying] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [pptxDownloading, setPptxDownloading] = useState(false);
+  
+  const { user, isUserLoading, firestore } = useFirebase();
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userData } = useDoc(userDocRef);
+  const plan = (userData?.plan as UserPlan) || 'free';
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -89,6 +103,24 @@ export default function PitchDeckPage() {
       setPptxDownloading(false);
     }
   }
+  
+  if (isUserLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  }
+  
+  if (!user) {
+    return (
+      <Card className="m-auto mt-12 max-w-lg text-center p-8">
+          <CardTitle>Please Log In</CardTitle>
+          <CardDescription className="mt-2 mb-4">You need to be logged in to use this tool.</CardDescription>
+          <Button asChild>
+              <Link href="/login">Log In</Link>
+          </Button>
+      </Card>
+    );
+  }
+
+  const previewClass = plan === 'free' ? 'locked-preview' : 'pro-preview';
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -257,7 +289,7 @@ export default function PitchDeckPage() {
       </form>
 
       {result && (
-        <div className="space-y-3 mt-4 pro-preview">
+        <div className={cn("space-y-3 mt-4", previewClass)}>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">
               Generated Pitch Deck Outline

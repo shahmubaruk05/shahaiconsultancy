@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { Document, Packer, Paragraph, HeadingLevel } from "docx";
 import { useToast } from "@/hooks/use-toast";
 import { generateBusinessPlanAction } from '@/app/tools/business-plan/actions';
-
+import { cn } from '@/lib/utils';
 import {
   Form,
   FormControl,
@@ -188,6 +188,8 @@ export function BusinessPlanForm() {
     );
   }
 
+  const previewClass = plan === 'free' ? 'locked-preview' : 'pro-preview';
+
   return (
     <div className="grid md:grid-cols-2 gap-8">
         <div>
@@ -263,7 +265,7 @@ export function BusinessPlanForm() {
                         <CardTitle>{form.getValues().businessName}</CardTitle>
                         <CardDescription>Here is the AI-generated plan for your business.</CardDescription>
                     </CardHeader>
-                    <CardContent className="prose max-w-none dark:prose-invert pro-preview">
+                    <CardContent className={cn("prose max-w-none dark:prose-invert", previewClass)}>
                         <ReactMarkdown>{result.planText}</ReactMarkdown>
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row gap-2">
