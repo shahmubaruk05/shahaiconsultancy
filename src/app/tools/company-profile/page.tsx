@@ -1,3 +1,6 @@
+
+'use client';
+
 import { CompanyProfileForm } from '@/components/tools/company-profile-form';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -16,5 +19,3 @@ export default function CompanyProfilePage() {
     </div>
   );
 }
-
-    

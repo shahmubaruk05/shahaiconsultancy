@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType } from "docx";
 import { useToast } from "@/hooks/use-toast";
 import { saveAs } from 'file-saver';
+import ReactMarkdown from 'react-markdown';
 
 import { generateCompanyProfileMock, CompanyProfileResult, CompanyProfileInput } from '@/lib/aiMock';
 import {
@@ -28,12 +29,14 @@ import {
   CardTitle,
   CardFooter,
 } from '@/components/ui/card';
-import { Loader2, Download, Printer, ExternalLink } from 'lucide-react';
+import { Loader2, Download, Printer, ExternalLink, History, FileText } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { useFirebase, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { collection, addDoc, serverTimestamp, doc, query, orderBy, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formSchema = z.object({
   companyName: z.string().min(2, 'Company name must be at least 2 characters.'),
@@ -49,10 +52,12 @@ const formSchema = z.object({
   marketFocus: z.enum(['Local', 'Regional', 'International']),
   sustainability: z.string().optional(),
   keyStrengths: z.string().optional(),
+  depth: z.enum(['quick', 'detailed', 'investor']),
 });
 
 type FormData = z.infer<typeof formSchema>;
 type UserPlan = 'free' | 'pro' | 'premium';
+type ProfileDocument = CompanyProfileResult & { id: string; createdAt: any, profileMarkdown: string, depth: string, companyName: string };
 
 const ResultSection = ({ title, content }: { title: string; content: string }) => {
     if (!content) return null;
@@ -64,274 +69,43 @@ const ResultSection = ({ title, content }: { title: string; content: string }) =
     );
 };
 
-async function downloadCompanyProfileDocx(profile: CompanyProfileResult, inputValues: FormData) {
-    const {
-      companyName,
-      industry,
-      country,
-      foundedYear,
-      companySize,
-      marketFocus,
-      coreValue,
-      targetCustomers,
-      servicesOrProducts,
-    } = inputValues;
-
-    const title = companyName || "Company Profile";
-    const bizSparkBrand = "Shah Mubaruk – Your Startup Coach";
-
-    const doc = new Document({
-      sections: [
-        {
-          children: [
-            // Cover / Header
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({
-                  text: bizSparkBrand,
-                  bold: true,
-                  size: 32,
-                }),
-              ],
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 200 },
-              children: [
-                new TextRun({
-                  text: title,
-                  bold: true,
-                  size: 30,
-                }),
-              ],
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 400 },
-              children: [
-                new TextRun({
-                  text: industry ? `Industry: ${industry}` : "",
-                  italics: true,
-                  size: 22,
-                }),
-              ],
-            }),
-
-            // Company quick info table
-            new Paragraph({
-              text: "Company Snapshot",
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 200, after: 100 },
-            }),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              rows: [
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [new Paragraph("Company Name")],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph(companyName || "Not specified"),
-                      ],
-                    }),
-                  ],
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [new Paragraph("Industry / Sector")],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph(industry || "Not specified"),
-                      ],
-                    }),
-                  ],
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [new Paragraph("Country")],
-                    }),
-                    new TableCell({
-                      children: [new Paragraph(country || "Not specified")],
-                    }),
-                  ],
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [new Paragraph("Founded Year")],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph(foundedYear || "Not specified"),
-                      ],
-                    }),
-                  ],
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [new Paragraph("Company Size")],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph(companySize || "Not specified"),
-                      ],
-                    }),
-                  ],
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [new Paragraph("Market Focus")],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph(marketFocus || "Not specified"),
-                      ],
-                    }),
-                  ],
-                }),
-              ],
-            }),
-
-            new Paragraph({ text: "" }),
-
-            // Core Value / Motto
-            ...(coreValue
-              ? [
-                  new Paragraph({
-                    text: "Core Value / Motto",
-                    heading: HeadingLevel.HEADING_2,
-                    spacing: { before: 200, after: 100 },
-                  }),
-                  new Paragraph(coreValue),
-                ]
-              : []),
-
-            // About Us
-            new Paragraph({
-              text: "About Us",
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 200, after: 100 },
-            }),
-            new Paragraph(profile.about || ""),
-
-            // Mission
-            new Paragraph({
-              text: "Mission",
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 200, after: 100 },
-            }),
-            new Paragraph(profile.mission || ""),
-
-            // Vision
-            new Paragraph({
-              text: "Vision",
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 200, after: 100 },
-            }),
-            new Paragraph(profile.vision || ""),
-
-            // Our Services
-            new Paragraph({
-              text: "Our Services",
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 200, after: 100 },
-            }),
-            ...(servicesOrProducts
-              ? [new Paragraph(servicesOrProducts)]
-              : []),
-            new Paragraph(profile.servicesSummary || ""),
-
-            // Our Customers
-            new Paragraph({
-              text: "Our Customers",
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 200, after: 100 },
-            }),
-            ...(targetCustomers ? [new Paragraph(targetCustomers)] : []),
-            new Paragraph(profile.targetCustomersSection || ""),
-
-            // Why Choose Us
-            new Paragraph({
-              text: "Why Choose Us",
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 200, after: 100 },
-            }),
-            ...String(profile.whyChooseUs || "")
-              .split("\n")
-              .filter((line) => line.trim().length > 0)
-              .map(
-                (line) =>
-                  new Paragraph({
-                    children: [
-                      new TextRun({ text: "• ", bold: true }),
-                      new TextRun(line.replace(/^•\s*/, "")),
-                    ],
-                  })
-              ),
-
-            // Sustainability / Social Impact (if any)
-            ...(profile.socialImpact
-              ? [
-                  new Paragraph({
-                    text: "Sustainability & Social Impact",
-                    heading: HeadingLevel.HEADING_2,
-                    spacing: { before: 200, after: 100 },
-                  }),
-                  new Paragraph(profile.socialImpact),
-                ]
-              : []),
-
-            // Call to Action
-            new Paragraph({
-              text: "Call to Action",
-              heading: HeadingLevel.HEADING_2,
-              spacing: { before: 200, after: 100 },
-            }),
-            new Paragraph(profile.callToAction || ""),
-
-            // Footer / Signature
-            new Paragraph({ text: "" }),
-            new Paragraph({
-              alignment: AlignmentType.RIGHT,
-              children: [
-                new TextRun({
-                  text: "Prepared with Shah Mubaruk – Your Startup Coach",
-                  italics: true,
-                  size: 20,
-                }),
-              ],
-            }),
-          ],
-        },
+async function downloadCompanyProfileDocx(profileMarkdown: string, companyName: string) {
+  const doc = new Document({
+    sections: [{
+      children: [
+        new Paragraph({ text: companyName, heading: HeadingLevel.TITLE }),
+        new Paragraph({ text: "Generated by Shah Mubaruk's AI Startup Coach", style: "IntenseQuote" }),
+        ...profileMarkdown.split('\n').map(line => {
+          if (line.startsWith('## ')) return new Paragraph({ text: line.substring(3), heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 100 } });
+          if (line.startsWith('# ')) return new Paragraph({ text: line.substring(2), heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 150 } });
+          if (line.trim().startsWith('- ')) return new Paragraph({ text: line.trim().substring(2), bullet: { level: 0 } });
+          return new Paragraph(line);
+        })
       ],
-    });
-
-    const blob = await Packer.toBlob(doc);
-    saveAs(blob, `${companyName || "company-profile"}-shah-mubaruk.docx`);
-  }
+    }],
+  });
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `${companyName.replace(/ /g, '_') || "company-profile"}-shah-mubaruk.docx`);
+}
 
 
 export function CompanyProfileForm() {
   const { firestore, user, isUserLoading } = useFirebase();
   const { toast } = useToast();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [result, setResult] = useState<CompanyProfileResult | null>(null);
-  const [formValues, setFormValues] = useState<FormData | null>(null);
+  const [previewMarkdown, setPreviewMarkdown] = useState<string | null>(null);
+  const [activeProfileName, setActiveProfileName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
   const { data: userData } = useDoc(userDocRef);
   const plan = (userData?.plan as UserPlan) || 'free';
 
+  const profilesQuery = useMemoFirebase(() => 
+    user ? query(collection(firestore, `users/${user.uid}/companyProfiles`), orderBy('createdAt', 'desc'), limit(5)) : null,
+    [user, firestore]
+  );
+  const { data: savedProfiles, isLoading: profilesLoading } = useCollection<ProfileDocument>(profilesQuery);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -349,6 +123,7 @@ export function CompanyProfileForm() {
       marketFocus: 'Local',
       sustainability: '',
       keyStrengths: '',
+      depth: 'quick'
     },
   });
 
@@ -356,18 +131,28 @@ export function CompanyProfileForm() {
     if (!user) return;
     
     setError(null);
-    setResult(null);
-    setFormValues(data);
+    setPreviewMarkdown(null);
+    setActiveProfileName(data.companyName);
 
     startTransition(async () => {
       try {
         const aiResult = await generateCompanyProfileMock(data);
-        setResult(aiResult);
+        
+        // Simple markdown conversion
+        const profileMarkdown = Object.entries(aiResult)
+            .map(([key, value]) => `## ${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}\n\n${value}`)
+            .join('\n\n');
+
+        setPreviewMarkdown(profileMarkdown);
         
         const profileRef = collection(firestore, `users/${user.uid}/companyProfiles`);
         await addDoc(profileRef, {
           userId: user.uid,
-          ...data,
+          companyName: data.companyName,
+          industry: data.industry,
+          country: data.country,
+          depth: data.depth,
+          profileMarkdown: profileMarkdown,
           ...aiResult,
           createdAt: serverTimestamp(),
         });
@@ -395,8 +180,8 @@ export function CompanyProfileForm() {
       });
       return;
     }
-    if (result && formValues) {
-      downloadCompanyProfileDocx(result, formValues);
+    if (previewMarkdown && activeProfileName) {
+      downloadCompanyProfileDocx(previewMarkdown, activeProfileName);
     }
   };
 
@@ -417,8 +202,8 @@ export function CompanyProfileForm() {
   }
 
   return (
-    <div className="grid md:grid-cols-2 gap-8">
-        <div>
+    <div className="grid md:grid-cols-3 gap-8">
+        <div className="md:col-span-2">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <Card>
@@ -439,73 +224,93 @@ export function CompanyProfileForm() {
                         <FormField control={form.control} name="coreValue" render={({ field }) => ( <FormItem><FormLabel>Core Value / Motto</FormLabel><FormControl><Input placeholder="e.g., Innovation for Impact" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="keyStrengths" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Key Strengths (Optional)</FormLabel><FormControl><Textarea placeholder="e.g., Experienced team, patented technology, strong distribution network" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="sustainability" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Sustainability or Social Impact (Optional)</FormLabel><FormControl><Textarea placeholder="Describe your social or environmental initiatives" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                         <FormField control={form.control} name="depth" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Profile Depth</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>
+                            <SelectItem value="quick">Quick overview (≈ 1 page)</SelectItem>
+                            <SelectItem value="detailed">Detailed company profile (2–3 pages)</SelectItem>
+                            <SelectItem value="investor">Investor-ready profile (3–5 pages, more formal)</SelectItem>
+                        </SelectContent></Select><FormMessage /></FormItem>)} />
                     </CardContent>
                 </Card>
-                 <div className="flex justify-between items-center">
+                 <div className="flex justify-end">
                     <Button type="submit" disabled={isPending} size="lg">
                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Generate Profile
                     </Button>
-                    {result && (
-                        <Button variant="outline" onClick={() => router.push('/')}>
-                            Back to Dashboard
-                        </Button>
-                    )}
                 </div>
                 </form>
             </Form>
         </div>
-        <div>
-            {isPending && (
-                <Card className="flex flex-col items-center justify-center p-8 h-full">
-                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    <p className="mt-4 text-muted-foreground">Generating your company profile...</p>
-                </Card>
-            )}
+        <div className="space-y-4">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5" /> Saved Profiles</CardTitle>
+                    {profilesLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+                </CardHeader>
+                <CardContent>
+                    {savedProfiles && savedProfiles.length > 0 ? (
+                        <div className="space-y-2">
+                            {savedProfiles.map(profile => (
+                                <button key={profile.id} onClick={() => { setPreviewMarkdown(profile.profileMarkdown); setActiveProfileName(profile.companyName); }} className="w-full text-left p-2 rounded-md hover:bg-secondary transition-colors">
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-medium truncate">{profile.companyName}</p>
+                                        <Badge variant="outline" className="capitalize">{profile.depth}</Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{new Date(profile.createdAt.toDate()).toLocaleDateString()}</p>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center">No saved profiles yet.</p>
+                    )}
+                </CardContent>
+            </Card>
 
-            {!isPending && !result && (
-              <Card className="flex flex-col items-center justify-center p-8 h-full text-center">
-                  <CardTitle>Your Profile Awaits</CardTitle>
-                  <CardDescription className="mt-2">Fill in the form and click 'Generate Profile' to see your company profile here.</CardDescription>
-              </Card>
-            )}
-
-            {result && formValues && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Generated Company Profile</CardTitle>
-                        <CardDescription>Here is the AI-generated profile for your company.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <ResultSection title="About Us" content={result.about} />
-                        <ResultSection title="Mission" content={result.mission} />
-                        <ResultSection title="Vision" content={result.vision} />
-                        <ResultSection title="Our Services" content={result.servicesSummary} />
-                        <ResultSection title="Our Customers" content={result.targetCustomersSection} />
-                        <ResultSection title="Why Choose Us" content={result.whyChooseUs} />
-                        <ResultSection title="Sustainability / Social Impact" content={result.socialImpact} />
-                        <ResultSection title="Call to Action" content={result.callToAction} />
-                    </CardContent>
-                    <CardFooter className="flex-col sm:flex-row gap-2">
-                        <div className="w-full">
+            <Card className="sticky top-4">
+                <CardHeader>
+                    <CardTitle>Generated Company Profile</CardTitle>
+                </CardHeader>
+                 <CardContent className="min-h-[300px]">
+                    {isPending ? (
+                        <div className="space-y-4">
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-5/6" />
+                            <Skeleton className="h-4 w-full" />
+                        </div>
+                    ) : previewMarkdown ? (
+                        <div className="prose max-w-none dark:prose-invert">
+                           <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+                        </div>
+                    ) : (
+                        <div className="text-center text-muted-foreground py-8">
+                            <FileText className="h-10 w-10 mx-auto mb-2" />
+                            <p>Your generated profile will appear here.</p>
+                        </div>
+                    )}
+                </CardContent>
+                {previewMarkdown && (
+                     <CardFooter className="flex-col items-start gap-4">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full">
                            <Button
                                 onClick={handleDownload}
                                 className="w-full sm:w-auto"
+                                disabled={!previewMarkdown}
                             >
                                <Download className="mr-2" /> Download as Word (.docx)
                             </Button>
-                             {plan === 'free' && (
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    DOCX export is available on Pro/Premium plans.
-                                </p>
-                            )}
+                             <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto' disabled={!previewMarkdown}>
+                               <Printer className="mr-2" /> Print / Save as PDF
+                            </Button>
                         </div>
-                         <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto'>
-                           <Printer className="mr-2" /> Print / Save as PDF
-                        </Button>
+                        {plan === 'free' && (
+                            <p className="text-xs text-muted-foreground">
+                                DOCX export is available on Pro/Premium plans.
+                            </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">Written in collaboration with Shah Mubaruk – Your Startup Coach.</p>
                     </CardFooter>
-                </Card>
-            )}
+                )}
+            </Card>
 
             {error && (
                 <Card className="mt-8 border-destructive bg-destructive/10">
