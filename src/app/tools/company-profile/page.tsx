@@ -11,7 +11,7 @@ export default function CompanyProfilePage() {
         <CardHeader>
           <CardTitle className="text-2xl">Company Profile Creator</CardTitle>
           <CardDescription>
-            Fill out your company details, and our AI will generate a complete, professional company profile for you.
+            Tell us about your company, and we’ll generate a polished, investor-friendly profile you can download and share with clients or partners.
           </CardDescription>
         </CardHeader>
       </Card>
