@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -105,6 +105,31 @@ export function CompanyProfileForm() {
     [user, firestore]
   );
   const { data: savedProfiles, isLoading: profilesLoading } = useCollection<ProfileDocument>(profilesQuery);
+
+  useEffect(() => {
+    const block = (e: Event) => e.preventDefault();
+  
+    const preview = document.getElementById("preview-area");
+    if (!preview) return;
+  
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && (e.key === "c" || e.key === "a" || e.key === "x")) {
+        e.preventDefault();
+      }
+    };
+  
+    preview.addEventListener("copy", block);
+    preview.addEventListener("cut", block);
+    preview.addEventListener("contextmenu", block);
+    preview.addEventListener("keydown", handleKeyDown);
+  
+    return () => {
+      preview.removeEventListener("copy", block);
+      preview.removeEventListener("cut", block);
+      preview.removeEventListener("contextmenu", block);
+      preview.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [previewMarkdown]);
 
   if (isUserLoading) {
     return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
@@ -337,7 +362,7 @@ export function CompanyProfileForm() {
                 <CardHeader>
                     <CardTitle>Generated Company Profile</CardTitle>
                 </CardHeader>
-                 <CardContent className={cn("min-h-[300px]", previewClass)}>
+                 <CardContent id="preview-area" className={cn("min-h-[300px]", previewClass)}>
                     {isGenerating ? (
                         <div className="space-y-4">
                             <Skeleton className="h-6 w-3/4" />

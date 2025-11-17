@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { generatePitchDeckAction } from "./actions";
 import PitchDeckViewer from "@/components/PitchDeckViewer";
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -24,6 +25,31 @@ export default function PitchDeckPage() {
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
   const { data: userData } = useDoc(userDocRef);
   const plan = (userData?.plan as UserPlan) || 'free';
+
+  useEffect(() => {
+    const block = (e: Event) => e.preventDefault();
+  
+    const preview = document.getElementById("preview-area");
+    if (!preview) return;
+  
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && (e.key === "c" || e.key === "a" || e.key === "x")) {
+        e.preventDefault();
+      }
+    };
+  
+    preview.addEventListener("copy", block);
+    preview.addEventListener("cut", block);
+    preview.addEventListener("contextmenu", block);
+    preview.addEventListener("keydown", handleKeyDown);
+  
+    return () => {
+      preview.removeEventListener("copy", block);
+      preview.removeEventListener("cut", block);
+      preview.removeEventListener("contextmenu", block);
+      preview.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [result]);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -289,7 +315,7 @@ export default function PitchDeckPage() {
       </form>
 
       {result && (
-        <div className={cn("space-y-3 mt-4", previewClass)}>
+        <div id="preview-area" className={cn("space-y-3 mt-4", previewClass)}>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">
               Generated Pitch Deck Outline
