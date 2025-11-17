@@ -20,6 +20,8 @@ export default function PitchDeckPage() {
   const [copying, setCopying] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [pptxDownloading, setPptxDownloading] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isGeneratingPreviewImage, setIsGeneratingPreviewImage] = useState(false);
   
   const { user, isUserLoading, firestore } = useFirebase();
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
@@ -52,9 +54,33 @@ export default function PitchDeckPage() {
   }, [result]);
 
   function handleSubmit(formData: FormData) {
+    setResult("");
+    setPreviewImageUrl(null);
     startTransition(async () => {
       const r = await generatePitchDeckAction(formData);
       setResult(r.output || "");
+
+      if (plan === 'free' && r.output) {
+        setIsGeneratingPreviewImage(true);
+        try {
+          const res = await fetch("/api/preview-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              markdown: r.output,
+              title: "Pitch Deck Preview",
+            }),
+          });
+          if (!res.ok) throw new Error("Failed to generate preview image");
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          setPreviewImageUrl(url);
+        } catch (err) {
+          console.error("Preview image generation failed:", err);
+        } finally {
+          setIsGeneratingPreviewImage(false);
+        }
+      }
     });
   }
 
@@ -146,7 +172,8 @@ export default function PitchDeckPage() {
     );
   }
 
-  const previewClass = plan === 'free' ? 'locked-preview' : 'pro-preview';
+  const isPro = plan === 'pro' || plan === 'premium';
+  const previewClass = !isPro ? 'locked-preview' : 'pro-preview';
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -315,40 +342,60 @@ export default function PitchDeckPage() {
       </form>
 
       {result && (
-        <div id="preview-area" className={cn("space-y-3 mt-4", previewClass)}>
-          <div className="flex items-center justify-between">
+        <div id="preview-area">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-900">
               Generated Pitch Deck Outline
             </h2>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleCopy}
-                disabled={copying}
-                className="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-60"
-              >
-                {copying ? "Copying..." : "Copy all"}
-              </button>
-              <button
-                type="button"
-                onClick={handleDownload}
-                disabled={downloading}
-                className="px-3 py-1.5 rounded-md bg-slate-900 text-xs font-medium text-white hover:bg-black disabled:opacity-60"
-              >
-                {downloading ? "Downloading..." : "Download .md"}
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadPptx}
-                disabled={pptxDownloading}
-                className="px-3 py-1.5 rounded-md bg-blue-600 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-              >
-                {pptxDownloading ? "Creating PPTX..." : "Download PPTX"}
-              </button>
-            </div>
+            {isPro && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    disabled={copying}
+                    className="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    {copying ? "Copying..." : "Copy all"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    disabled={downloading}
+                    className="px-3 py-1.5 rounded-md bg-slate-900 text-xs font-medium text-white hover:bg-black disabled:opacity-60"
+                  >
+                    {downloading ? "Downloading..." : "Download .md"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadPptx}
+                    disabled={pptxDownloading}
+                    className="px-3 py-1.5 rounded-md bg-blue-600 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {pptxDownloading ? "Creating PPTX..." : "Download PPTX"}
+                  </button>
+                </div>
+            )}
           </div>
+        
+          {isPro ? (
+            <div className={previewClass}>
+              <PitchDeckViewer content={result} />
+            </div>
+          ) : isGeneratingPreviewImage ? (
+            <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="ml-2 text-muted-foreground">Generating secure preview...</p>
+            </div>
+          ) : previewImageUrl ? (
+            <div className="border rounded-md bg-slate-50 p-2 flex justify-center">
+                <img src={previewImageUrl} alt="Locked preview of pitch deck" className="max-w-full h-auto rounded-md shadow-sm" />
+            </div>
+          ) : (
+            <div className={previewClass}>
+              <PitchDeckViewer content={result} />
+            </div>
+          )}
 
-          <PitchDeckViewer content={result} />
         </div>
       )}
     </div>

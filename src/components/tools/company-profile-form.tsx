@@ -76,6 +76,8 @@ export function CompanyProfileForm() {
   const [previewMarkdown, setPreviewMarkdown] = useState<string>("");
   const [activeProfileName, setActiveProfileName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isGeneratingPreviewImage, setIsGeneratingPreviewImage] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -131,6 +133,8 @@ export function CompanyProfileForm() {
     };
   }, [previewMarkdown]);
 
+  const plan = (userData?.plan as UserPlan) || 'free';
+  
   if (isUserLoading) {
     return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
   }
@@ -147,14 +151,15 @@ export function CompanyProfileForm() {
     );
   }
 
-  const plan = (userData?.plan as UserPlan) || 'free';
-  const previewClass = plan === 'free' ? 'locked-preview' : 'pro-preview';
+  const isPro = plan === 'pro' || plan === 'premium';
+  const previewClass = !isPro ? 'locked-preview' : 'pro-preview';
 
   const onSubmit = async (data: FormData) => {
     if (!user || !firestore) return;
     
     setError(null);
     setPreviewMarkdown("");
+    setPreviewImageUrl(null);
     setActiveProfileName(data.companyName);
     setIsGenerating(true);
 
@@ -179,6 +184,28 @@ export function CompanyProfileForm() {
           profileMarkdown: profileMarkdown,
       });
 
+      if (!isPro && profileMarkdown) {
+        setIsGeneratingPreviewImage(true);
+        try {
+          const imgRes = await fetch("/api/preview-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              markdown: profileMarkdown,
+              title: "Company Profile Preview",
+            }),
+          });
+          if (!imgRes.ok) throw new Error("Failed to generate preview image");
+          const blob = await imgRes.blob();
+          const url = URL.createObjectURL(blob);
+          setPreviewImageUrl(url);
+        } catch (imgErr) {
+          console.error("Preview image generation failed:", imgErr);
+        } finally {
+          setIsGeneratingPreviewImage(false);
+        }
+      }
+
     } catch (e: any) {
       console.error("Company profile generation failed:", e);
       setError(e.message || 'An unexpected error occurred. Please try again.');
@@ -188,7 +215,7 @@ export function CompanyProfileForm() {
   };
 
   const handleDownload = () => {
-    if (plan === 'free') {
+    if (!isPro) {
       toast({
         variant: "destructive",
         title: "Upgrade Required",
@@ -209,6 +236,14 @@ export function CompanyProfileForm() {
   };
   
   const handleDownloadPdf = async () => {
+    if (!isPro) {
+        toast({
+            variant: "destructive",
+            title: "Upgrade Required",
+            description: "PDF export is available for Pro & Premium users only.",
+          });
+        return;
+    }
     if (!previewMarkdown) return;
     setIsDownloadingPdf(true);
     try {
@@ -307,13 +342,6 @@ export function CompanyProfileForm() {
                                         <SelectItem value="investor">Investor-ready profile (3–5 pages)</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <div className="text-muted-foreground">
-                                    <ul className="text-xs list-disc pl-4 mt-2">
-                                        <li><b>Quick overview:</b> 1 page, good for website About page</li>
-                                        <li><b>Detailed profile:</b> 2–3 pages, good for proposals & brochures</li>
-                                        <li><b>Investor-ready:</b> 3–5 pages, for sharing with serious investors</li>
-                                    </ul>
-                                </div>
                                 <FormMessage />
                                 </FormItem>
                             )}
@@ -362,7 +390,7 @@ export function CompanyProfileForm() {
                 <CardHeader>
                     <CardTitle>Generated Company Profile</CardTitle>
                 </CardHeader>
-                 <CardContent id="preview-area" className={cn("min-h-[300px]", previewClass)}>
+                 <CardContent id="preview-area" className="min-h-[300px]">
                     {isGenerating ? (
                         <div className="space-y-4">
                             <Skeleton className="h-6 w-3/4" />
@@ -371,9 +399,24 @@ export function CompanyProfileForm() {
                             <Skeleton className="h-4 w-full" />
                         </div>
                     ) : previewMarkdown ? (
-                        <article className="prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert">
-                           <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
-                        </article>
+                         isPro ? (
+                            <article className={cn("prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert", previewClass)}>
+                               <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+                            </article>
+                         ) : isGeneratingPreviewImage ? (
+                            <div className="flex justify-center items-center h-64">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                <p className="ml-2 text-muted-foreground">Generating secure preview...</p>
+                            </div>
+                         ) : previewImageUrl ? (
+                            <div className="border rounded-md bg-slate-50 p-2 flex justify-center">
+                                <img src={previewImageUrl} alt="Locked preview of company profile" className="max-w-full h-auto rounded-md shadow-sm" />
+                            </div>
+                         ) : (
+                            <article className={cn("prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert", previewClass)}>
+                               <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+                            </article>
+                         )
                     ) : (
                         <div className="text-center text-muted-foreground py-8">
                             <FileText className="h-10 w-10 mx-auto mb-2" />
@@ -396,9 +439,9 @@ export function CompanyProfileForm() {
                                Download as PDF
                             </Button>
                         </div>
-                        {plan === 'free' && (
+                        {!isPro && (
                             <p className="text-xs text-muted-foreground">
-                                DOCX export is available on Pro/Premium plans.
+                                DOCX and PDF export are available on Pro/Premium plans.
                             </p>
                         )}
                         <p className="text-xs text-muted-foreground">Written in collaboration with Shah Mubaruk – Your Startup Coach.</p>
