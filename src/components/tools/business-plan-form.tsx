@@ -263,7 +263,7 @@ export function BusinessPlanForm() {
                         <CardTitle>{form.getValues().businessName}</CardTitle>
                         <CardDescription>Here is the AI-generated plan for your business.</CardDescription>
                     </CardHeader>
-                    <CardContent className="prose max-w-none dark:prose-invert">
+                    <CardContent className="prose max-w-none dark:prose-invert pro-preview">
                         <ReactMarkdown>{result.planText}</ReactMarkdown>
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row gap-2">

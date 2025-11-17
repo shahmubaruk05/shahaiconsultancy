@@ -119,3 +119,14 @@
   0%, 100% { opacity: 0.2; }
   50% { opacity: 1; }
 }
+
+.pro-preview {
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  cursor: default;
+}
+
+.pro-preview * {
+  user-select: none !important;
+}

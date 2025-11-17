@@ -257,7 +257,7 @@ export default function PitchDeckPage() {
       </form>
 
       {result && (
-        <div className="space-y-3 mt-4">
+        <div className="space-y-3 mt-4 pro-preview">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">
               Generated Pitch Deck Outline

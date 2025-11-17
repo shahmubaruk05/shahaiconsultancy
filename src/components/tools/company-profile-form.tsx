@@ -334,7 +334,7 @@ export function CompanyProfileForm() {
                 <CardHeader>
                     <CardTitle>Generated Company Profile</CardTitle>
                 </CardHeader>
-                 <CardContent className="min-h-[300px]">
+                 <CardContent className="min-h-[300px] pro-preview">
                     {isGenerating ? (
                         <div className="space-y-4">
                             <Skeleton className="h-6 w-3/4" />
