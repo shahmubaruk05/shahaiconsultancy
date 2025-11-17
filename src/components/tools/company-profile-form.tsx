@@ -236,13 +236,13 @@ export function CompanyProfileForm() {
                                         <SelectItem value="investor">Investor-ready profile (3–5 pages, more formal)</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <FormDescription>
-                                  <ul className="text-xs list-disc pl-4 mt-2">
+                                <div className="text-xs text-muted-foreground">
+                                  <ul className="list-disc pl-4 mt-2">
                                     <li><b>Quick overview:</b> 1 page, good for website About page</li>
                                     <li><b>Detailed profile:</b> 2–3 pages, good for proposals & brochures</li>
                                     <li><b>Investor-ready:</b> 3–5 pages, for sharing with serious investors</li>
                                   </ul>
-                                </FormDescription>
+                                </div>
                                 <FormMessage />
                                 </FormItem>
                             )} 
