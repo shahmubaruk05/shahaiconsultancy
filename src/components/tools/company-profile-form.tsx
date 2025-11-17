@@ -20,6 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -75,15 +76,6 @@ export function CompanyProfileForm() {
   const [activeProfileName, setActiveProfileName] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-  const { data: userData } = useDoc(userDocRef);
-  
-  const profilesQuery = useMemoFirebase(() => 
-    user && firestore ? query(collection(firestore, `users/${user.uid}/companyProfiles`), orderBy('createdAt', 'desc'), limit(5)) : null,
-    [user, firestore]
-  );
-  const { data: savedProfiles, isLoading: profilesLoading } = useCollection<ProfileDocument>(profilesQuery);
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -104,7 +96,14 @@ export function CompanyProfileForm() {
     },
   });
 
-  const plan = (userData?.plan as UserPlan) || 'free';
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userData } = useDoc(userDocRef);
+  
+  const profilesQuery = useMemoFirebase(() => 
+    user && firestore ? query(collection(firestore, `users/${user.uid}/companyProfiles`), orderBy('createdAt', 'desc'), limit(5)) : null,
+    [user, firestore]
+  );
+  const { data: savedProfiles, isLoading: profilesLoading } = useCollection<ProfileDocument>(profilesQuery);
 
   if (isUserLoading) {
     return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
@@ -122,6 +121,8 @@ export function CompanyProfileForm() {
     );
   }
 
+  const plan = (userData?.plan as UserPlan) || 'free';
+
   const onSubmit = async (data: FormData) => {
     if (!user || !firestore) return;
     
@@ -133,18 +134,14 @@ export function CompanyProfileForm() {
     try {
       const aiResult = await generateCompanyProfileMock(data);
       
-      const profileMarkdown = Object.entries(aiResult)
-          .map(([key, value]) => `## ${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}\n\n${value}`)
-          .join('\n\n');
-
-      setPreviewMarkdown(profileMarkdown);
+      setPreviewMarkdown(aiResult.profileMarkdown);
       
       await saveCompanyProfile(firestore, user.uid, {
           companyName: data.companyName,
           industry: data.industry,
           country: data.country,
           depth: data.depth,
-          profileMarkdown: profileMarkdown,
+          profileMarkdown: aiResult.profileMarkdown,
       });
 
     } catch (e) {
@@ -230,7 +227,7 @@ export function CompanyProfileForm() {
                                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                     <SelectContent>
                                         <SelectItem value="quick">Quick overview (≈ 1 page)</SelectItem>
-                                        <SelectItem value="detailed">Detailed company profile (2–3 pages)</SelectItem>
+                                        <SelectItem value="detailed">Detailed profile (2–3 pages)</SelectItem>
                                         <SelectItem value="investor">Investor-ready profile (3–5 pages)</SelectItem>
                                     </SelectContent>
                                 </Select>
@@ -344,3 +341,4 @@ export function CompanyProfileForm() {
     </div>
   );
 }
+

@@ -138,160 +138,145 @@ export type CompanyProfileInput = {
   };
 
 export type CompanyProfileResult = {
-  about: string;
-  mission: string;
-  vision: string;
-  servicesSummary: string;
-  targetCustomersSection: string;
-  whyChooseUs: string;
-  callToAction: string;
-  socialImpact?: string;
+  profileMarkdown: string;
 };
 
+const BASE_PROMPT = `
+You are "Ask Shah" – an AI startup advisor and copywriter helping Shah Mubaruk's clients.
+You write professional, clear company profiles for founders.
+Use a mix of simple English and Bangla when user context is Bangladeshi, but keep headings in English.
+Mention Shah Mubaruk only in the CTA if it makes sense.
+`;
+
+const QUICK_TEMPLATE = `
+Write a SHORT 1–2 page company profile.
+Use these sections as H2 headings:
+1. Company Overview
+2. What We Do
+3. Our Customers
+4. Why Choose Us
+
+Keep each section brief (3–5 short paragraphs total). No financial details or investment ask.
+`;
+
+const DETAILED_TEMPLATE = `
+Write a DETAILED multi-section company profile.
+Use these sections as H2 headings:
+1. Company Overview
+2. Vision & Mission
+3. Products & Services
+4. Target Customers & Market
+5. Competitive Advantage
+6. Operations & Team
+7. Social Impact or Sustainability (if relevant)
+8. Call to Action
+
+Tone: professional but friendly, like a consulting firm's profile. 6–10 paragraphs total.
+`;
+
+const INVESTOR_TEMPLATE = `
+Write an INVESTOR-READY company profile focused on growth and funding potential.
+Use these sections as H2 headings:
+1. Executive Summary
+2. Problem & Opportunity
+3. Our Solution & Business Model
+4. Market Size & Traction (current stage, any numbers or milestones)
+5. Competitive Advantage & Moat
+6. Team & Advisors
+7. Financial Snapshot & Growth Plan (high-level)
+8. Investment Ask & Use of Funds
+9. Call to Action for Investors / Strategic Partners
+
+Tone: confident, data-driven, investor-focused. Make it clearly different from a normal brochure.
+`;
+
+
 export async function generateCompanyProfileMock(input: CompanyProfileInput): Promise<CompanyProfileResult> {
-  const { companyName, industry, country, targetCustomers, servicesOrProducts, brandTone, language, foundedYear, keyStrengths, sustainability, depth = 'quick' } = input;
+  const { depth = 'quick' } = input;
 
-  const tone = brandTone === "Friendly" ? "friendly and inspiring" : brandTone === "Mixed" ? "balanced professional yet human" : "formal and polished";
-
-  // Choose template based on industry
-  let about = "";
-  let mission = "";
-  let vision = "";
-  let servicesSummary = "";
-  let whyChooseUs = "";
-  let callToAction = "";
-  let socialImpact = "";
-
-  const brandHeader = `Shah Mubaruk – Your Startup Coach`;
+  let depthTemplate = QUICK_TEMPLATE;
+  if (depth === "detailed") depthTemplate = DETAILED_TEMPLATE;
+  if (depth === "investor") depthTemplate = INVESTOR_TEMPLATE;
   
-  let systemPrompt = "";
+  const systemPrompt = `${BASE_PROMPT}\n\n${depthTemplate}`;
 
-  switch (depth) {
-    case "detailed":
-        systemPrompt = "You are a senior corporate copywriter. Write a detailed 2–3 page company profile in markdown with clear headings, short paragraphs, and bullet points. Include: Overview, Mission, Vision, Products & Services, Target Customers, Market Positioning, Team & Governance, Sustainability / Social Impact (if relevant), and Contact Details. Tone: polished and business-oriented.";
-        break;
-    case "investor":
-        systemPrompt = "You are an investor-facing corporate writer. Write a 3–5 page investor-ready company profile in markdown with structured sections, short paragraphs, and bullet points. Include: Executive Overview, Problem & Opportunity, Company Overview, Products & Services, Target Customers & Market, Competitive Advantage, Traction & Key Metrics (use reasonable examples if not provided), Team & Governance, Risks & Mitigation (high level), and Contact / Next Steps. Tone: formal, concise, and suitable for sharing with investors.";
-        break;
-    default: // quick
-        systemPrompt = "You are a professional business writer. Write a 1-page company profile in clear, simple language. Use short paragraphs and 4–6 sections max. Tone: friendly but professional.";
-  }
+  // This is a mock implementation. A real AI call would use the systemPrompt.
+  // For now, we simulate different outputs based on the template.
 
+  let markdown = `## Mock Profile for ${input.companyName}\n\nThis is a mock response demonstrating the selected depth: **${depth}**.\n\nThe system prompt that would have been used is:\n\n---\n${systemPrompt}\n---`;
 
-  // This is a mock implementation. A real implementation would use an AI model with the system prompt.
-  // For now, we'll just generate content based on the old logic and add a note about the prompt.
-  // The structure of the returned object will depend on the expected output for the selected depth.
-  // For simplicity, we stick to the existing `CompanyProfileResult` type.
-
-  switch (industry.toLowerCase()) {
-    case "agro":
-    case "agriculture":
-      about = `${companyName} is an ${industry}-focused organization based in ${country}, connecting farmers and consumers through a transparent and efficient supply chain. Founded in ${foundedYear || "recent years"}, it helps both producers and customers access fair prices and reliable quality.`;
-      mission = `To empower farmers and deliver fresh, safe food to consumers by modernizing Bangladesh’s agro distribution system.`;
-      vision = `To become the most trusted ${industry} network in South Asia, improving farmer income and ensuring food security.`;
-      servicesSummary = `We provide farm-to-table delivery, produce collection, quality control, and logistics solutions. Our services ensure traceability, freshness, and fair pricing.`;
-      whyChooseUs = `• Direct sourcing from farmers\n• Fair pricing model\n• Food safety & quality focus\n• Transparent operations\n• Social impact-driven`;
-      socialImpact = `By reducing middlemen and waste, ${companyName} helps improve farmer livelihoods and promote sustainable agriculture.`;
-      break;
-
-    case "technology":
-    case "it":
-    case "software":
-      about = `${companyName} is a ${industry}-driven startup from ${country}, specializing in software development, digital transformation, and automation. Founded in ${foundedYear || "recent years"}, it focuses on helping SMEs and enterprises build scalable, secure, and efficient solutions.`;
-      mission = `To empower businesses through modern technology and data-driven decision-making.`;
-      vision = `To become a global tech partner from Bangladesh, delivering innovation that transforms industries.`;
-      servicesSummary = `We develop custom software, SaaS products, and integration services. Our expertise includes web apps, AI automation, and cloud infrastructure.`;
-      whyChooseUs = `• Experienced development team\n• Scalable architecture mindset\n• Transparent communication\n• End-to-end digital support`;
-      socialImpact = `${companyName} trains young developers and promotes tech entrepreneurship within ${country}.`;
-      break;
-
-    case "education":
-      about = `${companyName} is an ${industry}-focused organization from ${country}, providing modern learning experiences and skill development solutions.`;
-      mission = `To make quality education accessible, affordable, and outcome-based for all learners.`;
-      vision = `To become Bangladesh’s most impactful education platform through innovation and mentorship.`;
-      servicesSummary = `We offer online and offline courses, workshops, and career mentoring programs.`;
-      whyChooseUs = `• Expert trainers and mentors\n• Practical, job-oriented curriculum\n• Hybrid learning models\n• Measurable learning outcomes`;
-      socialImpact = `${companyName} bridges the gap between academic education and employability for youth.`;
-      break;
-
-    case "health":
-    case "medical":
-      about = `${companyName} operates in the ${industry} sector of ${country}, focusing on accessible healthcare and preventive wellness.`;
-      mission = `To make primary healthcare affordable, technology-enabled, and patient-focused.`;
-      vision = `To build a healthier nation by empowering people with timely medical support and awareness.`;
-      servicesSummary = `Our offerings include telemedicine, diagnostics, health monitoring, and corporate wellness programs.`;
-      whyChooseUs = `• Qualified medical professionals\n• Secure teleconsultation platform\n• Affordable and reliable care\n• Community health programs`;
-      socialImpact = `${companyName} supports rural healthcare awareness and preventive initiatives.`;
-      break;
-
-    case "fashion":
-    case "clothing":
-    case "textile":
-      about = `${companyName} is a ${industry}-brand from ${country}, blending creative design with sustainable production.`;
-      mission = `To redefine Bangladeshi fashion by combining quality, culture, and conscious craftsmanship.`;
-      vision = `To be recognized globally as a responsible, trend-forward fashion brand.`;
-      servicesSummary = `We design and produce clothing lines, accessories, and lifestyle products with eco-friendly materials.`;
-      whyChooseUs = `• Ethical sourcing & fair trade\n• Trend-driven design\n• High-quality materials\n• Sustainability commitment`;
-      socialImpact = `${companyName} promotes women empowerment and rural artisan development.`;
-      break;
-
-    case "real estate":
-      about = `${companyName} is a ${industry}-driven company from ${country}, providing trusted property development and housing solutions.`;
-      mission = `To make real estate investment transparent, secure, and value-driven.`;
-      vision = `To shape urban landscapes with innovation and integrity.`;
-      servicesSummary = `We offer property sales, land development, construction management, and investment consultancy.`;
-      whyChooseUs = `• Transparent documentation\n• Legal due diligence\n• Quality construction standards\n• On-time delivery`;
-      socialImpact = `${companyName} creates jobs and contributes to sustainable urban growth.`;
-      break;
-
-    default:
-      about = `${companyName} is a ${industry}-based company in ${country}, focusing on providing reliable and innovative solutions to ${targetCustomers}.`;
-      mission = `To deliver measurable impact and sustainable growth through practical strategies and innovation.`;
-      vision = `To become a trusted name in ${industry}, known for excellence, integrity, and innovation.`;
-      servicesSummary = `We provide ${servicesOrProducts} tailored to meet the needs of ${targetCustomers}.`;
-      whyChooseUs = keyStrengths
-        ? keyStrengths
-        : `• Proven expertise\n• Customer-centric approach\n• Strong team\n• Long-term partnership mindset`;
-      socialImpact = sustainability || "";
-  }
-
-  // Adjust content based on depth
   if (depth === 'quick') {
-    mission = '';
-    vision = '';
-    socialImpact = '';
+    markdown += `
+## Company Overview
+A brief intro to ${input.companyName}.
+
+## What We Do
+Description of services: ${input.servicesOrProducts}.
+
+## Our Customers
+Targeting ${input.targetCustomers}.
+
+## Why Choose Us
+Because we are the best.
+    `;
+  } else if (depth === 'detailed') {
+    markdown += `
+## Company Overview
+A detailed overview of the company.
+
+## Vision & Mission
+Our vision is to conquer the world. Our mission is to start tomorrow.
+
+## Products & Services
+- ${input.servicesOrProducts}
+- More amazing things
+
+## Target Customers & Market
+We target everyone, everywhere.
+
+## Competitive Advantage
+We have no competition.
+
+## Operations & Team
+A great team doing great things.
+
+## Call to Action
+Contact us now!
+    `;
   } else if (depth === 'investor') {
-    // Add more investor-focused details
-    whyChooseUs += `\n• Strong market traction with a clear path to profitability.\n• Scalable business model with high growth potential.`;
+    markdown += `
+## Executive Summary
+${input.companyName} is poised to dominate the ${input.industry} market.
+
+## Problem & Opportunity
+The problem is huge, and the opportunity is bigger.
+
+## Our Solution & Business Model
+Our solution is revolutionary. We make money through magic.
+
+## Market Size & Traction
+The market is worth trillions. We have 1000 users.
+
+## Competitive Advantage & Moat
+Our moat is deep and wide.
+
+## Team & Advisors
+Our team includes superheroes and wizards.
+
+## Financial Snapshot & Growth Plan
+We project infinite revenue.
+
+## Investment Ask & Use of Funds
+We need a billion dollars to buy a rocket.
+
+## Call to Action for Investors / Strategic Partners
+Invest now or regret it forever.
+    `;
   }
 
-
-  callToAction = `If you are looking for a trusted partner in the ${industry} sector, connect with us today. ${companyName} – powered by ${brandHeader} – is ready to help you grow.`;
-
-  const result: CompanyProfileResult = {
-    about,
-    mission,
-    vision,
-    servicesSummary,
-    targetCustomersSection: `We primarily serve ${targetCustomers}, offering customized solutions with a ${tone} approach.`,
-    whyChooseUs,
-    callToAction,
-    socialImpact,
+  return {
+    profileMarkdown: markdown,
   };
-  
-  if (language === 'Bangla') {
-      result.about = "বাংলায় রূপান্তর করা হয়নি";
-      result.mission = "বাংলায় রূপান্তর করা হয়নি";
-      result.vision = "বাংলায় রূপান্তর করা হয়নি";
-      result.servicesSummary = "বাংলায় রূপান্তর করা হয়নি";
-      result.targetCustomersSection = "বাংলায় রূপান্তর করা হয়নি";
-      result.whyChooseUs = "বাংলায় রূপান্তর করা হয়নি";
-      result.callToAction = "বাংলায় রূপান্তর করা হয়নি";
-      result.socialImpact = "বাংলায় রূপান্তর করা হয়নি";
-  }
-
-
-  return result;
 }
 
 
