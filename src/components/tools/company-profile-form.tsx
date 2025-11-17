@@ -94,6 +94,23 @@ async function downloadCompanyProfileDocx(profileMarkdown: string, companyName: 
 
 export function CompanyProfileForm() {
   const { user, isUserLoading, firestore } = useFirebase();
+  
+  if (isUserLoading) {
+    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!user) {
+    return (
+      <Card className="text-center p-8">
+        <CardTitle>Please Log In</CardTitle>
+        <CardDescription className="mt-2 mb-4">You need to be logged in to create a company profile.</CardDescription>
+        <Button asChild>
+          <Link href="/login">Log In</Link>
+        </Button>
+      </Card>
+    );
+  }
+
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [previewMarkdown, setPreviewMarkdown] = useState<string | null>(null);
@@ -129,22 +146,6 @@ export function CompanyProfileForm() {
       depth: 'quick'
     },
   });
-
-  if (isUserLoading) {
-    return <div className="text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" /></div>;
-  }
-
-  if (!user) {
-    return (
-      <Card className="text-center p-8">
-        <CardTitle>Please Log In</CardTitle>
-        <CardDescription className="mt-2 mb-4">You need to be logged in to create a company profile.</CardDescription>
-        <Button asChild>
-          <Link href="/login">Log In</Link>
-        </Button>
-      </Card>
-    );
-  }
 
   const onSubmit = (data: FormData) => {
     if (!user || !firestore) return;
@@ -343,5 +344,3 @@ export function CompanyProfileForm() {
     </div>
   );
 }
-
-    
