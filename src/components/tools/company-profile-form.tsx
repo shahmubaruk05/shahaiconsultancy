@@ -11,6 +11,7 @@ import { saveAs } from 'file-saver';
 import ReactMarkdown from 'react-markdown';
 
 import { generateCompanyProfileMock, CompanyProfileResult, CompanyProfileInput } from '@/lib/aiMock';
+import { saveCompanyProfile } from '@/lib/company-profile';
 import {
   Form,
   FormControl,
@@ -102,7 +103,7 @@ export function CompanyProfileForm() {
   const plan = (userData?.plan as UserPlan) || 'free';
 
   const profilesQuery = useMemoFirebase(() => 
-    user ? query(collection(firestore, `users/${user.uid}/companyProfiles`), orderBy('createdAt', 'desc'), limit(5)) : null,
+    user && firestore ? query(collection(firestore, `users/${user.uid}/companyProfiles`), orderBy('createdAt', 'desc'), limit(5)) : null,
     [user, firestore]
   );
   const { data: savedProfiles, isLoading: profilesLoading } = useCollection<ProfileDocument>(profilesQuery);
@@ -128,7 +129,7 @@ export function CompanyProfileForm() {
   });
 
   const onSubmit = (data: FormData) => {
-    if (!user) return;
+    if (!user || !firestore) return;
     
     setError(null);
     setPreviewMarkdown(null);
@@ -138,23 +139,18 @@ export function CompanyProfileForm() {
       try {
         const aiResult = await generateCompanyProfileMock(data);
         
-        // Simple markdown conversion
         const profileMarkdown = Object.entries(aiResult)
             .map(([key, value]) => `## ${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}\n\n${value}`)
             .join('\n\n');
 
         setPreviewMarkdown(profileMarkdown);
         
-        const profileRef = collection(firestore, `users/${user.uid}/companyProfiles`);
-        await addDoc(profileRef, {
-          userId: user.uid,
-          companyName: data.companyName,
-          industry: data.industry,
-          country: data.country,
-          depth: data.depth,
-          profileMarkdown: profileMarkdown,
-          ...aiResult,
-          createdAt: serverTimestamp(),
+        await saveCompanyProfile(firestore, user.uid, {
+            companyName: data.companyName,
+            industry: data.industry,
+            country: data.country,
+            depth: data.depth,
+            profileMarkdown: profileMarkdown,
         });
 
       } catch (e) {
