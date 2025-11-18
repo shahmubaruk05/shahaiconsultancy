@@ -142,3 +142,28 @@
   filter: blur(3px);
   opacity: 0.6;
 }
+
+/* ===== No-copy preview lock ===== */
+.no-copy-preview,
+.no-copy-preview * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Simple diagonal watermark grid */
+.watermark-grid {
+  position: absolute;
+  inset: -40px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px;
+  transform: rotate(-25deg);
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a; /* slate-900 */
+}
+
+.watermark-grid span {
+  white-space: nowrap;
+}

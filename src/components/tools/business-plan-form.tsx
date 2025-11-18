@@ -35,6 +35,7 @@ import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { saveAs } from 'file-saver';
 import ReactMarkdown from 'react-markdown';
+import { LockedPreview } from '@/components/LockedPreview';
 
 
 const formSchema = z.object({
@@ -212,8 +213,7 @@ export function BusinessPlanForm() {
     );
   }
 
-  const isPro = plan === 'pro' || plan === 'premium';
-  const previewClass = !isPro ? 'locked-preview' : 'pro-preview';
+  const isLocked = plan === 'free';
 
   return (
     <div className="grid md:grid-cols-2 gap-8">
@@ -269,7 +269,7 @@ export function BusinessPlanForm() {
                 </form>
             </Form>
         </div>
-        <div>
+        <div id="preview-area">
             {isPending && (
                 <Card className="flex flex-col items-center justify-center p-8 h-full">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -283,37 +283,29 @@ export function BusinessPlanForm() {
                   <CardDescription className="mt-2">Fill in the form and click 'Generate Business Plan' to see your plan here.</CardDescription>
               </Card>
             )}
-
+            
             {result && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>{form.getValues().businessName}</CardTitle>
-                        <CardDescription>Here is the AI-generated plan for your business.</CardDescription>
-                    </CardHeader>
-                    <CardContent id="preview-area">
-                        <div className={cn("prose max-w-none dark:prose-invert", previewClass)}>
-                            <ReactMarkdown>{result.planText}</ReactMarkdown>
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex-col sm:flex-row gap-2">
-                        <div className="w-full">
-                           <Button
-                                onClick={handleDownload}
-                                className="w-full sm:w-auto"
-                            >
-                                <Download className="mr-2" /> Download as Word (.docx)
-                            </Button>
-                            {plan === 'free' && (
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    DOCX export is available on Pro/Premium plans.
-                                </p>
-                            )}
-                        </div>
-                        <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto'>
-                           <Printer className="mr-2" /> Print / Save as PDF
-                        </Button>
-                    </CardFooter>
-                </Card>
+              <LockedPreview isLocked={isLocked} title="Generated Business Plan">
+                <article className="prose max-w-none dark:prose-invert">
+                  <ReactMarkdown>{result.planText}</ReactMarkdown>
+                </article>
+
+                {!isLocked && (
+                  <CardFooter className="flex-col sm:flex-row gap-2 mt-4 p-0">
+                      <div className="w-full">
+                          <Button
+                              onClick={handleDownload}
+                              className="w-full sm:w-auto"
+                          >
+                              <Download className="mr-2" /> Download as Word (.docx)
+                          </Button>
+                      </div>
+                      <Button onClick={() => window.print()} variant="outline" className='w-full sm:w-auto'>
+                          <Printer className="mr-2" /> Print / Save as PDF
+                      </Button>
+                  </CardFooter>
+                )}
+              </LockedPreview>
             )}
 
             {error && (

@@ -150,7 +150,7 @@ export function CompanyProfileForm() {
     );
   }
 
-  const isPro = plan === 'pro' || plan === 'premium';
+  const isLocked = plan === 'free';
   
   const onSubmit = async (data: FormData) => {
     if (!user || !firestore) return;
@@ -190,7 +190,7 @@ export function CompanyProfileForm() {
   };
 
   const handleDownload = () => {
-    if (!isPro) {
+    if (isLocked) {
       toast({
         variant: "destructive",
         title: "Upgrade Required",
@@ -211,7 +211,7 @@ export function CompanyProfileForm() {
   };
   
   const handleDownloadPdf = async () => {
-    if (!isPro) {
+    if (isLocked) {
         toast({
             variant: "destructive",
             title: "Upgrade Required",
@@ -361,61 +361,43 @@ export function CompanyProfileForm() {
                 </CardContent>
             </Card>
 
-            <Card className="sticky top-4">
-                <CardHeader>
-                    <CardTitle>Generated Company Profile</CardTitle>
-                </CardHeader>
-                 <CardContent id="preview-area" className="min-h-[300px]">
-                    {isGenerating ? (
-                        <div className="space-y-4">
-                            <Skeleton className="h-6 w-3/4" />
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-5/6" />
-                            <Skeleton className="h-4 w-full" />
-                        </div>
-                    ) : previewMarkdown ? (
-                       isPro ? (
-                          <article className="prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert">
-                            <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
-                          </article>
-                       ) : (
-                         <LockedPreview title="Company Profile Preview">
-                            <article className="prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert">
-                                <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
-                            </article>
-                         </LockedPreview>
-                       )
-                    ) : (
-                        <div className="text-center text-muted-foreground py-8">
-                            <FileText className="h-10 w-10 mx-auto mb-2" />
-                            <p>Fill in the form on the left and click <strong>Generate Profile</strong>. Your AI-generated company profile will appear here.</p>
-                        </div>
-                    )}
-                </CardContent>
-                {previewMarkdown && (
-                     <CardFooter className="flex-col items-start gap-4">
-                        <div className="flex flex-col sm:flex-row gap-2 w-full">
-                           <Button
-                                onClick={handleDownload}
-                                className="w-full sm:w-auto"
-                                disabled={!previewMarkdown}
-                            >
-                               <Download className="mr-2" /> Download as Word (.docx)
-                            </Button>
-                             <Button onClick={handleDownloadPdf} variant="outline" className='w-full sm:w-auto' disabled={!previewMarkdown || isDownloadingPdf}>
-                               {isDownloadingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2" />}
-                               Download as PDF
-                            </Button>
-                        </div>
-                        {!isPro && (
-                            <p className="text-xs text-muted-foreground">
-                                DOCX and PDF export are available on Pro/Premium plans.
-                            </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">Written in collaboration with Shah Mubaruk – Your Startup Coach.</p>
-                    </CardFooter>
+            <div id="preview-area" className="sticky top-4">
+                {isGenerating ? (
+                    <Card className="flex flex-col items-center justify-center p-8 h-full min-h-[300px]">
+                      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                      <p className="mt-4 text-muted-foreground">Generating your profile...</p>
+                    </Card>
+                ) : previewMarkdown ? (
+                  <LockedPreview isLocked={isLocked} title="Generated Company Profile">
+                      <article className="prose max-w-none dark:prose-invert">
+                          <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+                      </article>
+                      {!isLocked && (
+                          <CardFooter className="flex-col items-start gap-4 mt-4 p-0">
+                              <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                <Button
+                                      onClick={handleDownload}
+                                      className="w-full sm:w-auto"
+                                      disabled={!previewMarkdown}
+                                  >
+                                    <Download className="mr-2" /> Download as Word (.docx)
+                                  </Button>
+                                  <Button onClick={handleDownloadPdf} variant="outline" className='w-full sm:w-auto' disabled={!previewMarkdown || isDownloadingPdf}>
+                                    {isDownloadingPdf ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2" />}
+                                    Download as PDF
+                                  </Button>
+                              </div>
+                              <p className="text-xs text-muted-foreground">Written in collaboration with Shah Mubaruk – Your Startup Coach.</p>
+                          </CardFooter>
+                      )}
+                  </LockedPreview>
+                ) : (
+                    <Card className="flex flex-col items-center justify-center p-8 h-full min-h-[300px] text-center">
+                        <FileText className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-muted-foreground">Fill in the form and click <strong>Generate Profile</strong>. Your AI-generated company profile will appear here.</p>
+                    </Card>
                 )}
-            </Card>
+            </div>
 
             {error && (
                 <Card className="mt-8 border-destructive bg-destructive/10">

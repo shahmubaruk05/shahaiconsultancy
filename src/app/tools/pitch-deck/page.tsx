@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LockedPreview } from "@/components/LockedPreview";
 
 type UserPlan = 'free' | 'pro' | 'premium';
 
@@ -147,8 +148,7 @@ export default function PitchDeckPage() {
     );
   }
 
-  const isPro = plan === 'pro' || plan === 'premium';
-  const previewClass = !isPro ? 'locked-preview' : 'pro-preview';
+  const isLocked = plan === 'free';
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -322,39 +322,42 @@ export default function PitchDeckPage() {
             <h2 className="text-lg font-semibold text-slate-900">
               Generated Pitch Deck Outline
             </h2>
-            {isPro && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    disabled={copying}
-                    className="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    {copying ? "Copying..." : "Copy all"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownload}
-                    disabled={downloading}
-                    className="px-3 py-1.5 rounded-md bg-slate-900 text-xs font-medium text-white hover:bg-black disabled:opacity-60"
-                  >
-                    {downloading ? "Downloading..." : "Download .md"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadPptx}
-                    disabled={pptxDownloading}
-                    className="px-3 py-1.5 rounded-md bg-blue-600 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-                  >
-                    {pptxDownloading ? "Creating PPTX..." : "Download PPTX"}
-                  </button>
-                </div>
-            )}
           </div>
         
-          <div className={previewClass}>
+          <LockedPreview
+            isLocked={isLocked}
+            title="Generated Pitch Deck Outline"
+          >
             <PitchDeckViewer content={result} />
-          </div>
+            {!isLocked && (
+              <div className="flex items-center gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  disabled={copying}
+                  className="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {copying ? "Copying..." : "Copy all"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="px-3 py-1.5 rounded-md bg-slate-900 text-xs font-medium text-white hover:bg-black disabled:opacity-60"
+                >
+                  {downloading ? "Downloading..." : "Download .md"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadPptx}
+                  disabled={pptxDownloading}
+                  className="px-3 py-1.5 rounded-md bg-blue-600 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {pptxDownloading ? "Creating PPTX..." : "Download PPTX"}
+                </button>
+              </div>
+            )}
+          </LockedPreview>
         </div>
       )}
     </div>

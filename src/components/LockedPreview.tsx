@@ -2,50 +2,72 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "./ui/button";
 
-interface LockedPreviewProps {
-  title: string;
+type LockedPreviewProps = {
+  isLocked: boolean;
+  title?: string;
   children: React.ReactNode;
-  showUpgradeButton?: boolean;
-}
+};
 
-export function LockedPreview({
-  title,
-  children,
-  showUpgradeButton = true,
-}: LockedPreviewProps) {
+export function LockedPreview({ isLocked, title, children }: LockedPreviewProps) {
   const router = useRouter();
-
-  return (
-    <div className="relative rounded-xl border bg-slate-50/90 p-4 overflow-hidden">
-      {/* Actual content, but non-selectable + no pointer events */}
-      <div className="pointer-events-none select-none [user-select:none] text-slate-800/90 space-y-3">
+  if (!isLocked) {
+    // Paid user – normal content
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        {title && (
+          <h3 className="mb-4 text-lg font-semibold text-slate-900">
+            {title}
+          </h3>
+        )}
         {children}
       </div>
+    );
+  }
 
-      {/* Soft gradient overlay so it feels like a locked preview */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-slate-50/60 to-slate-50" />
-
-      {/* Bottom CTA bar */}
-      <div className="absolute inset-x-0 bottom-0 p-4 pt-6 bg-white/95 border-t flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">
-            {title}
-          </p>
+  // Free preview – blur + watermark + no copy
+  return (
+    <div
+      className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm no-copy-preview"
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {title && (
+        <div className="border-b border-slate-200 bg-white/80 px-6 py-4">
+          <h3 className="text-lg font-semibold text-slate-900">
+            {title} (Preview)
+          </h3>
           <p className="text-xs text-slate-500">
-            Full content, copy, and download (PDF/DOCX/PPTX) are available on the Pro plan.
+            Full, clean version & downloads unlock with Pro plan.
           </p>
         </div>
+      )}
 
-        {showUpgradeButton && (
-          <button
-            type="button"
-            onClick={() => router.push("/pricing")}
-            className="mt-2 inline-flex items-center rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 sm:mt-0 sm:w-auto"
-          >
-            Upgrade to Pro
-          </button>
-        )}
+      {/* Real content but visually locked */}
+      <div className="relative px-6 py-5">
+        <div className="pointer-events-none select-none blur-[1.5px] opacity-95">
+          {children}
+        </div>
+
+        {/* Watermark overlay */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.15]"
+        >
+          <div className="watermark-grid">
+            <span>Shah Mubaruk – Preview Only</span>
+            <span>Upgrade to unlock full content</span>
+          </div>
+        </div>
+
+        {/* Upgrade CTA footer */}
+        <div className="mt-4 rounded-lg bg-white/90 px-4 py-3 text-center shadow-sm ring-1 ring-slate-200">
+            <p className="text-xs text-slate-700">This is a protected preview. To get a clean, copyable version and download as PDF/Docx,{" "}
+          <Button variant="link" className="p-0 h-auto text-xs" onClick={() => router.push('/pricing')}>
+            upgrade to a Pro or Premium plan
+          </Button>
+          .</p>
+        </div>
       </div>
     </div>
   );
