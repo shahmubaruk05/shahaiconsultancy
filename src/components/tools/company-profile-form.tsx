@@ -38,6 +38,7 @@ import { collection, query, orderBy, limit, doc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { LockedPreview } from "@/components/LockedPreview";
 
 
 const formSchema = z.object({
@@ -150,8 +151,7 @@ export function CompanyProfileForm() {
   }
 
   const isPro = plan === 'pro' || plan === 'premium';
-  const previewClass = !isPro ? 'locked-preview' : 'pro-preview';
-
+  
   const onSubmit = async (data: FormData) => {
     if (!user || !firestore) return;
     
@@ -374,9 +374,17 @@ export function CompanyProfileForm() {
                             <Skeleton className="h-4 w-full" />
                         </div>
                     ) : previewMarkdown ? (
-                        <article className={cn("prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert", previewClass)}>
-                           <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
-                        </article>
+                       isPro ? (
+                          <article className="prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert">
+                            <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+                          </article>
+                       ) : (
+                         <LockedPreview title="Company Profile Preview">
+                            <article className="prose max-w-none whitespace-pre-wrap text-sm leading-relaxed dark:prose-invert">
+                                <ReactMarkdown>{previewMarkdown}</ReactMarkdown>
+                            </article>
+                         </LockedPreview>
+                       )
                     ) : (
                         <div className="text-center text-muted-foreground py-8">
                             <FileText className="h-10 w-10 mx-auto mb-2" />
