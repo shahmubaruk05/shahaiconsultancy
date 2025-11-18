@@ -1,6 +1,6 @@
 
 'use client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Lightbulb, Target, Building2, ClipboardList, Loader2, ArrowRight } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
@@ -27,7 +27,7 @@ export function LatestItems() {
   
   const strategiesQuery = useMemoFirebase(() => 
     user && firestore 
-      ? query(collection(firestore, `users/${user.uid}/businessStrategies`), orderBy('createdAt', 'desc'), limit(3))
+      ? query(collection(firestore, `users/${user_id}/businessStrategies`), orderBy('createdAt', 'desc'), limit(3))
       : null, 
     [firestore, user]
   );
