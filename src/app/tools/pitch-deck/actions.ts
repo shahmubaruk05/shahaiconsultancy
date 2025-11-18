@@ -1,9 +1,11 @@
+
 "use server";
 
 import { generatePitchDeck } from "@/lib/pitch-deck-engine";
 import { admin } from "@/lib/firebase-admin";
 import { collection, doc, setDoc } from "firebase/firestore";
 import { headers } from "next/headers";
+import { markdownToPlainText } from "@/lib/utils";
 
 
 async function getUserIdFromServer() {
@@ -39,23 +41,35 @@ export async function generatePitchDeckAction(formData: FormData) {
   };
 
   const output = await generatePitchDeck(data);
-
-  // Save for logged-in users
-  let savedId = null;
-  const userId = await getUserIdFromServer();
-
-  if (userId) {
-    const db = admin.firestore();
-    const col = collection(db, "users", userId, "pitchDecks");
-    const ref = doc(col);
-    await setDoc(ref, {
-      id: ref.id,
-      createdAt: new Date().toISOString(),
-      ...data,
-      output,
-    });
-    savedId = ref.id;
-  }
-
-  return { output, savedId };
+  return { output };
 }
+
+
+export async function savePitchDeckAction(data: any, deckMarkdown: string) {
+    const userId = await getUserIdFromServer();
+    if (!userId) {
+        throw new Error("User not authenticated");
+    }
+
+    const db = admin.firestore();
+    const decksCol = collection(db, "users", userId, "pitchDecks");
+    const deckRef = doc(decksCol);
+
+    const previewText = markdownToPlainText(deckMarkdown).substring(0, 300);
+
+    await setDoc(deckRef, {
+        id: deckRef.id,
+        userId,
+        title: data.startupName,
+        type: "pitch-deck",
+        country: data.country,
+        industry: data.industry,
+        previewText,
+        data: { ...data, deckMarkdown },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    });
+
+    return { savedId: deckRef.id };
+}
+

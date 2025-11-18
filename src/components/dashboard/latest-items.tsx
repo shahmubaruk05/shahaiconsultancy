@@ -1,8 +1,8 @@
 
 'use client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Lightbulb, Target, Building2, ClipboardList, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { FileText, Lightbulb, Target, Building2, ClipboardList, Loader2, ArrowRight } from 'lucide-react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
@@ -64,130 +64,79 @@ export function LatestItems() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Your Latest Work</CardTitle>
+                <CardTitle>My Saved Projects</CardTitle>
+                <CardDescription>Your recent work will appear here once you log in and start creating.</CardDescription>
             </CardHeader>
             <CardContent className="text-center text-muted-foreground p-8">
-                { !user ? (
-                    <div>
-                        <p>Please log in to see your work.</p>
-                        <Link href="/login" className="text-primary underline mt-2 inline-block">Log In</Link>
-                    </div>
-                ) : (
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-                ) }
+                <div>
+                    <p>Please log in to see your saved projects.</p>
+                    <Button asChild variant="link" className="mt-2">
+                        <Link href="/login">Log In to View Projects</Link>
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     );
   }
 
+  const allProjects = [
+    ...(plans || []).map((p: any) => ({ ...p, type: 'Business Plan', href: `/tools/business-plan?projectId=${p.id}`, icon: ClipboardList })),
+    ...(decks || []).map((p: any) => ({ ...p, type: 'Pitch Deck', title: p.startupName, href: `/tools/pitch-deck?projectId=${p.id}`, icon: FileText })),
+    ...(profiles || []).map((p: any) => ({ ...p, type: 'Company Profile', title: p.companyName, href: `/tools/company-profile?projectId=${p.id}`, icon: Building2 })),
+  ].sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+  
+
+  const recentProjects = allProjects.slice(0, 5);
+
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your Latest Work</CardTitle>
+        <CardTitle>My Saved Projects</CardTitle>
+        <CardDescription>Your 5 most recently saved projects. View all to see more.</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <p>Loading your latest work...</p>
+            <div className="flex justify-center items-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        ) : recentProjects.length > 0 ? (
+            <div className="space-y-4">
+                {recentProjects.map((item: any) => {
+                    const Icon = item.icon || FileText;
+                    return (
+                        <Link href={item.href} key={item.id} className="block border rounded-lg p-4 hover:bg-secondary transition-colors">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <Icon className="h-5 w-5 text-muted-foreground" />
+                                    <div>
+                                        <p className="font-medium truncate">{item.title || 'Untitled Project'}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Saved {formatTimestamp(item.createdAt)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-sm font-semibold text-primary">{item.type}</p>
+                                </div>
+                            </div>
+                        </Link>
+                    )
+                })}
+            </div>
         ) : (
-        <Tabs defaultValue="ideas">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="ideas">Ideas</TabsTrigger>
-            <TabsTrigger value="strategies">Strategies</TabsTrigger>
-            <TabsTrigger value="plans">Plans</TabsTrigger>
-            <TabsTrigger value="decks">Decks</TabsTrigger>
-            <TabsTrigger value="profiles">Profiles</TabsTrigger>
-          </TabsList>
-          <TabsContent value="ideas" className="mt-4">
-            <div className="space-y-4">
-              {ideas && ideas.length > 0 ? ideas.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
-                  <div className="flex items-center gap-4">
-                    <Lightbulb className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium truncate">{item.input}</p>
-                      <p className="text-sm text-muted-foreground">Validated {formatTimestamp(item.createdAt)}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                     <p className="font-semibold text-primary">{item.score}</p>
-                     <p className="text-sm text-muted-foreground">Score</p>
-                  </div>
-                </div>
-              )) : <p className="text-muted-foreground text-sm text-center py-4">No ideas validated yet.</p>}
-            </div>
-          </TabsContent>
-          <TabsContent value="strategies" className="mt-4">
-             <div className="space-y-4">
-              {strategies && strategies.length > 0 ? strategies.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
-                  <div className="flex items-center gap-4">
-                    <Target className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{item.businessModel}</p>
-                      <p className="text-sm text-muted-foreground">Generated {formatTimestamp(item.createdAt)}</p>
-                    </div>
-                  </div>
-                </div>
-              )) : <p className="text-muted-foreground text-sm text-center py-4">No strategies generated yet.</p>}
-            </div>
-          </TabsContent>
-          <TabsContent value="plans" className="mt-4">
-             <div className="space-y-4">
-              {plans && plans.length > 0 ? plans.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
-                  <div className="flex items-center gap-4">
-                    <ClipboardList className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{item.businessName}</p>
-                      <p className="text-sm text-muted-foreground">Generated {formatTimestamp(item.createdAt)}</p>
-                    </div>
-                  </div>
-                   <div className="text-right">
-                     <p className="font-semibold text-primary truncate">{item.industry}</p>
-                     <p className="text-sm text-muted-foreground">Industry</p>
-                  </div>
-                </div>
-              )) : <p className="text-muted-foreground text-sm text-center py-4">No business plans generated yet.</p>}
-            </div>
-          </TabsContent>
-          <TabsContent value="decks" className="mt-4">
-             <div className="space-y-4">
-              {decks && decks.length > 0 ? decks.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
-                  <div className="flex items-center gap-4">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{item.input.businessName}</p>
-                      <p className="text-sm text-muted-foreground">Created {formatTimestamp(item.createdAt)}</p>
-                    </div>
-                  </div>
-                </div>
-              )) : <p className="text-muted-foreground text-sm text-center py-4">No pitch decks created yet.</p>}
-            </div>
-          </TabsContent>
-           <TabsContent value="profiles" className="mt-4">
-            <div className="space-y-4">
-              {profiles && profiles.length > 0 ? profiles.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between rounded-md border p-4">
-                  <div className="flex items-center gap-4">
-                    <Building2 className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{item.companyName}</p>
-                      <p className="text-sm text-muted-foreground">Created {formatTimestamp(item.createdAt)}</p>
-                    </div>
-                  </div>
-                   <div className="text-right">
-                     <p className="font-semibold text-primary truncate">{item.industry}</p>
-                     <p className="text-sm text-muted-foreground">Industry</p>
-                  </div>
-                </div>
-              )) : <p className="text-muted-foreground text-sm text-center py-4">No company profiles created yet.</p>}
-            </div>
-          </TabsContent>
-        </Tabs>
+          <p className="text-muted-foreground text-sm text-center py-8">
+            You haven't saved any projects yet. Use a tool and click "Save to My Projects".
+          </p>
         )}
       </CardContent>
+      <CardFooter>
+          <Button asChild variant="secondary" className="ml-auto">
+              <Link href="/dashboard/projects">
+                  View all projects <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+          </Button>
+      </CardFooter>
     </Card>
   );
 }

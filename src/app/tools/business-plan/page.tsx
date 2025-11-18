@@ -1,8 +1,14 @@
 
+"use client";
+
 import { BusinessPlanForm } from '@/components/tools/business-plan-form';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSearchParams } from 'next/navigation';
 
 export default function BusinessPlanPage() {
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get('projectId');
+  
   return (
     <div className="space-y-8">
       <Card className="bg-primary/10 border-primary/20">
@@ -13,7 +19,7 @@ export default function BusinessPlanPage() {
           </CardDescription>
         </CardHeader>
       </Card>
-      <BusinessPlanForm />
+      <BusinessPlanForm projectId={projectId} />
     </div>
   );
 }

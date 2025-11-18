@@ -2,24 +2,45 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { generatePitchDeckAction } from "./actions";
+import { generatePitchDeckAction, savePitchDeckAction } from "./actions";
 import PitchDeckViewer from "@/components/PitchDeckViewer";
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { cn } from '@/lib/utils';
+import { doc, getDoc } from 'firebase/firestore';
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download, Save } from "lucide-react";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LockedPreview } from "@/components/LockedPreview";
+import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from 'next/navigation';
 
 type UserPlan = 'free' | 'pro' | 'premium';
 
+type FormDataObject = {
+  startupName: string;
+  oneLiner: string;
+  industry: string;
+  country: string;
+  targetAudience: string;
+  problem: string;
+  solution: string;
+  traction: string;
+  revenueModel: string;
+  competitors: string;
+  fundingNeed: string;
+  team: string;
+};
+
 export default function PitchDeckPage() {
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get('projectId');
+
   const [result, setResult] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const [copying, setCopying] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [formData, setFormData] = useState<FormDataObject | null>(null);
+  const [isGenerating, startGenerating] = useTransition();
+  const [isSaving, startSaving] = useTransition();
+
   const [pptxDownloading, setPptxDownloading] = useState(false);
   
   const { user, isUserLoading, firestore } = useFirebase();
@@ -27,69 +48,65 @@ export default function PitchDeckPage() {
   const { data: userData } = useDoc(userDocRef);
   const plan = (userData?.plan as UserPlan) || 'free';
 
+  const [isProjectLoading, setIsProjectLoading] = useState(!!projectId);
+
   useEffect(() => {
-    const block = (e: Event) => e.preventDefault();
-  
-    const preview = document.getElementById("preview-area");
-    if (!preview) return;
-  
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && (e.key === "c" || e.key === "a" || e.key === "x")) {
-        e.preventDefault();
-      }
-    };
-  
-    preview.addEventListener("copy", block);
-    preview.addEventListener("cut", block);
-    preview.addEventListener("contextmenu", block);
-    preview.addEventListener("keydown", handleKeyDown);
-  
-    return () => {
-      preview.removeEventListener("copy", block);
-      preview.removeEventListener("cut", block);
-      preview.removeEventListener("contextmenu", block);
-      preview.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [result]);
+    if (projectId && firestore && user) {
+      const fetchProject = async () => {
+        setIsProjectLoading(true);
+        const projectDocRef = doc(firestore, `users/${user.uid}/pitchDecks`, projectId);
+        const docSnap = await getDoc(projectDocRef);
+        if (docSnap.exists()) {
+          const projectData = docSnap.data()?.data;
+          setResult(projectData.deckMarkdown);
+          
+          const form = document.getElementById('pitch-deck-form') as HTMLFormElement;
+          if (form) {
+            Object.keys(projectData).forEach(key => {
+              if (form.elements.namedItem(key)) {
+                (form.elements.namedItem(key) as HTMLInputElement).value = projectData[key];
+              }
+            });
+          }
+          setFormData(projectData);
+        } else {
+          toast({ variant: 'destructive', title: 'Project not found' });
+        }
+        setIsProjectLoading(false);
+      };
+      fetchProject();
+    } else {
+        setIsProjectLoading(false);
+    }
+  }, [projectId, firestore, user, toast]);
 
   function handleSubmit(formData: FormData) {
     setResult("");
-    startTransition(async () => {
+    const dataObject = Object.fromEntries(formData.entries()) as FormDataObject;
+    setFormData(dataObject);
+
+    startGenerating(async () => {
       const r = await generatePitchDeckAction(formData);
       setResult(r.output || "");
     });
   }
 
-  async function handleCopy() {
-    if (!result) return;
-    try {
-      setCopying(true);
-      await navigator.clipboard.writeText(result);
-      alert("Pitch deck text copied! এখন Canva / PowerPoint / Google Slides এ paste করতে পারবেন।");
-    } catch (e) {
-      console.error(e);
-      alert("কপি করতে সমস্যা হয়েছে, পরে আবার চেষ্টা করুন।");
-    } finally {
-      setCopying(false);
+  function handleSave() {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Please log in to save your project.' });
+      return;
     }
-  }
-
-  function handleDownload() {
-    if (!result) return;
-    setDownloading(true);
-    try {
-      const blob = new Blob([result], { type: "text/markdown;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "pitch-deck-outline.md";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } finally {
-      setDownloading(false);
-    }
+    if (!result || !formData) return;
+    
+    startSaving(async () => {
+      try {
+        await savePitchDeckAction(formData, result);
+        toast({ title: 'Project saved!', description: 'You can find it in your dashboard.' });
+      } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Failed to save project.' });
+      }
+    });
   }
 
   async function handleDownloadPptx() {
@@ -111,7 +128,7 @@ export default function PitchDeckPage() {
       });
 
       if (!res.ok) {
-        alert("PPTX তৈরি করতে সমস্যা হয়েছে। পরে আবার চেষ্টা করুন।");
+        toast({ variant: 'destructive', title: 'Failed to create PPTX' });
         return;
       }
 
@@ -126,13 +143,13 @@ export default function PitchDeckPage() {
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error(e);
-      alert("PPTX download করতে সমস্যা হয়েছে।");
+      toast({ variant: 'destructive', title: 'Failed to download PPTX' });
     } finally {
       setPptxDownloading(false);
     }
   }
   
-  if (isUserLoading) {
+  if (isUserLoading || isProjectLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
@@ -163,6 +180,7 @@ export default function PitchDeckPage() {
       </div>
 
       <form
+        id="pitch-deck-form"
         action={handleSubmit}
         className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-slate-200 rounded-xl p-4 bg-white shadow-sm"
       >
@@ -308,22 +326,17 @@ export default function PitchDeckPage() {
         <div className="md:col-span-2 flex justify-end">
           <button
             type="submit"
-            disabled={isPending}
-            className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium shadow-sm disabled:opacity-60"
+            disabled={isGenerating}
+            className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium shadow-sm disabled:opacity-60"
           >
-            {isPending ? "Generating pitch deck..." : "Generate Pitch Deck"}
+            {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isGenerating ? "Generating pitch deck..." : "Generate Pitch Deck"}
           </button>
         </div>
       </form>
 
       {result && (
         <div id="preview-area">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Generated Pitch Deck Outline
-            </h2>
-          </div>
-        
           <LockedPreview
             isLocked={isLocked}
             title="Generated Pitch Deck Outline"
@@ -331,30 +344,21 @@ export default function PitchDeckPage() {
             <PitchDeckViewer content={result} />
             {!isLocked && (
               <div className="flex items-center gap-2 mt-4">
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  disabled={copying}
-                  className="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-60"
-                >
-                  {copying ? "Copying..." : "Copy all"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownload}
-                  disabled={downloading}
-                  className="px-3 py-1.5 rounded-md bg-slate-900 text-xs font-medium text-white hover:bg-black disabled:opacity-60"
-                >
-                  {downloading ? "Downloading..." : "Download .md"}
-                </button>
-                <button
-                  type="button"
+                 <Button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    variant="outline"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {isSaving ? "Saving..." : "Save Project"}
+                  </Button>
+                <Button
                   onClick={handleDownloadPptx}
                   disabled={pptxDownloading}
-                  className="px-3 py-1.5 rounded-md bg-blue-600 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60"
                 >
+                  <Download className="mr-2 h-4 w-4" />
                   {pptxDownloading ? "Creating PPTX..." : "Download PPTX"}
-                </button>
+                </Button>
               </div>
             )}
           </LockedPreview>
@@ -363,3 +367,4 @@ export default function PitchDeckPage() {
     </div>
   );
 }
+

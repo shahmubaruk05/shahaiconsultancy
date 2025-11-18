@@ -5,6 +5,7 @@ import { generateBusinessPlan } from "@/lib/business-plan-engine";
 import { admin } from "@/lib/firebase-admin";
 import { collection, doc, setDoc } from "firebase/firestore";
 import { headers } from "next/headers";
+import { markdownToPlainText } from "@/lib/utils";
 
 
 async function getUserIdFromServer() {
@@ -52,43 +53,36 @@ export async function generateBusinessPlanAction(formData: FormData) {
     planDepth,
   });
 
-  // Optional: save plan for logged-in users
-  let savedId: string | null = null;
-  const userId = await getUserIdFromServer();
+  return { planText };
+}
 
-  if (userId) {
+export async function saveBusinessPlanAction(data: any, planText: string) {
+    const userId = await getUserIdFromServer();
+    if (!userId) {
+        throw new Error("User not authenticated");
+    }
+
     const db = admin.firestore();
     const plansCol = collection(db, "users", userId, "businessPlans");
     const planRef = doc(plansCol);
+    
+    const executiveSummary = planText.split('## ')[1]?.split('\n\n')[0] || 'Summary not available';
+    const previewText = markdownToPlainText(executiveSummary).substring(0, 300);
+
     await setDoc(planRef, {
       id: planRef.id,
-      userId: userId,
-      businessName,
-      industry,
-      country,
+      userId,
+      title: data.businessName,
+      type: "business-plan",
+      country: data.country,
+      industry: data.industry,
+      depth: data.planDepth,
+      previewText,
+      data: { ...data, planText },
       createdAt: new Date().toISOString(),
-      executiveSummary: planText.split('## ')[1]?.split('\n\n')[0] || 'Summary not available',
-      // Storing other fields from the form if needed
-      targetAudience: targetCustomer,
-      problem,
-      solution,
-      revenueModel,
-      fundingNeed,
-      // Storing parts of the plan text for quick display
-      marketAnalysis: planText.split('## Market Opportunity')[1]?.split('## ')[0] || '',
-      marketingPlan: planText.split('## Marketing Strategy')[1]?.split('## ')[0] || '',
-      operationsPlan: planText.split('## Operations & Team Plan')[1]?.split('## ')[0] || '',
-      financialOverview: planText.split('## 3–5 Year Financial Projection')[1]?.split('## ')[0] || '',
-      nextSteps: (planText.split('## Roadmap & Milestones')[1] || '').split('\n').filter(line => line.startsWith('- ')),
-      planText,
+      updatedAt: new Date().toISOString(),
     });
-    savedId = planRef.id;
-  }
 
-  return {
-    planText,
-    savedId,
-  };
+    return { savedId: planRef.id };
 }
-
     
