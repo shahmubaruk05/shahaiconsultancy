@@ -27,7 +27,7 @@ export function LatestItems() {
   
   const strategiesQuery = useMemoFirebase(() => 
     user && firestore 
-      ? query(collection(firestore, `users/${user_id}/businessStrategies`), orderBy('createdAt', 'desc'), limit(3))
+      ? query(collection(firestore, `users/${user.uid}/businessStrategies`), orderBy('createdAt', 'desc'), limit(3))
       : null, 
     [firestore, user]
   );
