@@ -352,7 +352,7 @@ export default function PricingPage() {
                 <li className="flex items-center gap-2"><Check className="h-5 w-5 text-primary" /> Company Profile Downloads</li>
             </ul>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex-col items-stretch">
             {isUSD ? (
                 <Button onClick={() => handlePaypalPayment('pro')} className="w-full bg-slate-900 hover:bg-slate-800">
                     Pay with PayPal
@@ -360,6 +360,12 @@ export default function PricingPage() {
             ) : (
                 <Button onClick={() => openBkashForPlan('pro')} className="w-full" variant="secondary">Pay with bKash</Button>
             )}
+             <button
+              onClick={() => openBkashForPlan("pro")}
+              className="mt-3 w-full rounded-lg border border-pink-500 px-4 py-2 text-sm font-medium text-pink-600 hover:bg-pink-50"
+            >
+              Pay with bKash (BDT)
+            </button>
           </CardFooter>
         </Card>
 
@@ -387,7 +393,7 @@ export default function PricingPage() {
                 <li className="flex items-center gap-2"><Check className="h-5 w-5 text-primary" /> Priority Support</li>
             </ul>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex-col items-stretch">
             {isUSD ? (
                 <Button onClick={() => handlePaypalPayment('premium')} className="w-full">
                     Pay with PayPal
@@ -395,6 +401,12 @@ export default function PricingPage() {
             ) : (
                 <Button onClick={() => openBkashForPlan('premium')} className="w-full" variant="secondary">Pay with bKash</Button>
             )}
+             <button
+              onClick={() => openBkashForPlan("premium")}
+              className="mt-3 w-full rounded-lg border border-pink-500 px-4 py-2 text-sm font-medium text-pink-600 hover:bg-pink-50"
+            >
+              Pay with bKash (BDT)
+            </button>
           </CardFooter>
         </Card>
       </div>
@@ -410,5 +422,3 @@ export default function PricingPage() {
     </div>
   );
 }
-
-    
