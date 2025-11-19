@@ -1,7 +1,7 @@
 
 "use client";
 import { useState, useEffect, useTransition } from 'react';
-import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebase, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Loader2 } from 'lucide-react';
@@ -14,89 +14,198 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-type UserPlan = 'free' | 'pro' | 'premium';
+type UserPlan = "free" | "pro" | "premium";
+type PlanType = "pro" | "premium" | null;
 
-function BKashPaymentModal({ plan, price, firestore, user }: { plan: 'pro' | 'premium', price: string, firestore: any, user: any }) {
-    const { toast } = useToast();
-    const [isSubmitting, startSubmitting] = useTransition();
-    const [name, setName] = useState(user?.displayName || '');
-    const [email, setEmail] = useState(user?.email || '');
-    const [phone, setPhone] = useState('');
-    const [trxId, setTrxId] = useState('');
-    const [open, setOpen] = useState(false);
+function BKashPaymentModal({
+  open,
+  onClose,
+  plan,
+  amountBdt,
+}: {
+  open: boolean;
+  onClose: () => void;
+  plan: PlanType;
+  amountBdt: number | null;
+}) {
+  const { user } = useUser() || { user: null };
+  const { firestore } = useFirebase();
 
-    const handleSubmit = async () => {
-        if (!name || !email || !phone || !trxId) {
-            toast({ variant: 'destructive', title: 'Please fill all fields.' });
-            return;
-        }
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [txId, setTxId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-        startSubmitting(async () => {
-            try {
-                await addDoc(collection(firestore, 'bkashPayments'), {
-                    name,
-                    email,
-                    phone,
-                    trxId,
-                    plan,
-                    amount: price,
-                    status: 'pending',
-                    uid: user?.uid || null,
-                    createdAt: serverTimestamp(),
-                });
-                toast({ title: 'Submission Received!', description: 'Your payment is being verified. Please allow up to 24 hours.' });
-                setOpen(false);
-            } catch (error) {
-                console.error("bKash submission error:", error);
-                toast({ variant: 'destructive', title: 'Submission Failed', description: 'Please try again later.' });
-            }
-        });
-    };
+  useEffect(() => {
+    if (user) {
+        setName(user.displayName || '');
+        setEmail(user.email || '');
+    }
+  }, [user]);
 
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button className="w-full" variant="secondary">Pay with bKash</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>Pay with bKash</DialogTitle>
-                    <DialogDescription>
-                        Send {price} to the number below, then submit your details.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                    <div className='text-center p-4 rounded-lg bg-secondary'>
-                        <p className='text-sm text-muted-foreground'>bKash Merchant Number</p>
-                        <p className='text-2xl font-bold'>01711781232</p>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Your Name</Label>
-                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Your Email</Label>
-                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="phone">Your Phone</Label>
-                        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="trxId">bKash Transaction ID</Label>
-                        <Input id="trxId" value={trxId} onChange={(e) => setTrxId(e.target.value)} />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Submit
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+  if (!open || !plan || !amountBdt) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (!name || !email || !phone || !txId) {
+      setError("সব ঘর পূরণ করুন (নাম, ইমেইল, মোবাইল, Transaction ID)।");
+      return;
+    }
+    if (!firestore) {
+        setError("Database connection not found.");
+        return;
+    }
+
+    try {
+      setLoading(true);
+      await addDoc(collection(firestore, "bkashPayments"), {
+        plan,
+        amount: `${amountBdt} BDT`,
+        name,
+        email,
+        phone,
+        trxId: txId,
+        uid: user?.uid || null,
+        status: "pending",
+        createdAt: serverTimestamp(),
+        source: "pricing-page",
+      });
+      setSuccess(
+        "ধন্যবাদ! আপনার bKash payment তথ্য রিসিভ হয়েছে। ২৪ ঘন্টার মধ্যে ভেরিফাই করা হবে।"
+      );
+      setName("");
+      setEmail("");
+      setPhone("");
+      setTxId("");
+    } catch (err: any) {
+      console.error("Failed to save bkash payment", err);
+      setError("ডাটা সেভ করতে সমস্যা হয়েছে, একটু পরে আবার চেষ্টা করুন।");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Pay with bKash — {plan === "pro" ? "Pro Plan" : "Premium Plan"}
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-full px-3 py-1 text-sm text-slate-500 hover:bg-slate-100"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="mb-4 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+          <p className="font-medium mb-1">Step 1: bKash payment পাঠান</p>
+          <ul className="list-disc pl-5 space-y-0.5">
+            <li>Merchant bKash: <span className="font-semibold">01711781232</span></li>
+            <li>Amount: <span className="font-semibold">{amountBdt} BDT</span></li>
+            <li>Payment type: <span className="font-semibold">Payment</span></li>
+          </ul>
+          <p className="mt-2 text-xs text-slate-500">
+            Payment করার পর SMS/এপ-এ যে Transaction ID পাবেন, সেটা নিচের ফর্মে লিখুন।
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                নাম
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="আপনার নাম"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                ইমেইল
+              </label>
+              <input
+                type="email"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                মোবাইল নম্বর (bKash)
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="01XXXXXXXXX"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                Transaction ID
+              </label>
+              <input
+                type="text"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={txId}
+                onChange={(e) => setTxId(e.target.value)}
+                placeholder="e.g. CHH0L3Y5JI"
+              />
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-2 py-1">
+              {error}
+            </p>
+          )}
+          {success && (
+            <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-md px-2 py-1">
+              {success}
+            </p>
+          )}
+
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700 disabled:opacity-60"
+            >
+              {loading ? "Submitting..." : "Submit payment info"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
+
 
 export default function PricingPage() {
   const { firestore, user, isUserLoading } = useFirebase();
@@ -109,6 +218,20 @@ export default function PricingPage() {
   const currentPlan = (userData?.plan as UserPlan) || 'free';
 
   const [currency, setCurrency] = useState<"USD" | "BDT">("USD");
+
+  const [bkashOpen, setBkashOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>(null);
+  const [selectedAmountBdt, setSelectedAmountBdt] = useState<number | null>(
+    null
+  );
+
+  const openBkashForPlan = (plan: PlanType) => {
+    if (!plan) return;
+    setSelectedPlan(plan);
+    setSelectedAmountBdt(plan === "pro" ? 999 : 1999);
+    setBkashOpen(true);
+  };
+
 
   const isUSD = currency === "USD";
 
@@ -174,6 +297,12 @@ export default function PricingPage() {
 
   return (
     <div className="p-4 sm:p-8">
+      <BKashPaymentModal
+        open={bkashOpen}
+        onClose={() => setBkashOpen(false)}
+        plan={selectedPlan}
+        amountBdt={selectedAmountBdt}
+      />
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold tracking-tight">Upgrade Your Plan</h1>
         <p className="text-lg text-muted-foreground mt-2">Choose the plan that best fits your startup's needs.</p>
@@ -229,7 +358,7 @@ export default function PricingPage() {
                     Pay with PayPal
                 </Button>
             ) : (
-                <BKashPaymentModal plan="pro" price={prices.pro} firestore={firestore} user={user} />
+                <Button onClick={() => openBkashForPlan('pro')} className="w-full" variant="secondary">Pay with bKash</Button>
             )}
           </CardFooter>
         </Card>
@@ -264,7 +393,7 @@ export default function PricingPage() {
                     Pay with PayPal
                 </Button>
             ) : (
-                <BKashPaymentModal plan="premium" price={prices.premium} firestore={firestore} user={user} />
+                <Button onClick={() => openBkashForPlan('premium')} className="w-full" variant="secondary">Pay with bKash</Button>
             )}
           </CardFooter>
         </Card>
@@ -281,3 +410,5 @@ export default function PricingPage() {
     </div>
   );
 }
+
+    
