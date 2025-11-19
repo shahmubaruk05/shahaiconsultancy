@@ -22,6 +22,18 @@ service cloud.firestore {
       allow read, update: if request.auth != null && request.auth.token.role == "admin";
     }
 
+    // === Optional: if I ever store payments under users/{uid}/bkashPayments ===
+    match /users/{uid}/bkashPayments/{paymentId} {
+      allow create: if
+        request.resource.data.plan in ["pro", "premium"]
+        && request.resource.data.amountBdt is int
+        && request.resource.data.txId is string
+        && request.resource.data.status == "pending";
+
+      // Allow the logged-in user (or admin) to see / update their own payments
+      allow read, update: if request.auth != null && request.auth.uid == uid;
+    }
+
     // Secure all user-specific data under the /users/{userId} path.
     // This includes the user's profile document and all sub-collections.
     match /users/{userId}/{document=**} {
