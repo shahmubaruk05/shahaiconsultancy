@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, serverTimestamp, setDoc, orderBy } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -35,7 +35,7 @@ export default function BillingAdminPage() {
         [firestore]
     );
 
-    const { data: payments, isLoading } = useCollection<Payment>(pendingPaymentsQuery);
+    const { data: payments, isLoading, error } = useCollection<Payment>(pendingPaymentsQuery);
 
     const handleVerify = async (payment: Payment) => {
         if (!firestore || !user) return;
@@ -57,9 +57,9 @@ export default function BillingAdminPage() {
             } else {
                 toast({ title: 'Payment Verified!', description: 'User account was not linked, upgrade must be manual.' });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Verification failed:", error);
-            toast({ variant: 'destructive', title: 'Verification Failed' });
+            toast({ variant: 'destructive', title: 'Verification Failed', description: error.message });
         } finally {
             setVerifyingId(null);
         }
@@ -81,6 +81,20 @@ export default function BillingAdminPage() {
                 </CardHeader>
             </Card>
         );
+    }
+    
+    if (error) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className='text-destructive'>Error Loading Payments</CardTitle>
+                    <CardDescription className='text-destructive/80'>There was a problem fetching the pending payments. This is often a permission issue.</CardDescription>
+                </CardHeader>
+                 <CardContent>
+                    <pre className="bg-muted p-4 rounded-md text-xs whitespace-pre-wrap">{error.message}</pre>
+                </CardContent>
+            </Card>
+        )
     }
 
     return (
