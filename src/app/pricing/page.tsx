@@ -8,12 +8,14 @@ import { useRouter } from 'next/navigation';
 import { doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type UserPlan = 'free' | 'pro' | 'premium';
 
 export default function PricingPage() {
   const { firestore, user, isUserLoading } = useFirebase();
   const router = useRouter();
+  const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
   const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
@@ -29,20 +31,33 @@ export default function PricingPage() {
     premium: isUSD ? "$19" : "৳1,999",
     suffix: isUSD ? "/ mo" : "/ মাস",
   };
+  
+  const handlePayment = (plan: 'pro' | 'premium') => {
+    if (currency === 'USD') {
+        let url;
+        if (plan === 'pro') {
+            url = process.env.NEXT_PUBLIC_PAYPAL_PRO_URL;
+        } else {
+            url = process.env.NEXT_PUBLIC_PAYPAL_PREMIUM_URL;
+        }
 
-  const ctaLabels = {
-    pro: isUSD ? "Subscribe with PayPal" : "Pay with bKash",
-    premium: isUSD ? "Subscribe with PayPal" : "Pay with bKash",
+        if (!url || url === '#') {
+            toast({
+                variant: 'destructive',
+                title: 'Payment Link Not Configured',
+                description: 'The PayPal payment link for this plan is not set up yet. Please contact support.',
+            });
+            return;
+        }
+        window.open(url, '_blank');
+    } else { // BDT
+        toast({
+            title: 'Coming Soon',
+            description: 'bKash payment will be available soon. For now, please pay in USD via PayPal.',
+        });
+    }
   };
 
-  const proCheckoutUrl = isUSD
-    ? process.env.NEXT_PUBLIC_PAYPAL_PRO_URL || "#"
-    : process.env.NEXT_PUBLIC_BKASH_PRO_URL || "#";
-
-  const premiumCheckoutUrl = isUSD
-    ? process.env.NEXT_PUBLIC_PAYPAL_PREMIUM_URL || "#"
-    : process.env.NEXT_PUBLIC_BKASH_PREMIUM_URL || "#";
-    
   const checkout = async (plan: UserPlan) => {
     if (!user || !userDocRef) {
       router.push('/login');
@@ -52,10 +67,10 @@ export default function PricingPage() {
     startTransition(async () => {
         try {
             await setDoc(userDocRef, { plan: plan }, { merge: true });
-            // Optionally, show a success toast
+            toast({ title: 'Plan Updated', description: `Your plan has been changed to ${plan}.`});
         } catch (error) {
             console.error('An error occurred during checkout:', error);
-             // Optionally, show an error toast
+            toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update your plan.'});
         }
     });
   };
@@ -112,7 +127,9 @@ export default function PricingPage() {
         <Card className="w-full max-w-sm shadow-lg">
           <CardHeader>
             <CardTitle className="text-2xl">Pro Plan</CardTitle>
-            <CardDescription>For founders ready to create professional assets.</CardDescription>
+            <CardDescription>
+              {isUSD ? "Pay securely with PayPal (USD)" : "Local payments via bKash (coming soon)"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
              <div className="text-4xl font-bold">
@@ -128,14 +145,13 @@ export default function PricingPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <a
-                href={proCheckoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition"
-                >
-                {ctaLabels.pro}
-            </a>
+            <Button
+                onClick={() => handlePayment('pro')}
+                disabled={!isUSD}
+                className="w-full bg-slate-900 hover:bg-slate-800"
+            >
+                {isUSD ? "Pay with PayPal" : "Pay with bKash"}
+            </Button>
           </CardFooter>
         </Card>
 
@@ -145,7 +161,9 @@ export default function PricingPage() {
             </div>
           <CardHeader className="pt-10">
             <CardTitle className="text-2xl">Premium Plan</CardTitle>
-            <CardDescription>For founders who want unlimited access and support.</CardDescription>
+            <CardDescription>
+                {isUSD ? "Pay securely with PayPal (USD)" : "Local payments via bKash (coming soon)"}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-4xl font-bold">
@@ -162,14 +180,14 @@ export default function PricingPage() {
             </ul>
           </CardContent>
           <CardFooter>
-             <a
-                href={premiumCheckoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition"
-                >
-                {ctaLabels.premium}
-            </a>
+            <Button
+                onClick={() => handlePayment('premium')}
+                disabled={!isUSD}
+                className="w-full"
+                variant={isUSD ? "default" : "secondary"}
+            >
+                 {isUSD ? "Pay with PayPal" : "Pay with bKash"}
+            </Button>
           </CardFooter>
         </Card>
       </div>
