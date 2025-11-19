@@ -11,7 +11,7 @@ const WHATSAPP_LINK =
 
 const GOOGLE_CALENDAR_LINK =
   process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_LINK ||
-  "https://calendar.google.com/calendar/u/0/r";
+  "https://calendar.app.google/RZbbH8ZBxXtfvUoa6";
 
 const EMAIL_LINK =
   process.env.NEXT_PUBLIC_CONTACT_EMAIL_LINK || "mailto:hello@shahmubaruk.com";

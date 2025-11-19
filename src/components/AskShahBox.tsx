@@ -264,6 +264,9 @@ export default function AskShahBox({
                         strong: ({ children }) => (
                           <strong className="font-semibold">{children}</strong>
                         ),
+                        a: ({ node, ...props }) => (
+                            <a {...props} target="_blank" rel="noopener noreferrer" className="text-primary underline" />
+                        ),
                       }}
                     >
                       {msg.content}
@@ -292,7 +295,7 @@ export default function AskShahBox({
                           <a
                             href={act.buttonLink}
                             target="_blank"
-                            rel="noreferrer"
+                            rel="noopener noreferrer"
                             className="inline-block mt-3 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium"
                           >
                             {act.buttonText}
