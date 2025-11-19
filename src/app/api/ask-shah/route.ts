@@ -125,7 +125,7 @@ Use EXACTLY this table when the user asks about **Bangladesh company registratio
    - Office/consultancy: 40,000 BDT
    - Total: 132,123 BDT
 
-7) **Authorized capital: 5 crore (5,000,000 BDT)**
+7) **Authorized capital: 5 crore (50,000,000 BDT)**
    - Govt. Fees: 106,038 BDT
    - Office/consultancy: 40,000 BDT
    - Total: 146,038 BDT
