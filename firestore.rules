@@ -19,7 +19,7 @@ service cloud.firestore {
                       && request.resource.data.txId is string
                       && request.resource.data.status == "pending";
 
-      allow read, update: if signedIn();
+      allow read, update: if request.auth != null && request.auth.token.role == "admin";
     }
 
     // Secure all user-specific data under the /users/{userId} path.
