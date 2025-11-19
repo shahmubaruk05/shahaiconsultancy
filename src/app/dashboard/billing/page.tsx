@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -31,26 +31,28 @@ export default function BillingAdminPage() {
     const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
     const pendingPaymentsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'bkashPayments'), where('status', '==', 'pending')) : null,
+        firestore ? query(collection(firestore, 'bkashPayments'), where('status', '==', 'pending'), orderBy('createdAt', 'desc')) : null,
         [firestore]
     );
 
     const { data: payments, isLoading } = useCollection<Payment>(pendingPaymentsQuery);
 
     const handleVerify = async (payment: Payment) => {
-        if (!firestore) return;
+        if (!firestore || !user) return;
+        if (!confirm(`Are you sure you want to verify payment from ${payment.name} (${payment.trxId})?`)) return;
+        
         setVerifyingId(payment.id);
         try {
             const paymentRef = doc(firestore, 'bkashPayments', payment.id);
             await updateDoc(paymentRef, {
                 status: 'verified',
                 verifiedAt: serverTimestamp(),
-                verifiedBy: user?.uid,
+                verifiedBy: user.uid,
             });
 
             if (payment.uid) {
                 const userRef = doc(firestore, 'users', payment.uid);
-                await setDoc(userRef, { plan: payment.plan }, { merge: true });
+                await setDoc(userRef, { plan: payment.plan, planUpdatedAt: serverTimestamp() }, { merge: true });
                 toast({ title: 'Payment Verified & User Upgraded!' });
             } else {
                 toast({ title: 'Payment Verified!', description: 'User account was not linked, upgrade must be manual.' });
@@ -85,7 +87,7 @@ export default function BillingAdminPage() {
         <Card>
             <CardHeader>
                 <CardTitle>Pending bKash Payments</CardTitle>
-                <CardDescription>Review and verify manual bKash payments.</CardDescription>
+                <CardDescription>Review and verify manual bKash payments. Check Trx ID with Merchant Portal.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -102,16 +104,16 @@ export default function BillingAdminPage() {
                         {payments && payments.length > 0 ? (
                             payments.map(p => (
                                 <TableRow key={p.id}>
-                                    <TableCell>{formatDistanceToNow(p.createdAt.toDate(), { addSuffix: true })}</TableCell>
+                                    <TableCell>{p.createdAt ? formatDistanceToNow(p.createdAt.toDate(), { addSuffix: true }) : 'N/A'}</TableCell>
                                     <TableCell>
                                         <div>{p.name}</div>
                                         <div className="text-xs text-muted-foreground">{p.email} | {p.phone}</div>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant={p.plan === 'premium' ? 'default' : 'secondary'}>{p.plan}</Badge>
-                                        <div>{p.amount}</div>
+                                        <div className='text-xs'>{p.amount}</div>
                                     </TableCell>
-                                    <TableCell className="font-mono">{p.trxId}</TableCell>
+                                    <TableCell className="font-mono text-xs">{p.trxId}</TableCell>
                                     <TableCell>
                                         <Button
                                             size="sm"
