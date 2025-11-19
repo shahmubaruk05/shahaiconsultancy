@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useUser, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, doc, getDoc, getDocs, query, orderBy, limit } from "firebase/firestore";
 import Link from "next/link";
-import { AskShahChat } from '@/components/tools/ask-shah-chat';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -146,7 +145,6 @@ export default function CompanyFormationServicePage() {
   const [selectedKey, setSelectedKey] = useState<string>("10_lakh");
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [initialConversationId, setInitialConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // form state
@@ -159,28 +157,7 @@ export default function CompanyFormationServicePage() {
     if (isUserLoading || !firestore) {
       return;
     }
-
     setIsLoading(false);
-
-    if (user) {
-      const convosRef = collection(firestore, 'users', user.uid, 'conversations');
-      const q = query(convosRef, orderBy('createdAt', 'desc'), limit(1));
-
-      getDocs(q).then(snapshot => {
-        if (snapshot.empty) {
-          addDoc(convosRef, {
-            userId: user.uid,
-            title: 'Default Conversation',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          }).then(docRef => {
-            setInitialConversationId(docRef.id);
-          });
-        } else {
-          setInitialConversationId(snapshot.docs[0].id);
-        }
-      });
-    }
   }, [user, firestore, isUserLoading]);
 
 
@@ -264,10 +241,8 @@ export default function CompanyFormationServicePage() {
 
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
-      <div className="grid md:grid-cols-3 gap-8">
-        {/* Left column: main content */}
-        <div className="md:col-span-2">
+    <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
+        <div>
           <h1 className="text-3xl font-extrabold mb-2">Company Formation — Bangladesh (RJSC)</h1>
           <p className="text-muted-foreground mb-6">
             Register a Private Limited company through RJSC. Choose your authorized capital below to see a transparent cost breakdown (government fees + our service charges).
@@ -386,11 +361,7 @@ export default function CompanyFormationServicePage() {
           </Card>
         </div>
 
-        {/* Right column: Ask Shah + contact form */}
-        <aside className="space-y-6">
-          <div className="sticky top-24 space-y-4">
-            <AskShahChat initialConversationId={initialConversationId} />
-
+        <div className="space-y-6">
             <Card id="inquiry">
                 <CardHeader>
                     <CardTitle>Start registration / Request a callback</CardTitle>
@@ -441,9 +412,8 @@ export default function CompanyFormationServicePage() {
                     <CardDescription>We also offer combined Bangladesh + USA formation packages (Global Founder Package). <Link href="/contact" className="text-primary underline">Contact us</Link>.</CardDescription>
                 </CardHeader>
             </Card>
-          </div>
-        </aside>
-      </div>
+        </div>
     </div>
   );
 }
+
