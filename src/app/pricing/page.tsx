@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { useState, useEffect, useTransition } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,29 @@ export default function PricingPage() {
   const { data: userData, isLoading: isUserDocLoading } = useDoc(userDocRef);
   const currentPlan = (userData?.plan as UserPlan) || 'free';
 
+  const [currency, setCurrency] = useState<"USD" | "BDT">("USD");
+
+  const isUSD = currency === "USD";
+
+  const prices = {
+    pro: isUSD ? "$9" : "৳999",
+    premium: isUSD ? "$19" : "৳1,999",
+    suffix: isUSD ? "/ mo" : "/ মাস",
+  };
+
+  const ctaLabels = {
+    pro: isUSD ? "Subscribe with PayPal" : "Pay with bKash",
+    premium: isUSD ? "Subscribe with PayPal" : "Pay with bKash",
+  };
+
+  const proCheckoutUrl = isUSD
+    ? process.env.NEXT_PUBLIC_PAYPAL_PRO_URL || "#"
+    : process.env.NEXT_PUBLIC_BKASH_PRO_URL || "#";
+
+  const premiumCheckoutUrl = isUSD
+    ? process.env.NEXT_PUBLIC_PAYPAL_PREMIUM_URL || "#"
+    : process.env.NEXT_PUBLIC_BKASH_PREMIUM_URL || "#";
+    
   const checkout = async (plan: UserPlan) => {
     if (!user || !userDocRef) {
       router.push('/login');
@@ -61,6 +84,30 @@ export default function PricingPage() {
         <h1 className="text-4xl font-bold tracking-tight">Upgrade Your Plan</h1>
         <p className="text-lg text-muted-foreground mt-2">Choose the plan that best fits your startup's needs.</p>
       </div>
+
+        <div className="mb-6 flex justify-center">
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 text-xs font-medium">
+            <button
+                type="button"
+                onClick={() => setCurrency("USD")}
+                className={`px-3 py-1 rounded-full transition ${
+                isUSD ? "bg-white shadow-sm text-slate-900" : "text-slate-500"
+                }`}
+            >
+                USD $
+            </button>
+            <button
+                type="button"
+                onClick={() => setCurrency("BDT")}
+                className={`px-3 py-1 rounded-full transition ${
+                !isUSD ? "bg-white shadow-sm text-slate-900" : "text-slate-500"
+                }`}
+            >
+                BDT ৳
+            </button>
+            </div>
+        </div>
+
       <div className="flex flex-col md:flex-row justify-center items-center gap-8">
         <Card className="w-full max-w-sm shadow-lg">
           <CardHeader>
@@ -69,7 +116,10 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent className="space-y-4">
              <div className="text-4xl font-bold">
-                $9 <span className="text-lg font-normal text-muted-foreground">/ mo</span>
+                {prices.pro}
+                <span className="text-lg font-normal text-muted-foreground">
+                    {prices.suffix}
+                </span>
             </div>
             <ul className="space-y-2 text-muted-foreground">
                 <li className="flex items-center gap-2"><Check className="h-5 w-5 text-primary" /> All Core AI Tools</li>
@@ -78,15 +128,14 @@ export default function PricingPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button 
-                onClick={() => checkout('pro')} 
-                className="w-full" 
-                size="lg"
-                disabled={isPending || currentPlan === 'pro'}
-            >
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {currentPlan === 'pro' ? 'Current Plan' : 'Subscribe to Pro'}
-            </Button>
+            <a
+                href={proCheckoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition"
+                >
+                {ctaLabels.pro}
+            </a>
           </CardFooter>
         </Card>
 
@@ -100,7 +149,10 @@ export default function PricingPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-4xl font-bold">
-                $19 <span className="text-lg font-normal text-muted-foreground">/ mo</span>
+                {prices.premium}
+                <span className="text-lg font-normal text-muted-foreground">
+                    {prices.suffix}
+                </span>
             </div>
              <ul className="space-y-2 text-muted-foreground">
                 <li className="flex items-center gap-2"><Check className="h-5 w-5 text-primary" /> Everything in Pro</li>
@@ -110,15 +162,14 @@ export default function PricingPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button 
-                onClick={() => checkout('premium')} 
-                className="w-full bg-accent hover:bg-accent/90" 
-                size="lg"
-                disabled={isPending || currentPlan === 'premium'}
-            >
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {currentPlan === 'premium' ? 'Current Plan' : 'Subscribe to Premium'}
-            </Button>
+             <a
+                href={premiumCheckoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition"
+                >
+                {ctaLabels.premium}
+            </a>
           </CardFooter>
         </Card>
       </div>
