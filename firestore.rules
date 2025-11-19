@@ -11,6 +11,17 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
+    // Allow public users to create a bKash payment record with specific data validation.
+    // Allow authenticated users (admins) to read and update these records.
+    match /bkashPayments/{paymentId} {
+      allow create: if request.resource.data.plan in ["pro", "premium"]
+                      && request.resource.data.amount is string
+                      && request.resource.data.txId is string
+                      && request.resource.data.status == "pending";
+
+      allow read, update: if signedIn();
+    }
+
     // Secure all user-specific data under the /users/{userId} path.
     // This includes the user's profile document and all sub-collections.
     match /users/{userId}/{document=**} {
