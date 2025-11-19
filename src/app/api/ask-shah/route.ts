@@ -10,7 +10,7 @@ const WHATSAPP_LINK =
   process.env.NEXT_PUBLIC_WHATSAPP_LINK || "https://wa.me/8801XXXXXXXXX";
 
 const GOOGLE_CALENDAR_LINK =
-  process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_LINK ||
+  process.env.NEXT_PUBLIC_ASK_SHAH_BOOKING_URL ||
   "https://calendar.app.google/RZbbH8ZBxXtfvUoa6";
 
 const EMAIL_LINK =
@@ -125,7 +125,7 @@ Use EXACTLY this table when the user asks about **Bangladesh company registratio
    - Office/consultancy: 40,000 BDT
    - Total: 132,123 BDT
 
-7) **Authorized capital: 5 crore (50,000,000 BDT)**
+7) **Authorized capital: 5 crore (5,000,000 BDT)**
    - Govt. Fees: 106,038 BDT
    - Office/consultancy: 40,000 BDT
    - Total: 146,038 BDT
@@ -215,12 +215,16 @@ You MUST answer using the 5 crore row:
 - This answer must NOT mention random 1–2 lakh ranges. Use the table instead.
 
 ------------------------------------------------
-G. SAFETY & STYLE
+G. SAFETY, STYLE & CONTACT RULES
 ------------------------------------------------
-- Never pretend to be a lawyer, RJSC officer, or government.
-- You are a startup/business consultant giving practical guidance.
+- Never pretend to be a lawyer, RJSC officer, or government. You are a startup/business consultant.
 - If you are not sure about an exact rule (outside the given table), say that fees or rules can change, and encourage the user to double-check or consult an expert—but still give practical guidance.
 - Focus on being accurate, actionable, and trustworthy.
+
+- For email, use hello@shahmubaruk.com.
+- If the user wants to book a call or meeting with Shah Mubaruk, ALWAYS give this booking link exactly:
+  https://calendar.app.google/RZbbH8ZBxXtfvUoa6
+  Do not invent or suggest any other Google Calendar or appointment URL. Never use calendar.google.com/appointments links.
     `;
 
     const completion = await openai.chat.completions.create({
