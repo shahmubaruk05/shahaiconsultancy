@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect, useTransition } from 'react';
 import { useFirebase, useDoc, useMemoFirebase } from '@/firebase';
@@ -5,12 +6,97 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type UserPlan = 'free' | 'pro' | 'premium';
+
+function BKashPaymentModal({ plan, price, firestore, user }: { plan: 'pro' | 'premium', price: string, firestore: any, user: any }) {
+    const { toast } = useToast();
+    const [isSubmitting, startSubmitting] = useTransition();
+    const [name, setName] = useState(user?.displayName || '');
+    const [email, setEmail] = useState(user?.email || '');
+    const [phone, setPhone] = useState('');
+    const [trxId, setTrxId] = useState('');
+    const [open, setOpen] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!name || !email || !phone || !trxId) {
+            toast({ variant: 'destructive', title: 'Please fill all fields.' });
+            return;
+        }
+
+        startSubmitting(async () => {
+            try {
+                await addDoc(collection(firestore, 'bkashPayments'), {
+                    name,
+                    email,
+                    phone,
+                    trxId,
+                    plan,
+                    amount: price,
+                    status: 'pending',
+                    uid: user?.uid || null,
+                    createdAt: serverTimestamp(),
+                });
+                toast({ title: 'Submission Received!', description: 'Your payment is being verified. Please allow up to 24 hours.' });
+                setOpen(false);
+            } catch (error) {
+                console.error("bKash submission error:", error);
+                toast({ variant: 'destructive', title: 'Submission Failed', description: 'Please try again later.' });
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button className="w-full" variant="secondary">Pay with bKash</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Pay with bKash</DialogTitle>
+                    <DialogDescription>
+                        Send {price} to the number below, then submit your details.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div className='text-center p-4 rounded-lg bg-secondary'>
+                        <p className='text-sm text-muted-foreground'>bKash Merchant Number</p>
+                        <p className='text-2xl font-bold'>01711781232</p>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="name">Your Name</Label>
+                        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Your Email</Label>
+                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="phone">Your Phone</Label>
+                        <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="trxId">bKash Transaction ID</Label>
+                        <Input id="trxId" value={trxId} onChange={(e) => setTrxId(e.target.value)} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Submit
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export default function PricingPage() {
   const { firestore, user, isUserLoading } = useFirebase();
@@ -32,30 +118,23 @@ export default function PricingPage() {
     suffix: isUSD ? "/ mo" : "/ মাস",
   };
   
-  const handlePayment = (plan: 'pro' | 'premium') => {
-    if (currency === 'USD') {
-        let url;
-        if (plan === 'pro') {
-            url = process.env.NEXT_PUBLIC_PAYPAL_PRO_URL;
-        } else {
-            url = process.env.NEXT_PUBLIC_PAYPAL_PREMIUM_URL;
-        }
+  const handlePaypalPayment = (plan: 'pro' | 'premium') => {
+      let url;
+      if (plan === 'pro') {
+          url = process.env.NEXT_PUBLIC_PAYPAL_PRO_URL;
+      } else {
+          url = process.env.NEXT_PUBLIC_PAYPAL_PREMIUM_URL;
+      }
 
-        if (!url || url === '#') {
-            toast({
-                variant: 'destructive',
-                title: 'Payment Link Not Configured',
-                description: 'The PayPal payment link for this plan is not set up yet. Please contact support.',
-            });
-            return;
-        }
-        window.open(url, '_blank');
-    } else { // BDT
-        toast({
-            title: 'Coming Soon',
-            description: 'bKash payment will be available soon. For now, please pay in USD via PayPal.',
-        });
-    }
+      if (!url || url === '#') {
+          toast({
+              variant: 'destructive',
+              title: 'Payment Link Not Configured',
+              description: 'The PayPal payment link for this plan is not set up yet. Please contact support.',
+          });
+          return;
+      }
+      window.open(url, '_blank');
   };
 
   const checkout = async (plan: UserPlan) => {
@@ -128,7 +207,7 @@ export default function PricingPage() {
           <CardHeader>
             <CardTitle className="text-2xl">Pro Plan</CardTitle>
             <CardDescription>
-              {isUSD ? "Pay securely with PayPal (USD)" : "Local payments via bKash (coming soon)"}
+              {isUSD ? "Pay securely with PayPal (USD)" : "Local payments via bKash"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -145,13 +224,13 @@ export default function PricingPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button
-                onClick={() => handlePayment('pro')}
-                disabled={!isUSD}
-                className="w-full bg-slate-900 hover:bg-slate-800"
-            >
-                {isUSD ? "Pay with PayPal" : "Pay with bKash"}
-            </Button>
+            {isUSD ? (
+                <Button onClick={() => handlePaypalPayment('pro')} className="w-full bg-slate-900 hover:bg-slate-800">
+                    Pay with PayPal
+                </Button>
+            ) : (
+                <BKashPaymentModal plan="pro" price={prices.pro} firestore={firestore} user={user} />
+            )}
           </CardFooter>
         </Card>
 
@@ -162,7 +241,7 @@ export default function PricingPage() {
           <CardHeader className="pt-10">
             <CardTitle className="text-2xl">Premium Plan</CardTitle>
             <CardDescription>
-                {isUSD ? "Pay securely with PayPal (USD)" : "Local payments via bKash (coming soon)"}
+                {isUSD ? "Pay securely with PayPal (USD)" : "Local payments via bKash"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -180,14 +259,13 @@ export default function PricingPage() {
             </ul>
           </CardContent>
           <CardFooter>
-            <Button
-                onClick={() => handlePayment('premium')}
-                disabled={!isUSD}
-                className="w-full"
-                variant={isUSD ? "default" : "secondary"}
-            >
-                 {isUSD ? "Pay with PayPal" : "Pay with bKash"}
-            </Button>
+            {isUSD ? (
+                <Button onClick={() => handlePaypalPayment('premium')} className="w-full">
+                    Pay with PayPal
+                </Button>
+            ) : (
+                <BKashPaymentModal plan="premium" price={prices.premium} firestore={firestore} user={user} />
+            )}
           </CardFooter>
         </Card>
       </div>

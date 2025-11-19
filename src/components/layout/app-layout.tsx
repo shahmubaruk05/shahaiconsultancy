@@ -1,3 +1,4 @@
+
 'use client';
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -28,10 +29,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (isUserLoading) return;
 
-    const isDashboardRoute = dashboardRoutes.some(route => pathname.startsWith(route));
+    const isDashboardRoute = dashboardRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith('/dashboard/billing');
 
     if (!user && isDashboardRoute) {
-      router.push('/login');
+      // Allow access to billing page for admins even if not in main dashboard routes
+      const isAdmin = user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+      if (pathname.startsWith('/dashboard/billing') && isAdmin) {
+          // allow
+      } else {
+        router.push('/login');
+      }
     }
 
     if (user && authRoutes.includes(pathname)) {
@@ -53,7 +60,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  const isDashboard = user && dashboardRoutes.some(route => pathname.startsWith(route));
+  const isDashboard = user && (dashboardRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith('/dashboard/billing'));
 
   if (isDashboard) {
     return <DashboardLayout>{children}</DashboardLayout>;

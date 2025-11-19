@@ -1,3 +1,4 @@
+
 'use client';
 import {
   SidebarProvider,
@@ -29,7 +30,8 @@ import {
   ClipboardList,
   Flame,
   GraduationCap,
-  Briefcase
+  Briefcase,
+  CreditCard
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -40,6 +42,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/academy', label: 'Academy', icon: GraduationCap },
+  { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
 ];
 
 const servicesItems = [
