@@ -20,54 +20,50 @@ service cloud.firestore {
     }
 
     // === Manual bKash payments (top-level collection) ===
-    match /bkashPayments/{paymentId} {
-        // Anyone can submit a payment record (guest checkout is allowed)
-        allow create: if
-            request.resource.data.plan in ["pro", "premium"]
-            && request.resource.data.amount is string
-            && request.resource.data.txId is string
-            && request.resource.data.status == "pending";
-        // Admin / dashboard access
-        allow read, update: if isAdmin();
+    match /bkashPayments/{txId} {
+      // clients can create when submitting manual bKash payment info
+      allow create: if true;
+      // only admin can read/update/delete
+      allow read, update, delete: if isAdmin();
     }
 
-    // === Optional: if I ever store payments under users/{uid}/bkashPayments ===
-    match /users/{uid}/bkashPayments/{paymentId} {
-        allow create: if
-            request.resource.data.plan in ["pro", "premium"]
-            && request.resource.data.amount is int
-            && request.resource.data.txId is string
-            && request.resource.data.status == "pending";
-
-        // Allow the logged-in user (or admin) to see / update their own payments
-        allow read, update: if request.auth != null && request.auth.uid == uid;
-    }
-
-    match /paypalPayments/{docId} {
-      allow create: if request.auth != null;
-      allow read: if false; 
+    match /paypalPayments/{txId} {
+      // created by backend or client when logging PayPal payments
+      allow create: if request.auth != null || isAdmin();
+      // only admin can read/update/delete
+      allow read, update, delete: if isAdmin();
     }
     
      match /aiUsageLogs/{logId} {
-      // Any user (even guest through client SDK) can create a log
       allow create: if true;
+      allow read: if isAdmin();
+    }
 
-      // Only admin can read analytics
+    match /emailCampaigns/{campaignId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /affiliates/{affiliateId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /affiliateClicks/{clickId} {
+      // tracking clicks can be public create, admin read
+      allow create: if true;
       allow read: if isAdmin();
     }
 
     // Secure all user-specific data under the /users/{userId} path.
-    // This includes the user's profile document and all sub-collections.
     match /users/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
     }
     
     match /users/{uid} {
-      // Read + update allowed for:
-      // - the logged-in user themselves
-      // - OR an admin
-      allow read, update: if request.auth != null
-        && (request.auth.uid == uid || isAdmin());
+      // User can read/update their own doc
+      allow read, update: if request.auth != null && request.auth.uid == uid;
+
+      // Admin can read/update any user
+      allow read, update: if isAdmin();
 
       // Create allowed when the user is creating their own doc
       allow create: if request.auth != null && request.auth.uid == uid;
