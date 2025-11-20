@@ -538,6 +538,53 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "email", "service", "createdAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "type": "object",
+      "description": "Represents a client invoice for services.",
+      "properties": {
+        "clientName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "service": { "type": "string" },
+        "currency": { "type": "string" },
+        "lineItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "amount": { "type": "number" }
+            },
+            "required": ["label", "amount"]
+          }
+        },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "total": { "type": "number" },
+        "paymentMethods": {
+          "type": "object",
+          "properties": {
+            "bkash": { "type": "boolean" },
+            "bank": { "type": "boolean" },
+            "paypal": { "type": "boolean" }
+          }
+        },
+        "bkashNumber": { "type": "string" },
+        "paypalLink": { "type": "string" },
+        "bankDetails": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "sent", "partial", "paid", "cancelled"]
+        },
+        "relatedIntakeId": { "type": "string" },
+        "notesInternal": { "type": "string" },
+        "notesPublic": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clientName", "email", "service", "total", "status", "createdAt", "updatedAt"]
     }
   },
   "auth": {
@@ -576,6 +623,26 @@
             {
               "name": "userId",
               "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Collection of invoices owned by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "invoiceId",
+              "description": "The unique identifier of the invoice."
             }
           ]
         }
