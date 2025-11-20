@@ -5,7 +5,7 @@ import { useFirebase, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Check, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -215,6 +215,72 @@ export default function PricingPage() {
     null
   );
 
+  const searchParams = useSearchParams();
+  const [paypalHandled, setPaypalHandled] = useState(false);
+
+  async function confirmPaypalPayment(plan: "pro" | "premium", amountUsd: number) {
+    if (!user || !firestore) return;
+  
+    const uid = user.uid;
+    const email = user.email ?? "";
+  
+    // 1) paypalPayments এ log
+    await addDoc(collection(firestore, "paypalPayments"), {
+      uid,
+      email,
+      plan,
+      amount: amountUsd,
+      currency: "USD",
+      status: "completed",
+      source: "pricing-page-return",
+      createdAt: serverTimestamp(),
+    });
+  
+    // 2) users/{uid} এ plan আপডেট
+    await setDoc(
+      doc(firestore, "users", uid),
+      {
+        plan,
+        planSource: "paypal",
+        planUpdatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  }
+
+  useEffect(() => {
+    if (paypalHandled || isUserLoading) return;
+  
+    const paypalStatus = searchParams.get("paypal");
+    const plan = searchParams.get("plan");
+  
+    if (paypalStatus !== "success" || !user) return;
+    if (plan !== "pro" && plan !== "premium") return;
+  
+    setPaypalHandled(true);
+  
+    const amount = plan === "pro" ? 9 : 19; // USD
+  
+    confirmPaypalPayment(plan, amount)
+      .then(() => {
+        toast({
+            title: 'Payment Successful!',
+            description: `Your plan has been upgraded to ${plan}.`,
+        });
+        // Remove query params to prevent re-triggering
+        router.replace('/pricing', {scroll: false});
+      })
+      .catch((err) => {
+        console.error("PayPal confirmation error:", err);
+        toast({
+            variant: 'destructive',
+            title: 'Upgrade Failed',
+            description: 'There was an issue upgrading your plan. Please contact support.',
+        });
+      });
+  }, [searchParams, user, isUserLoading, paypalHandled, router, toast]);
+
+
   const openBkashForPlan = (plan: PlanType) => {
     if (!plan) return;
     setSelectedPlan(plan);
@@ -247,7 +313,15 @@ export default function PricingPage() {
           });
           return;
       }
-      window.open(url, '_blank');
+       // Append success URL with params
+      const successUrl = new URL(window.location.href);
+      successUrl.searchParams.set('paypal', 'success');
+      successUrl.searchParams.set('plan', plan);
+
+      // In a real scenario, you'd pass this to your server to create a PayPal order
+      // with the correct return_url. For a direct link, this is a simulation.
+      const fullUrl = `${url}?return=${encodeURIComponent(successUrl.toString())}`;
+      window.open(fullUrl, '_blank');
   };
 
   const checkout = async (plan: UserPlan) => {
@@ -348,7 +422,7 @@ export default function PricingPage() {
                     Pay with PayPal
                 </Button>
             ) : (
-                <Button onClick={() => openBkashForPlan('pro')} className="w-full" variant="secondary">Pay with bKash</Button>
+                 <Button onClick={() => openBkashForPlan('pro')} className="w-full" variant="secondary" disabled>Pay with bKash (Coming Soon)</Button>
             )}
              <button
               onClick={() => openBkashForPlan("pro")}
@@ -389,7 +463,7 @@ export default function PricingPage() {
                     Pay with PayPal
                 </Button>
             ) : (
-                <Button onClick={() => openBkashForPlan('premium')} className="w-full" variant="secondary">Pay with bKash</Button>
+                <Button onClick={() => openBkashForPlan('premium')} className="w-full" variant="secondary" disabled>Pay with bKash (Coming Soon)</Button>
             )}
              <button
               onClick={() => openBkashForPlan("premium")}

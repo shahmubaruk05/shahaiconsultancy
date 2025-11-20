@@ -34,6 +34,11 @@ service cloud.firestore {
       allow read, update: if request.auth != null && request.auth.uid == uid;
     }
 
+    match /paypalPayments/{docId} {
+      allow create: if request.auth != null;
+      allow read: if false; 
+    }
+
     // Secure all user-specific data under the /users/{userId} path.
     // This includes the user's profile document and all sub-collections.
     match /users/{userId}/{document=**} {
@@ -45,8 +50,12 @@ service cloud.firestore {
        allow get, create: if isOwner(userId);
        // Disallow listing all users.
        allow list: if false;
-       // Updates and deletes are covered by the wildcard rule above, but can be specified here if needed.
-       allow update, delete: if isOwner(userId);
+       // Do not allow client-side plan updates
+       allow update: if isOwner(userId) 
+                && !("plan" in request.resource.data)
+                && !("planSource" in request.resource.data)
+                && !("planUpdatedAt" in request.resource.data);
+       allow delete: if isOwner(userId);
     }
   }
 }
