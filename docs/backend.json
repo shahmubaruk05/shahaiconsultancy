@@ -585,6 +585,23 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["clientName", "email", "service", "total", "status", "createdAt", "updatedAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a payment received for an invoice.",
+      "properties": {
+        "invoiceId": { "type": "string", "description": "Reference to the Invoice this payment is for." },
+        "payerName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "method": { "type": "string", "enum": ["bkash", "bank", "paypal"] },
+        "amount": { "type": "number" },
+        "txId": { "type": "string", "description": "Transaction ID from the payment provider." },
+        "slipUrl": { "type": "string", "description": "URL to the payment slip/receipt image." },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["invoiceId", "payerName", "email", "method", "amount", "status", "createdAt"]
     }
   },
   "auth": {
@@ -644,6 +661,21 @@
               "name": "invoiceId",
               "description": "The unique identifier of the invoice."
             }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/invoices/{invoiceId}/payments/{paymentId}",
+        "definition": {
+          "entityName": "Payment",
+          "schema": {
+            "$ref": "#/backend/entities/Payment"
+          },
+          "description": "Collection of payments made for a specific invoice.",
+          "params": [
+            { "name": "userId", "description": "The unique identifier of the user who owns the invoice." },
+            { "name": "invoiceId", "description": "The unique identifier of the invoice." },
+            { "name": "paymentId", "description": "The unique identifier of the payment." }
           ]
         }
       },
