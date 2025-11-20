@@ -1,62 +1,30 @@
-
 "use client";
 
-import { useUser } from "@/firebase";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { initializeFirebase } from "@/firebase";
-
-const { auth } = initializeFirebase();
-
-const ADMIN_EMAILS = [
-  "shahmubaruk05@gmail.com",
-  "shahmubaruk.ai@gmail.com",
-];
-
 export default function AdminHomePage() {
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isUserLoading) return;
-
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-
-    const isAdmin = user.email && ADMIN_EMAILS.includes(user.email);
-    if (!isAdmin) {
-        // Redirect non-admin users, or show an access denied message.
-        // For this example, we will just show a message.
-    }
-  }, [user, isUserLoading, router]);
-
-  if (isUserLoading) {
-    return <div className="text-sm text-slate-500 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking admin access...</div>;
-  }
-
-  if (!user || (user.email && !ADMIN_EMAILS.includes(user.email))) {
-    return <div className="text-sm font-medium text-red-600">Access denied. Admin only.</div>;
-  }
-
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold text-slate-900">
-        Welcome, Admin 👋
-      </h2>
-      <p className="text-sm text-slate-600">
-        এখানে শুধু Shah Mubaruk internal কাজগুলোর জন্য টুল থাকবে। 
-        সাবস্ক্রিপশন / পেমেন্ট related কাজের জন্য{" "}
-        <a
-          href="/admin/subscriptions"
-          className="font-medium text-blue-600 underline"
-        >
-          Subscriptions
-        </a>{" "}
-        পেজে যান।
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h1 className="text-xl font-semibold text-slate-900 mb-2">
+        Admin Panel
+      </h1>
+      <p className="text-sm text-slate-500 mb-4">
+        Internal tools for Shah Mubaruk only.
       </p>
+
+      <div className="space-y-3 text-sm text-slate-700">
+        <p>
+          এখানে শুধুই Shah Mubaruk internal কাজগুলোর জন্য টুল রাখা হবে।
+        </p>
+        <p>
+          সাবস্ক্রিপশন / payment related কাজের জন্য{" "}
+          <span className="font-medium text-blue-600">Subscriptions</span>{" "}
+          এবং{" "}
+          <span className="font-medium text-blue-600">Payments</span> ট্যাব ব্যবহার করুন।
+        </p>
+        <p>
+          client intake / custom order ট্র্যাক করার জন্য{" "}
+          <span className="font-medium text-blue-600">Intakes</span> ট্যাব ব্যবহার করুন।
+        </p>
+      </div>
     </div>
   );
 }
