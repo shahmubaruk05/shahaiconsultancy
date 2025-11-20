@@ -33,6 +33,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           >
             Subscriptions
           </a>
+          <a
+            href="/admin/ai-usage"
+            className="block rounded px-2 py-1 hover:bg-slate-100 text-slate-700"
+          >
+            AI Usage
+          </a>
         </aside>
 
         <section className="flex-1 rounded-lg border bg-white p-4 shadow-sm">

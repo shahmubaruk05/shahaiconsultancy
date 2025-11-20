@@ -39,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { LockedPreview } from "@/components/LockedPreview";
+import { logAiUsageClient } from '@/lib/ai-usage-client';
 
 
 const formSchema = z.object({
@@ -179,6 +180,13 @@ export function CompanyProfileForm() {
           country: data.country,
           depth: data.depth,
           profileMarkdown: profileMarkdown,
+      });
+
+      logAiUsageClient({
+        tool: "company-profile",
+        inputSummary: `${data.companyName} | ${data.industry} | ${data.country}`,
+        outputSummary: profileMarkdown,
+        meta: { style: data.depth },
       });
 
     } catch (e: any) {

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { LockedPreview } from "@/components/LockedPreview";
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from 'next/navigation';
+import { logAiUsageClient } from "@/lib/ai-usage-client";
 
 type UserPlan = 'free' | 'pro' | 'premium';
 
@@ -88,6 +89,13 @@ export default function PitchDeckPage() {
     startGenerating(async () => {
       const r = await generatePitchDeckAction(formData);
       setResult(r.output || "");
+      logAiUsageClient({
+        tool: "pitch-deck",
+        inputSummary: `${dataObject.startupName} | ${dataObject.industry}`,
+        outputSummary: r.output,
+        tokensApprox: null,
+        meta: { slideCount: (r.output?.match(/###/g) || []).length },
+      });
     });
   }
 

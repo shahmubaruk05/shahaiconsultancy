@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { sendMessageAction, saveLeadAction } from "@/app/tools/ask-shah/actions";
+import { logAiUsageClient } from "@/lib/ai-usage-client";
 
 type Message = {
   role: "user" | "assistant";
@@ -121,6 +122,17 @@ export default function AskShahBox({
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      logAiUsageClient({
+        tool: "ask-shah",
+        inputSummary: userMessage.content,
+        outputSummary: assistantMessage.content,
+        tokensApprox: null,
+        meta: {
+          source: "ask-shah-chat",
+        },
+      });
+
     } catch (error) {
       console.error("Ask Shah error:", error);
       const assistantMessage: Message = {

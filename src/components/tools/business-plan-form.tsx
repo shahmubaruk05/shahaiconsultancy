@@ -36,6 +36,7 @@ import { doc } from 'firebase/firestore';
 import { saveAs } from 'file-saver';
 import ReactMarkdown from 'react-markdown';
 import { LockedPreview } from '@/components/LockedPreview';
+import { logAiUsageClient } from '@/lib/ai-usage-client';
 
 
 const formSchema = z.object({
@@ -168,6 +169,17 @@ export function BusinessPlanForm() {
         });
         const aiResult = await generateBusinessPlanAction(formData);
         setResult(aiResult);
+
+        logAiUsageClient({
+            tool: "business-plan",
+            inputSummary: `${data.industry} | ${data.revenueModel} | ${data.targetCustomer}`,
+            outputSummary: aiResult.planText,
+            tokensApprox: null,
+            meta: {
+              mode: data.planDepth,
+            },
+        });
+
       } catch (e) {
         console.error(e);
         setError('An unexpected error occurred. Please try again.');

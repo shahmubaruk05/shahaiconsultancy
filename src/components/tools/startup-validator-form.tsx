@@ -30,6 +30,7 @@ import { Progress } from '@/components/ui/progress';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useFirebase } from '@/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { logAiUsageClient } from '@/lib/ai-usage-client';
 
 
 const formSchema = z.object({
@@ -64,6 +65,12 @@ export function StartupValidatorForm() {
         const aiResult = await validateStartupIdea({ ideaDescription: data.ideaDescription });
         setResult(aiResult);
 
+        logAiUsageClient({
+            tool: "startup-validator",
+            inputSummary: data.ideaDescription,
+            outputSummary: aiResult.summary,
+        });
+        
         const ideaRef = collection(firestore, `users/${user.uid}/startupIdeas`);
         await addDoc(ideaRef, {
           userId: user.uid,

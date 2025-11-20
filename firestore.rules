@@ -47,6 +47,14 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow read: if false; 
     }
+    
+     match /aiUsageLogs/{logId} {
+      // Any user (even guest through client SDK) can create a log
+      allow create: if true;
+
+      // Only admin can read analytics
+      allow read: if isAdmin();
+    }
 
     // Secure all user-specific data under the /users/{userId} path.
     // This includes the user's profile document and all sub-collections.
