@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import {
   getFirestore,
   collection,
-  getDocs,
   query,
   where,
+  getDocs,
 } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 
@@ -28,25 +28,33 @@ interface BlogPost {
 }
 
 export default function BlogDetailPage() {
-  const params = useParams();
+  const params = usePathname();
   const router = useRouter();
-  const slug = params?.slug as string;
+  const slug = params.split("/").pop();
 
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<BlogPost | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     const load = async () => {
       try {
+        if (!slug) {
+            setError("Blog not found.");
+            setLoading(false);
+            return;
+        }
+
         const q = query(
           collection(db, "blogPosts"),
-          where("slug", "==", slug),
+          where("slug", "==", slug)
         );
         const snap = await getDocs(q);
 
         if (snap.empty) {
-          setError("Blog পাওয়া যায়নি।");
+          setError("Blog not found.");
           setLoading(false);
           return;
         }
@@ -72,7 +80,7 @@ export default function BlogDetailPage() {
         });
       } catch (err) {
         console.error("Failed to load blog post", err);
-        setError("Blog load করতে সমস্যা হচ্ছে।");
+        setError("Error loading blog post.");
       } finally {
         setLoading(false);
       }
@@ -94,7 +102,7 @@ export default function BlogDetailPage() {
   if (error || !post) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10 text-sm text-slate-600">
-        <p className="mb-3 font-medium text-slate-900">{error || "Blog পাওয়া যায়নি।"}</p>
+        <p className="mb-3 font-medium text-slate-900">{error || "Blog not found."}</p>
         <button
           onClick={() => router.push("/blog")}
           className="rounded border border-slate-300 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
@@ -104,8 +112,25 @@ export default function BlogDetailPage() {
       </div>
     );
   }
+  
+  const fullUrl =
+    typeof window !== "undefined"
+      ? window.location.origin + params
+      : `https://shahmubaruk.com${params}`;
 
-  const content = post.content || "";
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(fullUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (e) {
+      console.error("Failed to copy link", e);
+    }
+  };
+
+  const encodedUrl = encodeURIComponent(fullUrl);
+  const encodedTitle = encodeURIComponent(post.title);
+
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-8">
@@ -170,7 +195,62 @@ export default function BlogDetailPage() {
           whitespace-pre-line
         "
       >
-        {content}
+        {post.content}
+      </div>
+
+       <div className="mt-10 border-t border-slate-200 pt-6">
+        <p className="text-xs uppercase tracking-wide text-slate-500 mb-3">
+          Share this article
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {/* Copy link */}
+          <button
+            onClick={handleCopy}
+            className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {copied ? "✅ Link copied" : "🔗 Copy link"}
+          </button>
+
+          {/* Facebook */}
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            👍 Share on Facebook
+          </a>
+
+          {/* LinkedIn */}
+          <a
+            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            💼 Share on LinkedIn
+          </a>
+
+          {/* WhatsApp */}
+          <a
+            href={`https://wa.me/?text=${encodedTitle}%20-%20${encodedUrl}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            💬 Share on WhatsApp
+          </a>
+
+          {/* X / Twitter */}
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            🐦 Share on X
+          </a>
+        </div>
       </div>
     </article>
   );
