@@ -1,4 +1,3 @@
-
 import Link from "next/link";
 
 const quickLinks = [
@@ -10,17 +9,17 @@ const quickLinks = [
   {
     href: "/admin/intakes",
     title: "Intakes",
-    desc: "Client intake form submissions দেখুন ও status update করুন.",
+    desc: "Client intake form submissions দেখুন & status update করুন।",
   },
   {
     href: "/admin/payments",
     title: "Payments",
-    desc: "bKash / PayPal transaction log ও manual verification.",
+    desc: "bKash / PayPal transaction log & manual verification।",
   },
   {
     href: "/admin/blog",
     title: "Blog",
-    desc: "নতুন blog post publish করুন, category ও SEO manage করুন.",
+    desc: "নতুন blog post publish করুন, category & SEO manage করুন।",
   },
 ];
 
@@ -32,8 +31,7 @@ export default function AdminOverviewPage() {
       </h1>
       <p className="text-sm text-slate-600 mb-6">
         এখানে শুধু Shah Mubaruk internal কাজগুলো manage করবেন — subscriptions,
-        payments, intake form, blog ইত্যাদি। বাম পাশের মেনু থেকেই সব section এ
-        যেতে পারবেন।
+        payments, intake form, blog ইত্যাদি। বাম পাশের মেনু (AdminSidebar) থেকেই সব section এ যেতে পারবেন।
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">

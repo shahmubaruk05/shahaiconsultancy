@@ -1,22 +1,23 @@
-
 'use client';
 
 import AdminSidebar from '@/components/admin/AdminSidebar';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex w-full min-h-screen bg-gray-50">
-      
-      {/* LEFT SIDEBAR — only once */}
-      <div className="w-64 border-r bg-white">
+      {/* LEFT SIDEBAR — only here, only once */}
+      <aside className="w-64 border-r bg-white">
         <AdminSidebar />
-      </div>
+      </aside>
 
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 p-6">
+      {/* MAIN CONTENT */}
+      <main className="flex-1 p-6">
         {children}
-      </div>
-
+      </main>
     </div>
   );
 }
