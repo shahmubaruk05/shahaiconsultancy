@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -16,7 +17,7 @@ import {
 } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
-import { createInvoiceFromIntake, type Invoice } from "@/lib/invoices";
+import { createInvoiceFromIntake, type Invoice, InvoiceStatus } from "@/lib/invoices";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 
@@ -50,6 +51,23 @@ const STATUS_COLORS: Record<IntakeStatus, string> = {
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   closed: "bg-slate-50 text-slate-600 border-slate-200",
 };
+
+const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+    draft: "Draft",
+    unpaid: "Unpaid",
+    partial: "Partially paid",
+    paid: "Paid",
+    cancelled: "Cancelled",
+};
+
+const INVOICE_STATUS_COLORS: Record<InvoiceStatus, string> = {
+    draft: "bg-slate-50 text-slate-700 border-slate-200",
+    unpaid: "bg-amber-50 text-amber-700 border-amber-200",
+    partial: "bg-amber-50 text-amber-700 border-amber-200",
+    paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    cancelled: "bg-rose-50 text-rose-700 border-rose-200",
+};
+
 
 function LinkedInvoiceList({ intakeId }: { intakeId: string }) {
   const { firestore } = useFirebase();
@@ -91,8 +109,8 @@ function LinkedInvoiceList({ intakeId }: { intakeId: string }) {
               {inv.currency}
             </span>
             <div className="flex items-center gap-2">
-                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${STATUS_COLORS[inv.status]}`}>
-                    {STATUS_LABELS[inv.status]}
+                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${INVOICE_STATUS_COLORS[inv.status]}`}>
+                    {INVOICE_STATUS_LABELS[inv.status]}
                 </span>
                 <Link
                     href={`/admin/invoices?id=${inv.id}`}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState, FormEvent, useTransition } from "react";
@@ -14,7 +15,7 @@ import {
 } from "firebase/firestore";
 import Link from "next/link";
 import { useFirebase } from "@/firebase/provider";
-import { Invoice, STATUS_LABELS, STATUS_COLORS, markInvoicePaid } from "@/lib/invoices";
+import { Invoice, markInvoicePaid, InvoiceStatus } from "@/lib/invoices";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -30,6 +31,22 @@ import {
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input";
+
+const STATUS_LABELS: Record<InvoiceStatus, string> = {
+    draft: "Draft",
+    unpaid: "Unpaid",
+    partial: "Partially paid",
+    paid: "Paid",
+    cancelled: "Cancelled",
+};
+  
+const STATUS_COLORS: Record<InvoiceStatus, string> = {
+    draft: "bg-slate-50 text-slate-700 border-slate-200",
+    unpaid: "bg-amber-50 text-amber-700 border-amber-200",
+    partial: "bg-amber-50 text-amber-700 border-amber-200",
+    paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    cancelled: "bg-rose-50 text-rose-700 border-rose-200",
+};
   
 
 const emptyInvoice: Omit<Invoice, "id"> = {
