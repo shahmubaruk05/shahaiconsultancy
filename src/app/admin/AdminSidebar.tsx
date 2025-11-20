@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 
-function AdminSidebar() {
+export default function AdminSidebar() {
   const pathname = usePathname();
 
   const sections = [
@@ -22,7 +22,7 @@ function AdminSidebar() {
   ];
 
   return (
-    <aside className="w-56 flex-shrink-0 bg-white border-r p-4 h-screen sticky top-0">
+    <aside className="w-64 min-h-screen bg-white border-r p-4 sticky top-0">
       <div className="mb-6">
         <Logo />
       </div>
@@ -43,5 +43,3 @@ function AdminSidebar() {
     </aside>
   );
 }
-
-export { AdminSidebar };
