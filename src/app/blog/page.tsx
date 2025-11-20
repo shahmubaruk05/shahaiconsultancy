@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { initializeFirebase } from "@/firebase";
 
@@ -22,6 +22,28 @@ export default function BlogListPage() {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+
+  const categories = useMemo(
+    () => [
+      "all",
+      ...Array.from(
+        new Set(
+          posts
+            .map((p) => p.category || "Uncategorized")
+            .filter(Boolean)
+        )
+      ),
+    ],
+    [posts]
+  );
+  
+  const filteredPosts =
+    activeCategory === "all"
+      ? posts
+      : posts.filter(
+          (p) => (p.category || "Uncategorized") === activeCategory
+        );
 
   useEffect(() => {
     const load = async () => {
@@ -47,7 +69,7 @@ export default function BlogListPage() {
         });
 
         // Show only published, newest first
-        rows
+        const publishedPosts = rows
           .filter((p) => p.status === "published")
           .sort((a, b) => {
             const ta = a.createdAt?.getTime() ?? 0;
@@ -55,15 +77,7 @@ export default function BlogListPage() {
             return tb - ta;
           });
 
-        setPosts(
-          rows
-            .filter((p) => p.status === "published")
-            .sort((a, b) => {
-              const ta = a.createdAt?.getTime() ?? 0;
-              const tb = b.createdAt?.getTime() ?? 0;
-              return tb - ta;
-            }),
-        );
+        setPosts(publishedPosts);
       } catch (err) {
         console.error("Failed to load blog posts", err);
         setError("Blog load করতে সমস্যা হচ্ছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।");
@@ -87,6 +101,23 @@ export default function BlogListPage() {
         </p>
       </header>
 
+      {/* Category Filter */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {categories.map((category) => (
+          <button
+            key={category}
+            onClick={() => setActiveCategory(category)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              activeCategory === category
+                ? "bg-slate-900 text-white"
+                : "bg-white text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+
       {loading && (
         <div className="py-8 text-sm text-slate-500">Loading blog posts...</div>
       )}
@@ -104,7 +135,7 @@ export default function BlogListPage() {
       )}
 
       <div className="grid gap-5 md:grid-cols-2">
-        {posts.map((post) => (
+        {filteredPosts.map((post) => (
           <a
             key={post.id}
             href={`/blog/${post.slug}`}
@@ -120,6 +151,11 @@ export default function BlogListPage() {
               </div>
             )}
             <div className="flex flex-1 flex-col p-4">
+               {post.category && (
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    {post.category}
+                  </p>
+                )}
               <h2 className="text-sm font-semibold text-slate-900 group-hover:text-slate-950">
                 {post.title}
               </h2>

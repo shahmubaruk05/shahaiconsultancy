@@ -117,6 +117,11 @@ export default function BlogDetailPage() {
       </button>
 
       <header className="mb-6">
+        {post.category && (
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            {post.category}
+          </p>
+        )}
         <h1 className="text-2xl font-semibold text-slate-900">
           {post.title}
         </h1>
