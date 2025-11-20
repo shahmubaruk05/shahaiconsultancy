@@ -417,19 +417,46 @@ export default function AdminBlogPage() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[11px] text-slate-600">
-            Short description
-          </label>
-          <textarea
-            rows={2}
-            value={form.description}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, description: e.target.value }))
-            }
-            className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
-            placeholder="Homepage & blog listing এ যে ছোট summary দেখাতে চান..."
-          />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-[11px] text-slate-600">
+              Short description
+            </label>
+            <textarea
+              rows={2}
+              value={form.description}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, description: e.target.value }))
+              }
+              className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
+              placeholder="Homepage & blog listing এ যে ছোট summary দেখাতে চান..."
+            />
+          </div>
+          {/* Category */}
+          <div className="space-y-1">
+            <label className="text-[11px] text-slate-600">
+              Category
+            </label>
+            <select
+              value={form.category}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, category: e.target.value }))
+              }
+              className="w-full rounded border border-slate-300 px-2 py-1 text-xs bg-white"
+            >
+              <option value="">Select category...</option>
+              <option value="Company Formation">Company Formation</option>
+              <option value="Funding & Investment">Funding & Investment</option>
+              <option value="Business Strategy">Business Strategy</option>
+              <option value="Tax & Compliance">Tax & Compliance</option>
+              <option value="Marketing & Growth">Marketing & Growth</option>
+              <option value="Tools & AI">Tools & AI</option>
+              <option value="Other">Other</option>
+            </select>
+            <p className="text-[10px] text-slate-400">
+              চাইলে dropdown থেকে বেছে নিন, অথবা পরে Firestore–এ মান manually change করতে পারবেন।
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
