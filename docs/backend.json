@@ -629,6 +629,36 @@
         }
       },
       {
+        "path": "/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Collection of invoices.",
+          "params": [
+            {
+              "name": "invoiceId",
+              "description": "The unique identifier of the invoice."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/invoices/{invoiceId}/payments/{paymentId}",
+        "definition": {
+          "entityName": "Payment",
+          "schema": {
+            "$ref": "#/backend/entities/Payment"
+          },
+          "description": "Collection of payments made for a specific invoice.",
+          "params": [
+            { "name": "invoiceId", "description": "The unique identifier of the invoice." },
+            { "name": "paymentId", "description": "The unique identifier of the payment." }
+          ]
+        }
+      },
+      {
         "path": "/users/{userId}",
         "definition": {
           "entityName": "UserProfile",
@@ -859,3 +889,5 @@
     "reasoning": "The Firestore structure is designed to ensure Authorization Independence, clarity, and scalability. User-owned data is stored under the `/users/{userId}` path, creating a clear ownership model. This enables secure and efficient security rules based on `request.auth.uid`. Each entity, such as `StartupIdea`, `BusinessStrategy`, `PitchDeck`, `CompanyFormationGuide`, `Conversation`, and `Message` are stored as subcollections of `/users/{userId}`. This approach ensures that all documents in a collection share the same security requirements (Structural Segregation) and eliminates the need for complex rule logic.  The `Conversation` and `Message` collections follow the same pattern.  This design allows us to use path-based rules effectively without needing `get()` calls to parent documents, thus maintaining Authorization Independence.\n\nQAPs (Rules are not Filters): The path-based ownership model ensures secure list operations because rules can easily filter based on the `userId` in the path. A user can only list resources owned by them without additional filtering within the rules themselves.\n\nThe structure explicitly models the relationships between entities. This adheres to the principle of Data Clarity and Predictability, which simplifies debugging and maintenance."
   }
 }
+
+    
