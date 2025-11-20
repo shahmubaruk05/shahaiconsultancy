@@ -158,7 +158,7 @@ export default function BlogListPage() {
               <h2 className="text-sm font-semibold text-slate-900 group-hover:text-slate-950">
                 {post.title}
               </h2>
-              <p className="mt-1 line-clamp-3 text-xs text-slate-600">
+              <p className="mt-1 whitespace-pre-line text-xs text-slate-600 line-clamp-3">
                 {post.description}
               </p>
               {post.createdAt && (
