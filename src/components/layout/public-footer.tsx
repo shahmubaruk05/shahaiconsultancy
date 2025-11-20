@@ -23,6 +23,9 @@ export function PublicFooter() {
               <Link href="/contact" className="text-muted-foreground hover:text-foreground">
                 Contact
               </Link>
+               <Link href="/intake" className="text-muted-foreground hover:text-foreground">
+                Intake Form
+              </Link>
             </div>
             <p className="text-xs text-muted-foreground">
               © {new Date().getFullYear()} Shah Mubaruk – Your Startup Coach. All rights reserved.
