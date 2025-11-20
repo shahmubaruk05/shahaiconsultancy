@@ -13,6 +13,12 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
+import {
+    getStorage,
+    ref as storageRef,
+    uploadBytes,
+    getDownloadURL,
+  } from "firebase/storage";
 import { initializeFirebase } from "@/firebase";
 
 const { firestore: db, auth } = initializeFirebase();
@@ -60,6 +66,56 @@ export default function AdminBlogPage() {
   });
   
   const router = useRouter();
+
+  const { storage } = initializeFirebase();
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+
+
+  async function handleCoverFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setCoverUploading(true);
+      const path = `blog/covers/${Date.now()}-${file.name}`;
+      const ref = storageRef(storage, path);
+      await uploadBytes(ref, file);
+      const url = await getDownloadURL(ref);
+
+      setForm((f) => ({ ...f, coverImageUrl: url }));
+      alert("Cover image upload সম্পন্ন হয়েছে।");
+    } catch (err) {
+      console.error("Cover upload failed", err);
+      alert("Cover image upload করতে সমস্যা হয়েছে।");
+    } finally {
+      setCoverUploading(false);
+      // একই ফাইল আবার upload করতে চাইলে input reset করতে চাইলে:
+      e.target.value = "";
+    }
+  }
+
+  async function handleVideoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setVideoUploading(true);
+      const path = `blog/videos/${Date.now()}-${file.name}`;
+      const ref = storageRef(storage, path);
+      await uploadBytes(ref, file);
+      const url = await getDownloadURL(ref);
+
+      setForm((f) => ({ ...f, videoUrl: url }));
+      alert("Video upload সম্পন্ন হয়েছে।");
+    } catch (err) {
+      console.error("Video upload failed", err);
+      alert("Video upload করতে সমস্যা হয়েছে।");
+    } finally {
+      setVideoUploading(false);
+      e.target.value = "";
+    }
+  }
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -369,41 +425,96 @@ export default function AdminBlogPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-[11px] text-slate-600">
-              Cover image URL
-            </label>
-            <input
-              type="text"
-              value={form.coverImageUrl}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, coverImageUrl: e.target.value }))
-              }
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
-              placeholder="https://.../image.jpg"
-            />
-            <p className="text-[10px] text-slate-400">
-              আপাতত direct URL দিন। পরে চাইলে Firebase Storage upload যোগ করা যাবে।
-            </p>
-          </div>
+            <div className="space-y-1">
+                <label className="text-[11px] text-slate-600">
+                Cover image
+                </label>
 
-          <div className="space-y-1">
-            <label className="text-[11px] text-slate-600">
-              Video URL (YouTube embed or full URL)
-            </label>
-            <input
-              type="text"
-              value={form.videoUrl}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, videoUrl: e.target.value }))
-              }
-              className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
-              placeholder="https://www.youtube.com/embed/...."
-            />
-            <p className="text-[10px] text-slate-400">
-              YouTube embed URL দিলে detail পেজে video player show হবে।
-            </p>
-          </div>
+                {/* URL input */}
+                <input
+                type="text"
+                value={form.coverImageUrl}
+                onChange={(e) =>
+                    setForm((f) => ({ ...f, coverImageUrl: e.target.value }))
+                }
+                className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
+                placeholder="https://.../image.jpg (auto-filled after upload)"
+                />
+
+                {/* Upload input */}
+                <div className="mt-1 flex items-center gap-2">
+                <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleCoverFileChange}
+                    className="text-[11px] text-slate-600"
+                />
+                {coverUploading && (
+                    <span className="text-[11px] text-slate-500">
+                    Upload হচ্ছে...
+                    </span>
+                )}
+                </div>
+
+                {/* Preview */}
+                {form.coverImageUrl && (
+                <div className="mt-2">
+                    <img
+                    src={form.coverImageUrl}
+                    alt="Cover preview"
+                    className="max-h-32 rounded border border-slate-200 object-cover"
+                    />
+                </div>
+                )}
+
+                <p className="text-[10px] text-slate-400">
+                সরাসরি URL দিতে পারেন অথবা ফাইল upload করলে উপরের ফিল্ডে auto URL বসে যাবে।
+                </p>
+            </div>
+
+            <div className="space-y-1">
+                <label className="text-[11px] text-slate-600">
+                Video
+                </label>
+
+                {/* URL input */}
+                <input
+                type="text"
+                value={form.videoUrl}
+                onChange={(e) =>
+                    setForm((f) => ({ ...f, videoUrl: e.target.value }))
+                }
+                className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
+                placeholder="YouTube embed URL বা uploaded video URL"
+                />
+
+                {/* Upload input */}
+                <div className="mt-1 flex items-center gap-2">
+                <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoFileChange}
+                    className="text-[11px] text-slate-600"
+                />
+                {videoUploading && (
+                    <span className="text-[11px] text-slate-500">
+                    Video upload হচ্ছে...
+                    </span>
+                )}
+                </div>
+
+                {/* Simple preview (show URL only; actual player public page-এ আছে) */}
+                {form.videoUrl && (
+                <p className="mt-1 truncate text-[11px] text-slate-500">
+                    Video URL: {form.videoUrl}
+                </p>
+                )}
+
+                <p className="text-[10px] text-slate-400">
+                চাইলে YouTube embed URL দিতে পারেন, আর চাইলে এখানে ফাইল upload করে
+                generated URL ব্যবহার করতে পারেন।
+                </p>
+            </div>
         </div>
 
         <div className="space-y-1">
@@ -516,3 +627,5 @@ export default function AdminBlogPage() {
     </div>
   );
 }
+
+    
