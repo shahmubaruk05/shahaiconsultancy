@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -159,10 +160,17 @@ export default function BlogDetailPage() {
         </div>
       )}
 
-      <div className="prose prose-sm max-w-none text-slate-800">
-        <p className="whitespace-pre-line text-sm leading-relaxed">
-          {content}
-        </p>
+      <div
+        className="
+          prose
+          prose-sm
+          max-w-none
+          text-slate-800
+          leading-relaxed
+          whitespace-pre-line
+        "
+      >
+        {content}
       </div>
     </article>
   );
