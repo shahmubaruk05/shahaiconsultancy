@@ -10,9 +10,8 @@ import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/fires
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { saveBkashPayment } from '@/lib/payments/bkash';
+
 
 type UserPlan = "free" | "pro" | "premium";
 type PlanType = "pro" | "premium" | null;
@@ -29,7 +28,6 @@ function BKashPaymentModal({
   amountBdt: number | null;
 }) {
   const { user } = useUser() || { user: null };
-  const { firestore } = useFirebase();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -57,24 +55,16 @@ function BKashPaymentModal({
       setError("সব ঘর পূরণ করুন (নাম, ইমেইল, মোবাইল, Transaction ID)।");
       return;
     }
-    if (!firestore) {
-        setError("Database connection not found.");
-        return;
-    }
 
     try {
       setLoading(true);
-      await addDoc(collection(firestore, "bkashPayments"), {
+      await saveBkashPayment({
         plan,
-        amount: `${amountBdt} BDT`,
+        amount: String(amountBdt), // The helper expects string
         name,
         email,
         phone,
-        trxId: txId,
-        uid: user?.uid || null,
-        status: "pending",
-        createdAt: serverTimestamp(),
-        source: "pricing-page",
+        txId,
       });
       setSuccess(
         "ধন্যবাদ! আপনার bKash payment তথ্য রিসিভ হয়েছে। ২৪ ঘন্টার মধ্যে ভেরিফাই করা হবে।"
