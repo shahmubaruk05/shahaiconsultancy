@@ -1,8 +1,10 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useFirebase } from "@/firebase";
+import { useFirebase, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, doc, updateDoc } from 'firebase/firestore';
 
 type Plan = "free" | "pro" | "premium";
 
@@ -15,78 +17,34 @@ interface UserRow {
 
 export default function AdminSubscriptionsPage() {
   const { user, isUserLoading, firestore } = useFirebase();
-  const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<UserRow[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const ADMIN_EMAILS = [
     "shahmubaruk05@gmail.com",
     "shahmubaruk.ai@gmail.com",
   ];
+  
+  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
-  useEffect(() => {
-    if (isUserLoading) {
-      return;
-    }
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+  const usersQuery = useMemoFirebase(
+    () => (firestore && isAdmin ? collection(firestore, 'users') : null),
+    [firestore, isAdmin]
+  );
+  
+  const { data: users, isLoading: usersLoading, error: usersError } = useCollection<UserRow>(usersQuery);
 
-    const isAdmin = user.email && ADMIN_EMAILS.includes(user.email);
-    if (!isAdmin) {
-      setError("Access denied. Admin only.");
-      setLoading(false);
-      return;
-    }
-
-    const fetchUsers = async () => {
-      try {
-        if (!firestore) {
-          setError("Firestore is not available.");
-          setLoading(false);
-          return;
-        }
-        const { getDocs, collection } = await import("firebase/firestore");
-        const snap = await getDocs(collection(firestore, "users"));
-        const rows: UserRow[] = [];
-        snap.forEach((docSnap) => {
-          const data = docSnap.data() as any;
-          rows.push({
-            id: docSnap.id,
-            name: data.name || data.fullName || "(no name)",
-            email: data.email || "",
-            plan: (data.plan as Plan) || "free",
-          });
-        });
-        setUsers(rows);
-      } catch (err) {
-        console.error("Failed to load users", err);
-        setError("Failed to load users");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchUsers();
-
-  }, [isUserLoading, user, router, firestore]);
+  const isLoading = isUserLoading || usersLoading;
 
   const handleChangePlan = async (userId: string, newPlan: Plan) => {
     if (!firestore) return;
     try {
-      const { doc, updateDoc } = await import("firebase/firestore");
       setUpdatingId(userId);
       await updateDoc(doc(firestore, "users", userId), {
         plan: newPlan,
         updatedAt: new Date(),
       });
-
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, plan: newPlan } : u))
-      );
+      // The useCollection hook will update the UI automatically.
     } catch (err) {
       console.error("Failed to update plan", err);
       alert("Plan update করতে সমস্যা হয়েছে। কনসোলে error চেক করুন।");
@@ -94,22 +52,36 @@ export default function AdminSubscriptionsPage() {
       setUpdatingId(null);
     }
   };
-
+  
   if (isUserLoading) {
-    return (
+     return (
       <div className="p-4 text-sm text-slate-500">
         Checking admin access...
       </div>
     );
   }
-
-  if (error && !loading) {
+  
+  if (!user) {
+    router.push('/login');
+    return <div className="p-4 text-sm text-slate-500">Redirecting to login...</div>;
+  }
+  
+  if (!isAdmin) {
     return (
       <div className="p-4 text-sm font-medium text-red-600">
-        {error}
+        Access denied. Admin only.
       </div>
     );
   }
+  
+   if (usersError) {
+    return (
+        <div className="p-4 text-sm font-medium text-red-600">
+            Error loading users: {usersError.message}
+        </div>
+    )
+  }
+
 
   return (
     <div className="space-y-4">
@@ -121,7 +93,7 @@ export default function AdminSubscriptionsPage() {
         <span className="font-semibold">plan = Pro / Premium</span> করে দাও।
       </p>
 
-      {loading ? (
+      {isLoading ? (
         <div className="py-10 text-center text-slate-500">Loading users...</div>
       ) : (
         <div className="overflow-x-auto border rounded-lg">
@@ -136,7 +108,7 @@ export default function AdminSubscriptionsPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {users && users.map((u) => (
                 <tr key={u.id} className="border-b last:border-b-0">
                   <td className="px-4 py-2">{u.name}</td>
                   <td className="px-4 py-2">{u.email}</td>
@@ -164,7 +136,7 @@ export default function AdminSubscriptionsPage() {
                 </tr>
               ))}
 
-              {users.length === 0 && (
+              {(!users || users.length === 0) && (
                 <tr>
                   <td
                     colSpan={5}
