@@ -1,4 +1,3 @@
-
 "use client";
 
 export default function AdminHomePage() {
@@ -7,23 +6,19 @@ export default function AdminHomePage() {
       <h1 className="text-xl font-semibold text-slate-900 mb-2">
         Admin Panel
       </h1>
-      <p className="text-sm text-slate-500 mb-4">
+      <p className="text-sm text-slate-500 mb-3">
         Internal tools for Shah Mubaruk only.
       </p>
 
-      <div className="space-y-3 text-sm text-slate-700">
+      <div className="space-y-2 text-sm text-slate-700">
         <p>
-          এখানে শুধুই Shah Mubaruk internal কাজগুলোর জন্য টুল রাখা হবে।
+          এখানে থেকে সাবস্ক্রিপশন, পেমেন্ট, intake form, blog ইত্যাদি manage করবেন।
         </p>
         <p>
-          সাবস্ক্রিপশন / payment related কাজের জন্য{" "}
-          <span className="font-medium text-blue-600">Subscriptions</span>{" "}
-          এবং{" "}
-          <span className="font-medium text-blue-600">Payments</span> ট্যাব ব্যবহার করুন।
-        </p>
-        <p>
-          client intake / custom order ট্র্যাক করার জন্য{" "}
-          <span className="font-medium text-blue-600">Intakes</span> ট্যাব ব্যবহার করুন।
+          শুরু করতে চাইলে বাম পাশের মেনু থেকে{" "}
+          <span className="font-medium text-blue-600">Subscriptions</span>,{" "}
+          <span className="font-medium text-blue-600">Intakes</span> বা{" "}
+          <span className="font-medium text-blue-600">Payments</span> এ যান।
         </p>
       </div>
     </div>
