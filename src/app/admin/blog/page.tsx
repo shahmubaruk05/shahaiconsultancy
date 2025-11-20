@@ -21,7 +21,8 @@ import {
   } from "firebase/storage";
 import { initializeFirebase } from "@/firebase";
 
-const { firestore: db, auth } = initializeFirebase();
+const { firestore: db, auth, storage } = initializeFirebase();
+
 
 const ADMIN_EMAILS = [
   "shahmubaruk05@gmail.com",
@@ -36,6 +37,7 @@ interface BlogRow {
   slug: string;
   status: Status;
   createdAt: Date | null;
+  category?: string;
 }
 
 function slugify(input: string): string {
@@ -63,11 +65,11 @@ export default function AdminBlogPage() {
     videoUrl: "",
     content: "",
     status: "draft" as Status,
+    category: "",
   });
   
   const router = useRouter();
 
-  const { storage } = initializeFirebase();
   const [coverUploading, setCoverUploading] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
 
@@ -151,6 +153,7 @@ export default function AdminBlogPage() {
             slug: data.slug || docSnap.id,
             status: data.status || "draft",
             createdAt,
+            category: data.category || "",
           });
         });
         rows.sort((a, b) => {
@@ -180,6 +183,7 @@ export default function AdminBlogPage() {
       videoUrl: "",
       content: "",
       status: "draft",
+      category: "",
     });
   };
 
@@ -203,6 +207,7 @@ export default function AdminBlogPage() {
         videoUrl: data.videoUrl || "",
         content: data.content || "",
         status: (data.status as Status) || "draft",
+        category: data.category || "",
       });
     } catch (err) {
       console.error("Failed to load post for editing", err);
@@ -236,6 +241,7 @@ export default function AdminBlogPage() {
         videoUrl: form.videoUrl.trim() || null,
         content: form.content.trim(),
         status: form.status || "draft",
+        category: form.category.trim() || null,
         updatedAt: serverTimestamp(),
       };
 
@@ -249,6 +255,7 @@ export default function AdminBlogPage() {
                   title: payload.title,
                   slug: payload.slug,
                   status: payload.status as Status,
+                  category: payload.category || "",
                 }
               : p,
           ),
@@ -265,6 +272,7 @@ export default function AdminBlogPage() {
             slug: payload.slug,
             status: payload.status as Status,
             createdAt: new Date(),
+            category: payload.category || "",
           },
           ...prev,
         ]);
@@ -627,5 +635,3 @@ export default function AdminBlogPage() {
     </div>
   );
 }
-
-    
