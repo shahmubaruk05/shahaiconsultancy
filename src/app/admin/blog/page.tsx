@@ -241,7 +241,7 @@ export default function AdminBlogPage() {
         videoUrl: form.videoUrl.trim() || null,
         content: form.content.trim(),
         status: form.status || "draft",
-        category: form.category.trim() || null,
+        category: form.category.trim() || "Uncategorized",
         updatedAt: serverTimestamp(),
       };
 
