@@ -24,6 +24,7 @@ interface BlogPost {
   videoUrl?: string | null;
   status: "draft" | "published" | string;
   createdAt: Date | null;
+  category?: string;
 }
 
 export default function BlogDetailPage() {
@@ -67,6 +68,7 @@ export default function BlogDetailPage() {
           videoUrl: data.videoUrl || null,
           status: data.status || "draft",
           createdAt,
+          category: data.category || "",
         });
       } catch (err) {
         console.error("Failed to load blog post", err);

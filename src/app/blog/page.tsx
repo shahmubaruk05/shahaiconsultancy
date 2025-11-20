@@ -15,6 +15,7 @@ interface BlogPost {
   coverImageUrl?: string | null;
   status: "draft" | "published" | string;
   createdAt: Date | null;
+  category?: string;
 }
 
 export default function BlogListPage() {
@@ -41,6 +42,7 @@ export default function BlogListPage() {
             coverImageUrl: data.coverImageUrl || null,
             status: data.status || "draft",
             createdAt,
+            category: data.category || "",
           });
         });
 
