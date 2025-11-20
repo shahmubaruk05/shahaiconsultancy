@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState, FormEvent } from "react";
@@ -274,8 +275,7 @@ export default function AdminInvoicesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <section>
         <div className="mb-6 flex items-center justify-between gap-2">
           <div>
             <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
@@ -748,7 +748,6 @@ export default function AdminInvoicesPage() {
             </form>
           </div>
         </div>
-      </div>
-    </div>
+    </section>
   );
 }
