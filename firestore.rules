@@ -12,7 +12,8 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-        return signedIn() && request.auth.token.role == "admin";
+        // Grant admin access if the UID matches the specific admin user.
+        return request.auth.uid == "D5xPzdE7P7WbytX20CB1302iG433";
     }
 
     // === Manual bKash payments (top-level collection) ===
