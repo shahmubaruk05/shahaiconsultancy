@@ -1,9 +1,13 @@
+
 "use client";
 
 import { useUser } from "@/firebase";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { initializeFirebase } from "@/firebase";
+
+const { auth } = initializeFirebase();
 
 const ADMIN_EMAILS = [
   "shahmubaruk05@gmail.com",
@@ -14,18 +18,26 @@ export default function AdminHomePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
+  useEffect(() => {
+    if (isUserLoading) return;
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    const isAdmin = user.email && ADMIN_EMAILS.includes(user.email);
+    if (!isAdmin) {
+        // Redirect non-admin users, or show an access denied message.
+        // For this example, we will just show a message.
+    }
+  }, [user, isUserLoading, router]);
+
   if (isUserLoading) {
     return <div className="text-sm text-slate-500 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking admin access...</div>;
   }
 
-  if (!user) {
-    router.push("/login");
-    return <div className="text-sm text-slate-500">Redirecting to login...</div>;
-  }
-
-  const isAdmin = user.email && ADMIN_EMAILS.includes(user.email);
-
-  if (!isAdmin) {
+  if (!user || (user.email && !ADMIN_EMAILS.includes(user.email))) {
     return <div className="text-sm font-medium text-red-600">Access denied. Admin only.</div>;
   }
 

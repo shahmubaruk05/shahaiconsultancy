@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -10,6 +11,9 @@ import {
   orderBy,
   query,
 } from "firebase/firestore";
+import { initializeFirebase } from "@/firebase";
+
+const { auth, firestore } = initializeFirebase();
 
 const ADMIN_EMAILS = [
   "shahmubaruk05@gmail.com",
@@ -36,7 +40,6 @@ interface AiUsageLog {
 
 export default function AdminAiUsagePage() {
   const { user, isUserLoading } = useUser();
-  const { firestore } = useFirebase();
   const [isAdmin, setIsAdmin] = useState(false);
   const [logs, setLogs] = useState<AiUsageLog[]>([]);
   const [loading, setLoading] = useState(true);

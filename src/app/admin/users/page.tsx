@@ -1,3 +1,4 @@
+
 "use client";
 
   import { useEffect, useMemo, useState } from "react";
@@ -10,7 +11,9 @@
     doc,
     updateDoc,
   } from "firebase/firestore";
-  import { app } from "@/firebase/client";
+  import { initializeFirebase } from "@/firebase";
+
+  const { auth: fbAuth, firestore: db } = initializeFirebase();
 
   const ADMIN_EMAILS = [
     "shahmubaruk05@gmail.com",
@@ -36,12 +39,10 @@
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const auth = getAuth(app);
-    const db = getFirestore(app);
     const router = useRouter();
 
     useEffect(() => {
-      const unsub = onAuthStateChanged(auth, async (user) => {
+      const unsub = onAuthStateChanged(fbAuth, async (user) => {
         if (!user) {
           setCheckingAuth(false);
           router.push("/login");
@@ -86,7 +87,7 @@
       });
 
       return () => unsub();
-    }, [auth, db, router]);
+    }, [fbAuth, db, router]);
 
     const filtered = useMemo(() => {
       const q = search.toLowerCase();
@@ -264,3 +265,5 @@
       </div>
     );
   }
+
+    
