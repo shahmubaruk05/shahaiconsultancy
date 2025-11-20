@@ -66,6 +66,12 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    match /invoices/{invoiceId} {
+      // public can read, admin can write
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Secure all user-specific data under the /users/{userId} path.
     match /users/{userId}/{document=**} {
       allow read, write: if isOwner(userId);

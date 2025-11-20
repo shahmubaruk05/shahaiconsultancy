@@ -38,6 +38,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </a>
 
           <a
+            href="/admin/invoices"
+            className="block rounded px-2 py-1 text-slate-700 hover:bg-slate-100"
+          >
+            Invoices
+          </a>
+
+          <a
             href="/admin/users"
             className="block rounded px-2 py-1 text-slate-700 hover:bg-slate-100"
           >
