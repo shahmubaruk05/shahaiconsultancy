@@ -201,12 +201,29 @@ export default function AdminInvoicesPage() {
 
   useEffect(() => {
     if (!selectedInvoice) {
-      setForm(emptyInvoice);
+      // If we are creating a NEW invoice...
+      if (searchParams.get("fromIntake") === "1") {
+        // ...and it's from an intake, pre-fill the form
+        setForm({
+          ...emptyInvoice,
+          clientName: searchParams.get("name") || "",
+          email: searchParams.get("email") || "",
+          phone: searchParams.get("phone") || "",
+          service: searchParams.get("service") || "",
+        });
+        // Clear the URL params so it doesn't pre-fill again on reload
+        router.replace('/admin/invoices', { scroll: false });
+      } else {
+        // Otherwise, just use a blank form
+        setForm(emptyInvoice);
+      }
     } else {
+      // If we are editing an EXISTING invoice, load its data
       const { id, ...rest } = selectedInvoice;
       setForm(rest);
     }
-  }, [selectedInvoice]);
+  }, [selectedInvoice, searchParams, router]);
+
 
   function formatDate(ts?: Timestamp | null) {
     if (!ts) return "-";
