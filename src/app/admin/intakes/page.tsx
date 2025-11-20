@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   collection,
@@ -12,8 +11,14 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
+import { Button } from "@/components/ui/button";
+import { createInvoiceFromIntake, type Invoice } from "@/lib/invoices";
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 
 type IntakeStatus = "new" | "in-progress" | "completed" | "closed";
 
@@ -46,12 +51,74 @@ const STATUS_COLORS: Record<IntakeStatus, string> = {
   closed: "bg-slate-50 text-slate-600 border-slate-200",
 };
 
+function LinkedInvoiceList({ intakeId }: { intakeId: string }) {
+  const { firestore } = useFirebase();
+  const [linkedInvoices, setLinkedInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!firestore || !intakeId) return;
+    setLoading(true);
+    const q = query(
+      collection(firestore, "invoices"),
+      where("relatedIntakeId", "==", intakeId)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const invoices: Invoice[] = [];
+      snap.forEach((d) => invoices.push({ id: d.id, ...d.data() } as Invoice));
+      setLinkedInvoices(invoices);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [firestore, intakeId]);
+
+  if (loading) {
+    return <p className="text-[11px] text-slate-500">Loading linked invoices...</p>;
+  }
+
+  if (linkedInvoices.length === 0) return null;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-100">
+      <p className="text-[11px] font-semibold text-slate-500 uppercase mb-2">
+        Linked Invoices
+      </p>
+      <div className="space-y-1">
+        {linkedInvoices.map((inv) => (
+          <div key={inv.id} className="flex items-center justify-between text-xs">
+            <span className="truncate">
+              INV-{inv.id.slice(0, 5)}: {inv.total.toLocaleString()}{" "}
+              {inv.currency}
+            </span>
+            <div className="flex items-center gap-2">
+                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${STATUS_COLORS[inv.status]}`}>
+                    {STATUS_LABELS[inv.status]}
+                </span>
+                <Link
+                    href={`/admin/invoices?id=${inv.id}`}
+                    className="text-[10px] underline text-blue-600"
+                >
+                    Open
+                </Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 export default function AdminIntakesPage() {
   const { firestore, user } = useFirebase();
   const [intakes, setIntakes] = useState<Intake[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const [isCreatingInvoice, startCreatingInvoice] = useTransition();
 
   // simple guard (UI level)
   const isAdminEmail = useMemo(() => {
@@ -160,6 +227,36 @@ export default function AdminIntakesPage() {
 
     return encodeURIComponent(base);
   }
+
+  const handleCreateInvoice = (intakeId: string) => {
+    if (!firestore) return;
+
+    startCreatingInvoice(async () => {
+        try {
+            const newInvoice = await createInvoiceFromIntake(firestore, intakeId, {});
+            toast({
+                title: "Invoice created!",
+                description: `Invoice for ${newInvoice.clientName} is ready.`,
+                action: (
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => router.push(`/admin/invoices?id=${newInvoice.id}`)}
+                    >
+                        View invoice
+                    </Button>
+                ),
+            });
+        } catch (err) {
+            console.error("Failed to create invoice from intake", err);
+            toast({
+                variant: "destructive",
+                title: "Invoice Creation Failed",
+                description: "Something went wrong. Please try again.",
+            });
+        }
+    });
+  };
 
   return (
     <section>
@@ -352,7 +449,6 @@ export default function AdminIntakesPage() {
                   Actions
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {/* WhatsApp quick reply */}
                   {selected.phone && (
                     <a
                       href={`https://wa.me/${selected.phone.replace(
@@ -367,38 +463,16 @@ export default function AdminIntakesPage() {
                     </a>
                   )}
 
-                  {/* Copy email text */}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const txt = `Client: ${selected.name}\nService: ${selected.service}\nEmail: ${selected.email}\nPhone: ${selected.phone}\n\nNotes:\n${selected.notes || "-"}`;
-                      try {
-                        await navigator.clipboard.writeText(txt);
-                        alert("Summary copied to clipboard.");
-                      } catch {
-                        alert("Copy করতে সমস্যা হয়েছে।");
-                      }
-                    }}
-                    className="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    📋 Copy summary
-                  </button>
-
-                  {/* Placeholder for future invoice system */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // future: router.push(`/admin/invoices/new?intakeId=${selected.id}`);
-                      alert(
-                        "Invoice system পরের ধাপে implement করলে এখান থেকে সরাসরি invoice create করতে পারবেন।"
-                      );
-                    }}
+                  <Button
+                    onClick={() => handleCreateInvoice(selected.id)}
+                    disabled={isCreatingInvoice}
                     className="inline-flex items-center rounded-full border border-blue-300 bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-800 hover:bg-blue-100"
                   >
-                    🧾 Create invoice (coming soon)
-                  </button>
+                    🧾 Create invoice
+                  </Button>
                 </div>
               </div>
+              <LinkedInvoiceList intakeId={selected.id} />
             </div>
           )}
         </div>

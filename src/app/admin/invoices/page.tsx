@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useEffect, useMemo, useState, FormEvent } from "react";
+import { useEffect, useMemo, useState, FormEvent, useTransition } from "react";
 import {
   collection,
   doc,
@@ -15,50 +14,23 @@ import {
 } from "firebase/firestore";
 import Link from "next/link";
 import { useFirebase } from "@/firebase/provider";
-
-type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "cancelled";
-
-type Invoice = {
-  id: string;
-  clientName: string;
-  email: string;
-  phone?: string;
-  service?: string;
-  currency: "BDT" | "USD";
-  lineItems: { label: string; amount: number }[];
-  subtotal: number;
-  discount: number;
-  total: number;
-  paymentMethods: {
-    bkash?: boolean;
-    bank?: boolean;
-    paypal?: boolean;
-  };
-  bkashNumber?: string;
-  paypalLink?: string;
-  bankDetails?: string;
-  status: InvoiceStatus;
-  relatedIntakeId?: string;
-  notesInternal?: string;
-  notesPublic?: string;
-  createdAt?: Timestamp | null;
-};
-
-const STATUS_LABELS: Record<InvoiceStatus, string> = {
-  draft: "Draft",
-  sent: "Sent",
-  partial: "Partially paid",
-  paid: "Paid",
-  cancelled: "Cancelled",
-};
-
-const STATUS_COLORS: Record<InvoiceStatus, string> = {
-  draft: "bg-slate-50 text-slate-700 border-slate-200",
-  sent: "bg-sky-50 text-sky-700 border-sky-200",
-  partial: "bg-amber-50 text-amber-700 border-amber-200",
-  paid: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  cancelled: "bg-rose-50 text-rose-700 border-rose-200",
-};
+import { Invoice, STATUS_LABELS, STATUS_COLORS, markInvoicePaid } from "@/lib/invoices";
+import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input";
+  
 
 const emptyInvoice: Omit<Invoice, "id"> = {
   clientName: "",
@@ -89,6 +61,48 @@ const emptyInvoice: Omit<Invoice, "id"> = {
   createdAt: null,
 };
 
+function ManualPaymentDialog({ invoiceId }: { invoiceId: string }) {
+    const { firestore } = useFirebase();
+    const [paymentId, setPaymentId] = useState('');
+    const [isUpdating, startUpdating] = useTransition();
+
+    const handleConfirm = async () => {
+        if (!firestore || !paymentId.trim()) return;
+        startUpdating(async () => {
+            await markInvoicePaid(firestore, invoiceId, paymentId);
+        });
+    }
+
+    return (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" size="sm" className="text-xs">Mark as Paid (Manual)</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Manually Mark Invoice as Paid</AlertDialogTitle>
+              <AlertDialogDescription>
+                Enter the payment transaction ID (e.g., from a bKash SMS or bank transfer) to mark this invoice as paid. This action is final.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-4">
+                <Input
+                    value={paymentId}
+                    onChange={(e) => setPaymentId(e.target.value)}
+                    placeholder="Enter payment transaction ID"
+                />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirm} disabled={isUpdating || !paymentId}>
+                {isUpdating ? "Updating..." : "Confirm Payment"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )
+}
+
 export default function AdminInvoicesPage() {
   const { firestore } = useFirebase();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -96,6 +110,17 @@ export default function AdminInvoicesPage() {
   const [form, setForm] = useState<Omit<Invoice, "id">>(emptyInvoice);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+
+  useEffect(() => {
+    const idFromUrl = searchParams.get('id');
+    if (idFromUrl) {
+      setSelectedId(idFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!firestore) return;
@@ -135,7 +160,7 @@ export default function AdminInvoicesPage() {
             bkashNumber: data.bkashNumber || "",
             paypalLink: data.paypalLink || "",
             bankDetails: data.bankDetails || "",
-            status: (data.status as InvoiceStatus) || "draft",
+            status: (data.status as Invoice["status"]) || "draft",
             relatedIntakeId: data.relatedIntakeId || "",
             notesInternal: data.notesInternal || "",
             notesPublic: data.notesPublic || "",
@@ -143,11 +168,6 @@ export default function AdminInvoicesPage() {
           });
         });
         setInvoices(rows);
-
-        if (selectedId !== "new") {
-          const exists = rows.some((i) => i.id === selectedId);
-          if (!exists) setSelectedId("new");
-        }
       },
       (err) => {
         console.error("Failed to load invoices", err);
@@ -155,7 +175,7 @@ export default function AdminInvoicesPage() {
       }
     );
     return () => unsub();
-  }, [firestore, selectedId]);
+  }, [firestore]);
 
   const selectedInvoice: Invoice | null = useMemo(() => {
     if (selectedId === "new") return null;
@@ -231,7 +251,7 @@ export default function AdminInvoicesPage() {
     e.preventDefault();
     if (!firestore) return;
 
-    if (!form.clientName || !form.email || !form.total) {
+    if (!form.clientName || !form.email || !form.total === undefined) {
       setError("Client name, email এবং total amount দেওয়া বাধ্যতামূলক।");
       return;
     }
@@ -241,6 +261,7 @@ export default function AdminInvoicesPage() {
 
     const payload = {
       ...form,
+      payUrl: selectedId !== 'new' ? `${window.location.origin}/invoice/${selectedId}` : '',
       subtotal: form.subtotal,
       discount: Number(form.discount) || 0,
       total: form.total,
@@ -256,11 +277,16 @@ export default function AdminInvoicesPage() {
       if (selectedId === "new") {
         const ref = await addDoc(collection(firestore, "invoices"), {
           ...payload,
+          payUrl: '', // Will be updated after we get ID
           createdAt: serverTimestamp(),
         });
+        await updateDoc(ref, { payUrl: `${window.location.origin}/invoice/${ref.id}` });
         setSelectedId(ref.id);
+        router.replace(`/admin/invoices?id=${ref.id}`, { scroll: false });
+        toast({ title: "Invoice created successfully!" });
       } else {
         await updateDoc(doc(firestore, "invoices", selectedId), payload);
+        toast({ title: "Invoice updated." });
       }
     } catch (err) {
       console.error("Failed to save invoice", err);
@@ -372,16 +398,13 @@ export default function AdminInvoicesPage() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
                     {selectedId === "new"
                       ? "New invoice"
-                      : "Edit invoice"}
+                      : `Edit invoice #${selectedId.slice(0, 5)}`}
                   </p>
                   <div className="flex flex-wrap gap-2 text-xs text-slate-500">
                     {selectedId !== "new" && (
-                      <span>
-                        Public link:{" "}
-                        <code className="rounded bg-slate-50 px-1 py-0.5">
-                          /invoice/{selectedId}
-                        </code>
-                      </span>
+                      <Link href={`/invoice/${selectedId}`} target="_blank" className="underline">
+                        View public invoice
+                      </Link>
                     )}
                   </div>
                 </div>
@@ -391,12 +414,12 @@ export default function AdminInvoicesPage() {
                     onChange={(e) =>
                       setForm((prev) => ({
                         ...prev,
-                        status: e.target.value as InvoiceStatus,
+                        status: e.target.value as Invoice["status"],
                       }))
                     }
                     className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs"
                   >
-                    {(Object.keys(STATUS_LABELS) as InvoiceStatus[]).map(
+                    {(Object.keys(STATUS_LABELS) as (keyof typeof STATUS_LABELS)[]).map(
                       (st) => (
                         <option key={st} value={st}>
                           {STATUS_LABELS[st]}
@@ -726,24 +749,24 @@ export default function AdminInvoicesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                <p className="text-[11px] text-slate-500">
-                  Client–কে পাঠানোর লিংক:{" "}
-                  {selectedId !== "new" ? (
-                    <code className="rounded bg-slate-50 px-1 py-0.5">
-                      /invoice/{selectedId}
-                    </code>
-                  ) : (
-                    "Save করার পর লিংক তৈরি হবে।"
-                  )}
-                </p>
-                <button
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                    {selectedInvoice && selectedInvoice.status !== 'paid' && (
+                        <ManualPaymentDialog invoiceId={selectedInvoice.id} />
+                    )}
+                    {selectedInvoice && selectedInvoice.status === 'paid' && (
+                        <Button variant="outline" size="sm" className="text-xs" disabled>
+                            Already Paid
+                        </Button>
+                    )}
+                </div>
+                <Button
                   type="submit"
                   disabled={updating}
                   className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-70"
                 >
-                  {updating ? "Saving..." : "Save invoice"}
-                </button>
+                  {updating ? "Saving..." : (selectedId === 'new' ? 'Create & Save Invoice' : 'Save Changes')}
+                </Button>
               </div>
             </form>
           </div>

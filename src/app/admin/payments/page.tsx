@@ -1,8 +1,8 @@
-
 "use client";
 
   import { useEffect, useMemo, useState } from "react";
   import { useRouter } from "next/navigation";
+  import Link from "next/link";
   import { getAuth, onAuthStateChanged } from "firebase/auth";
   import {
     getFirestore,
@@ -10,6 +10,8 @@
     doc,
     getDocs,
     updateDoc,
+    query,
+    orderBy
   } from "firebase/firestore";
   import { initializeFirebase } from "@/firebase";
 
@@ -24,7 +26,7 @@
 
   interface PaymentRow {
     id: string;
-    provider: "bkash" | "paypal";
+    provider: "bkash" | "paypal" | "bank";
     email: string | null;
     txId: string | null;
     amount: number | null;
@@ -33,6 +35,7 @@
     status: string | null;
     createdAt: Date | null;
     userUid?: string | null;
+    invoiceId?: string | null;
   }
 
   export default function AdminPaymentsPage() {
@@ -40,8 +43,8 @@
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [payments, setPayments] = useState<PaymentRow[]>([]);
-    const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
-    const [providerFilter, setProviderFilter] = useState<"all" | "bkash" | "paypal">("all");
+    const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "completed">("all");
+    const [providerFilter, setProviderFilter] = useState<"all" | "bkash" | "paypal" | "bank">("all");
     const [error, setError] = useState<string | null>(null);
 
     const router = useRouter();
@@ -68,58 +71,43 @@
           setLoading(true);
 
           const rows: PaymentRow[] = [];
+          
+          const collectionsToFetch = [
+              { name: "bkashPayments", provider: "bkash" as const },
+              { name: "paypalPayments", provider: "paypal" as const },
+              { name: "invoicePayments", provider: "bank" as const },
+          ];
 
-          // Load bKash payments
-          const bkashSnap = await getDocs(collection(db, "bkashPayments"));
-          bkashSnap.forEach((docSnap) => {
-            const data = docSnap.data() as any;
-            let createdAt: Date | null = null;
-            if (data.createdAt && data.createdAt.toDate) {
-              createdAt = data.createdAt.toDate();
+          for (const { name, provider } of collectionsToFetch) {
+            try {
+                const q = query(collection(db, name), orderBy("createdAt", "desc"));
+                const snap = await getDocs(q);
+                snap.forEach((docSnap) => {
+                    const data = docSnap.data() as any;
+                    let createdAt: Date | null = null;
+                    if (data.createdAt && data.createdAt.toDate) {
+                    createdAt = data.createdAt.toDate();
+                    }
+
+                    rows.push({
+                        id: docSnap.id,
+                        provider: provider,
+                        email: data.email ?? data.payerEmail ?? null,
+                        txId: data.txId ?? data.paypalEventId ?? null,
+                        amount: data.amount ? Number(data.amount) : (data.amountBdt ? Number(data.amountBdt) : null),
+                        currency: data.currency ?? (provider === 'bkash' ? 'BDT' : 'USD'),
+                        plan: data.plan ?? null,
+                        status: data.status ?? "pending",
+                        createdAt,
+                        userUid: data.uid ?? null,
+                        invoiceId: data.invoiceId ?? null,
+                    });
+                });
+            } catch (err) {
+                 console.warn(`${name} collection not found or not readable`, err);
             }
-
-            rows.push({
-              id: docSnap.id,
-              provider: "bkash",
-              email: data.email ?? null,
-              txId: data.txId ?? null,
-              amount: data.amountBdt ?? null,
-              currency: "BDT",
-              plan: data.plan ?? null,
-              status: data.status ?? "pending",
-              createdAt,
-              userUid: data.uid ?? null,
-            });
-          });
-
-          // Load PayPal payments (if collection exists)
-          try {
-            const paypalSnap = await getDocs(collection(db, "paypalPayments"));
-            paypalSnap.forEach((docSnap) => {
-              const data = docSnap.data() as any;
-              let createdAt: Date | null = null;
-              if (data.createdAt && data.createdAt.toDate) {
-                createdAt = data.createdAt.toDate();
-              }
-
-              rows.push({
-                id: docSnap.id,
-                provider: "paypal",
-                email: data.payerEmail ?? data.email ?? null,
-                txId: data.paypalEventId ?? data.txId ?? null,
-                amount: data.amount ? Number(data.amount) : null,
-                currency: data.currency ?? "USD",
-                plan: data.plan ?? null,
-                status: data.status ?? "completed",
-                createdAt,
-                userUid: data.uid ?? null,
-              });
-            });
-          } catch (err) {
-            console.warn("paypalPayments collection not found / not readable", err);
           }
 
-          // Sort desc by date
           rows.sort((a, b) => {
             const ta = a.createdAt?.getTime() ?? 0;
             const tb = b.createdAt?.getTime() ?? 0;
@@ -136,7 +124,7 @@
       });
 
       return () => unsub();
-    }, [fbAuth, db, router]);
+    }, [db, router]);
 
     const filtered = useMemo(() => {
       return payments.filter((p) => {
@@ -148,10 +136,24 @@
 
     const handleUpdateStatus = async (p: PaymentRow, newStatus: string) => {
       try {
-        const colName = p.provider === "bkash" ? "bkashPayments" : "paypalPayments";
+        let colName = "invoicePayments"; // default
+        if (p.provider === 'bkash') colName = 'bkashPayments';
+        if (p.provider === 'paypal') colName = 'paypalPayments';
+        
         await updateDoc(doc(db, colName, p.id), {
           status: newStatus,
         });
+
+        // Also update invoice if linked
+        if (p.invoiceId && (newStatus === 'completed' || newStatus === 'approved')) {
+            await updateDoc(doc(db, "invoices", p.invoiceId), {
+                status: 'paid',
+                paidAt: new Date(),
+                paidByPaymentId: p.id,
+            });
+        }
+
+
         setPayments((prev) =>
           prev.map((row) =>
             row.id === p.id && row.provider === p.provider
@@ -184,7 +186,7 @@
             Payments & Transactions
           </h2>
           <p className="mt-1 text-xs text-slate-600">
-            Review bKash and PayPal payments, verify status, and cross-check with user subscriptions.
+            Review bKash, PayPal, and Bank payments, verify status, and cross-check with user subscriptions or invoices.
           </p>
         </div>
 
@@ -194,13 +196,14 @@
             <select
               value={providerFilter}
               onChange={(e) =>
-                setProviderFilter(e.target.value as "all" | "bkash" | "paypal")
+                setProviderFilter(e.target.value as "all" | "bkash" | "paypal" | "bank")
               }
               className="rounded border border-slate-300 px-2 py-1 text-xs"
             >
               <option value="all">All</option>
               <option value="bkash">bKash</option>
               <option value="paypal">PayPal</option>
+              <option value="bank">Bank</option>
             </select>
           </div>
 
@@ -209,13 +212,14 @@
             <select
               value={statusFilter}
               onChange={(e) =>
-                setStatusFilter(e.target.value as "all" | "pending" | "completed")
+                setStatusFilter(e.target.value as "all" | "pending" | "approved" | "completed")
               }
               className="rounded border border-slate-300 px-2 py-1 text-xs"
             >
               <option value="all">All</option>
               <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
+              <option value="approved">Approved</option>
+              <option value="completed">Completed (Auto)</option>
             </select>
           </div>
         </div>
@@ -239,7 +243,7 @@
                     Email
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                    Plan
+                    Product
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
                     Amount
@@ -260,7 +264,13 @@
                     </td>
                     <td className="px-3 py-2 capitalize">{p.provider}</td>
                     <td className="px-3 py-2">{p.email || "—"}</td>
-                    <td className="px-3 py-2">{p.plan || "—"}</td>
+                    <td className="px-3 py-2">
+                        {p.plan || (p.invoiceId && 
+                          <Link href={`/admin/invoices?id=${p.invoiceId}`} className="underline text-blue-600">
+                            Invoice #{p.invoiceId.slice(0,5)}
+                          </Link>
+                        ) || '—'}
+                    </td>
                     <td className="px-3 py-2">
                       {p.amount != null ? `${p.amount} ${p.currency}` : "—"}
                     </td>
@@ -268,19 +278,19 @@
                       {p.status || "—"}
                     </td>
                     <td className="px-3 py-2">
-                      {p.status !== "completed" && (
+                      {p.status === "pending" && (
                         <button
-                          onClick={() => handleUpdateStatus(p, "completed")}
+                          onClick={() => handleUpdateStatus(p, "approved")}
                           className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-700"
                         >
-                          Mark completed
+                          Mark approved
                         </button>
                       )}
                     </td>
                   </tr>
                 ))}
 
-                {filtered.length === 0 && (
+                {filtered.length === 0 && !loading && (
                   <tr>
                     <td
                       colSpan={7}
