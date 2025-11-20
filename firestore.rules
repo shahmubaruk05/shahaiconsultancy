@@ -61,6 +61,11 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /intakes/{intakeId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
     // Secure all user-specific data under the /users/{userId} path.
     match /users/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
