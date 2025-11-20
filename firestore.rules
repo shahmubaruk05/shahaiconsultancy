@@ -10,28 +10,33 @@ service cloud.firestore {
     function isOwner(userId) {
       return signedIn() && request.auth.uid == userId;
     }
+    
+    function isAdmin() {
+        return signedIn() && request.auth.token.role == "admin";
+    }
 
-    // Allow public users to create a bKash payment record with specific data validation.
-    // Allow authenticated users (admins) to read and update these records.
+    // === Manual bKash payments (top-level collection) ===
     match /bkashPayments/{paymentId} {
-      allow create: if request.resource.data.plan in ["pro", "premium"]
-                      && request.resource.data.amount is string
-                      && request.resource.data.txId is string
-                      && request.resource.data.status == "pending";
-
-      allow read, update: if request.auth != null && request.auth.token.role == "admin";
+        // Anyone can submit a payment record (guest checkout is allowed)
+        allow create: if
+            request.resource.data.plan in ["pro", "premium"]
+            && request.resource.data.amount is string
+            && request.resource.data.txId is string
+            && request.resource.data.status == "pending";
+        // Admin / dashboard access
+        allow read, update: if isAdmin();
     }
 
     // === Optional: if I ever store payments under users/{uid}/bkashPayments ===
     match /users/{uid}/bkashPayments/{paymentId} {
-      allow create: if
-        request.resource.data.plan in ["pro", "premium"]
-        && request.resource.data.amountBdt is int
-        && request.resource.data.txId is string
-        && request.resource.data.status == "pending";
+        allow create: if
+            request.resource.data.plan in ["pro", "premium"]
+            && request.resource.data.amount is int
+            && request.resource.data.txId is string
+            && request.resource.data.status == "pending";
 
-      // Allow the logged-in user (or admin) to see / update their own payments
-      allow read, update: if request.auth != null && request.auth.uid == uid;
+        // Allow the logged-in user (or admin) to see / update their own payments
+        allow read, update: if request.auth != null && request.auth.uid == uid;
     }
 
     match /paypalPayments/{docId} {
@@ -46,10 +51,11 @@ service cloud.firestore {
     }
     
     // Allow a user to read and create their own top-level user document.
+    // Allow admins to list all users.
     match /users/{userId} {
        allow get, create: if isOwner(userId);
-       // Disallow listing all users.
-       allow list: if false;
+       // Allow admins to list users for the dashboard
+       allow list: if isAdmin();
        // Do not allow client-side plan updates
        allow update: if isOwner(userId) 
                 && !("plan" in request.resource.data)
