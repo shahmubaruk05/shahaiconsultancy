@@ -12,8 +12,11 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-        // Grant admin access if the UID matches the specific admin user.
-        return request.auth.uid == "D5xPzdE7P7WbytX20CB1302iG433";
+      return request.auth != null
+        && request.auth.token.email in [
+          "shahmubaruk05@gmail.com",
+          "shahmubaruk.ai@gmail.com"
+        ];
     }
 
     // === Manual bKash payments (top-level collection) ===
@@ -51,18 +54,15 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
     
-    // Allow a user to read and create their own top-level user document.
-    // Allow admins to list all users.
-    match /users/{userId} {
-       allow get, create: if isOwner(userId);
-       // Allow admins to list users for the dashboard
-       allow list: if isAdmin();
-       // Do not allow client-side plan updates
-       allow update: if isOwner(userId) 
-                && !("plan" in request.resource.data)
-                && !("planSource" in request.resource.data)
-                && !("planUpdatedAt" in request.resource.data);
-       allow delete: if isOwner(userId);
+    match /users/{uid} {
+      // Read + update allowed for:
+      // - the logged-in user themselves
+      // - OR an admin
+      allow read, update: if request.auth != null
+        && (request.auth.uid == uid || isAdmin());
+
+      // Create allowed when the user is creating their own doc
+      allow create: if request.auth != null && request.auth.uid == uid;
     }
   }
 }
