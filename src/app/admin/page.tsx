@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 
 const quickLinks = [
@@ -14,12 +15,17 @@ const quickLinks = [
   {
     href: "/admin/payments",
     title: "Payments",
-    desc: "bKash / PayPal transaction log & manual verification।",
+    desc: "bKash / PayPal transaction log ও manual verification.",
+  },
+  {
+    href: "/admin/users",
+    title: "Users",
+    desc: "সব registered user, plan, signup তারিখ এক জায়গায় দেখুন।",
   },
   {
     href: "/admin/blog",
     title: "Blog",
-    desc: "নতুন blog post publish করুন, category & SEO manage করুন।",
+    desc: "নতুন blog post publish করুন, category ও SEO manage করুন.",
   },
 ];
 

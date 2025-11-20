@@ -1,16 +1,12 @@
-'use client';
 
-import AdminSidebar from '@/components/admin/AdminSidebar';
+'use client';
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div className="flex w-full min-h-screen bg-gray-50">
-      <AdminSidebar />
-      <main className="flex-1 p-6">{children}</main>
-    </div>
-  );
+  // এখানে কোন sidebar রেন্ডার করবো না।
+  // Root layout-এর sidebar-টাই ব্যবহার হবে।
+  return <>{children}</>;
 }
