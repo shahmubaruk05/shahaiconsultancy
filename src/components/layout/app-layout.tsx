@@ -61,8 +61,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (isAdminRoute) {
-    // We assume the admin layout is self-contained and does not need the Firebase provider at this level.
-    // If it does, this structure might need rethinking to wrap AdminLayout in a provider.
     return <AdminLayout>{children}</AdminLayout>;
   }
 
