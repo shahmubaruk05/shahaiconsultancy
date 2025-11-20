@@ -1,3 +1,4 @@
+
 import type { ReactNode } from "react";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -27,6 +28,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             className="block rounded px-2 py-1 text-slate-700 hover:bg-slate-100"
           >
             Overview
+          </a>
+          
+          <a
+            href="/admin/intakes"
+            className="block rounded px-2 py-1 text-slate-700 hover:bg-slate-100"
+          >
+            Intakes
           </a>
 
           <a
