@@ -42,6 +42,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           >
             Subscriptions
           </a>
+          
+          <a
+            href="/admin/blog"
+            className="block rounded px-2 py-1 text-slate-700 hover:bg-slate-100"
+          >
+            Blog
+          </a>
 
           <a
             href="/admin/payments"

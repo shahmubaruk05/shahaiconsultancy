@@ -52,6 +52,14 @@ service cloud.firestore {
       allow create: if true;
       allow read: if isAdmin();
     }
+    
+    match /blogPosts/{postId} {
+      // Public can read all published posts
+      allow read: if true;
+
+      // Only admin can create/update/delete blog posts
+      allow create, update, delete: if isAdmin();
+    }
 
     // Secure all user-specific data under the /users/{userId} path.
     match /users/{userId}/{document=**} {

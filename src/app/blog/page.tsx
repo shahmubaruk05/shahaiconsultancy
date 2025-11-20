@@ -1,91 +1,138 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
-const blogPosts = [
-  {
-    title: "The Ultimate Guide to Raising Your First Round of Funding",
-    category: "Fundraising",
-    excerpt: "Learn the exact steps to go from a pitch deck to a signed term sheet. We cover everything from finding investors to negotiating the deal.",
-    href: "#",
-  },
-  {
-    title: "Forming Your Company in Bangladesh vs. USA: A Founder's Guide",
-    category: "Business Formation",
-    excerpt: "Understand the pros and cons of incorporating in Bangladesh versus the USA (Delaware) and choose the right path for your startup.",
-    href: "#",
-  },
-    {
-    title: "How to Validate Your Startup Idea Before Writing a Single Line of Code",
-    category: "Entrepreneurship",
-    excerpt: "Save time and money by validating your business idea with real customers. This guide shows you how.",
-    href: "#",
-  },
-   {
-    title: "The Top 5 Marketing Channels for Early-Stage Startups in 2025",
-    category: "Marketing",
-    excerpt: "Don't waste your budget. Focus on these five marketing channels that deliver the highest ROI for new businesses.",
-    href: "#",
-  },
-  {
-    title: "From 10 to 100 Customers: A Framework for Growth",
-    category: "Growth",
-    excerpt: "Scaling your customer base requires a systematic approach. Here is a step-by-step framework to achieve sustainable growth.",
-    href: "#",
-  },
-   {
-    title: "Understanding Your Cap Table: A Simple Guide for Founders",
-    category: "Fundraising",
-    excerpt: "Your capitalization table is one of the most important documents for your startup. Learn how to manage it effectively.",
-    href: "#",
-  }
-];
+"use client";
 
-const categories = ["All", "Fundraising", "Business Formation", "Entrepreneurship", "Marketing", "Growth"];
+import { useEffect, useState } from "react";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { initializeFirebase } from "@/firebase";
 
+const { firestore: db } = initializeFirebase();
 
-export const metadata = {
-  title: "Startup Resources & Funding Guides | Shah Mubaruk Blog",
-  description: "Explore expert articles on fundraising, business formation, marketing, and growth strategies for startups.",
-};
+interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  coverImageUrl?: string | null;
+  status: "draft" | "published" | string;
+  createdAt: Date | null;
+}
 
-export default function BlogPage() {
-    return (
-        <div className="container py-12 md:py-24">
-            <div className="text-center space-y-2 mb-12">
-                <h1 className="text-4xl font-bold tracking-tight font-headline">Startup Resources & Insights</h1>
-                <p className="text-lg text-muted-foreground">Expert guides on fundraising, strategy, and growth for founders.</p>
-            </div>
-            
-            <div className="flex justify-center mb-8">
-                <div className="flex flex-wrap gap-2">
-                    {categories.map(category => (
-                        <Button key={category} variant={category === "All" ? "default" : "outline"}>
-                            {category}
-                        </Button>
-                    ))}
-                </div>
-            </div>
+export default function BlogListPage() {
+  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {blogPosts.map(post => (
-                    <Card key={post.title} className="flex flex-col">
-                        <CardHeader>
-                            <p className="text-sm font-semibold text-primary">{post.category}</p>
-                            <CardTitle className="text-xl">{post.title}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex-1">
-                            <CardDescription>{post.excerpt}</CardDescription>
-                        </CardContent>
-                        <CardFooter>
-                            <Button asChild variant="link" className="p-0">
-                                <Link href={post.href}>Read More <ArrowRight className="ml-2 h-4 w-4" /></Link>
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                ))}
-            </div>
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const snap = await getDocs(collection(db, "blogPosts"));
+        const rows: BlogPost[] = [];
+        snap.forEach((docSnap) => {
+          const data = docSnap.data() as any;
+          let createdAt: Date | null = null;
+          if (data.createdAt && data.createdAt.toDate) {
+            createdAt = data.createdAt.toDate();
+          }
+          rows.push({
+            id: docSnap.id,
+            title: data.title || "Untitled",
+            slug: data.slug || docSnap.id,
+            description: data.description || "",
+            coverImageUrl: data.coverImageUrl || null,
+            status: data.status || "draft",
+            createdAt,
+          });
+        });
+
+        // Show only published, newest first
+        rows
+          .filter((p) => p.status === "published")
+          .sort((a, b) => {
+            const ta = a.createdAt?.getTime() ?? 0;
+            const tb = b.createdAt?.getTime() ?? 0;
+            return tb - ta;
+          });
+
+        setPosts(
+          rows
+            .filter((p) => p.status === "published")
+            .sort((a, b) => {
+              const ta = a.createdAt?.getTime() ?? 0;
+              const tb = b.createdAt?.getTime() ?? 0;
+              return tb - ta;
+            }),
+        );
+      } catch (err) {
+        console.error("Failed to load blog posts", err);
+        setError("Blog load করতে সমস্যা হচ্ছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold text-slate-900">
+          Blog – Shah Mubaruk, Your Startup Coach
+        </h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Startup, funding, Bangladesh/USA company formation, tax, licensing, business strategy
+          – সব নিয়ে বাস্তব অভিজ্ঞতা ও গাইডলাইন।
+        </p>
+      </header>
+
+      {loading && (
+        <div className="py-8 text-sm text-slate-500">Loading blog posts...</div>
+      )}
+
+      {error && (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
         </div>
-    );
+      )}
+
+      {!loading && posts.length === 0 && (
+        <div className="py-8 text-sm text-slate-500">
+          এখনো কোনো blog publish করা হয়নি।
+        </div>
+      )}
+
+      <div className="grid gap-5 md:grid-cols-2">
+        {posts.map((post) => (
+          <a
+            key={post.id}
+            href={`/blog/${post.slug}`}
+            className="group flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:shadow-md"
+          >
+            {post.coverImageUrl && (
+              <div className="relative h-40 w-full overflow-hidden bg-slate-100">
+                <img
+                  src={post.coverImageUrl}
+                  alt={post.title}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                />
+              </div>
+            )}
+            <div className="flex flex-1 flex-col p-4">
+              <h2 className="text-sm font-semibold text-slate-900 group-hover:text-slate-950">
+                {post.title}
+              </h2>
+              <p className="mt-1 line-clamp-3 text-xs text-slate-600">
+                {post.description}
+              </p>
+              {post.createdAt && (
+                <p className="mt-3 text-[11px] text-slate-400">
+                  {post.createdAt.toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
 }
