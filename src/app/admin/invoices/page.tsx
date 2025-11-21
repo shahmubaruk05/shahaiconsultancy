@@ -207,37 +207,53 @@ export default function AdminInvoicesPage() {
   useEffect(() => {
     async function loadSelectedInvoice() {
       if (!firestore) return;
-
-      const fromIntake = searchParams.get("fromIntake") === "1";
-
+  
       if (selectedId === 'new') {
+        const fromIntake = searchParams.get("fromIntake") === "1";
         if (fromIntake) {
-            setForm({
-                ...emptyInvoice,
-                clientName: searchParams.get("name") || "",
-                email: searchParams.get("email") || "",
-                phone: searchParams.get("phone") || "",
-                service: searchParams.get("service") || "",
-                relatedIntakeId: searchParams.get("intakeId") || '',
-                uid: user?.uid || null,
-              });
-            // Clean URL after pre-filling
-            router.replace('/admin/invoices', { scroll: false });
+          const intakeData = {
+            clientName: searchParams.get("name") || "",
+            email: searchParams.get("email") || "",
+            phone: searchParams.get("phone") || "",
+            service: searchParams.get("service") || "",
+            relatedIntakeId: searchParams.get("intakeId") || '',
+          };
+          setForm({ ...emptyInvoice, ...intakeData, uid: user?.uid || null });
+          // Clean URL after pre-filling
+          router.replace('/admin/invoices', { scroll: false });
         } else {
-            setForm({...emptyInvoice, uid: user?.uid || null});
+          setForm({ ...emptyInvoice, uid: user?.uid || null });
         }
       } else {
         const docRef = doc(firestore, 'invoices', selectedId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-            const { id, createdAt, ...rest } = { id: docSnap.id, ...docSnap.data() } as Invoice;
-            setForm(rest);
+          const data = docSnap.data();
+          const invoiceData = {
+            ...emptyInvoice, // Start with defaults
+            ...data, // Overlay fetched data
+            // Ensure nested objects are fully defined
+            paymentMethods: {
+              bkash: !!data.paymentMethods?.bkash,
+              bank: !!data.paymentMethods?.bank,
+              paypal: !!data.paymentMethods?.paypal,
+            },
+            // Ensure optional fields are strings, not undefined
+            phone: data.phone || "",
+            service: data.service || "",
+            bkashNumber: data.bkashNumber || "",
+            paypalLink: data.paypalLink || "",
+            bankDetails: data.bankDetails || "",
+            relatedIntakeId: data.relatedIntakeId || "",
+            notesInternal: data.notesInternal || "",
+            notesPublic: data.notesPublic || "",
+          } as Omit<Invoice, "id" | "createdAt">;
+          setForm(invoiceData);
         }
       }
     }
     loadSelectedInvoice();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, firestore, user]);
+  }, [selectedId, firestore, user, searchParams, router]);
 
 
   function formatDate(ts?: Timestamp | null) {
@@ -826,6 +842,5 @@ export default function AdminInvoicesPage() {
         </div>
     </section>
   );
-}
 
     
