@@ -1,3 +1,4 @@
+
 "use client";
 
   import { useEffect, useMemo, useState } from "react";
@@ -36,6 +37,8 @@
     createdAt: Date | null;
     userUid?: string | null;
     invoiceId?: string | null;
+    method?: string;
+    slipUrl?: string;
   }
 
   export default function AdminPaymentsPage() {
@@ -101,6 +104,8 @@
                         createdAt,
                         userUid: data.uid ?? null,
                         invoiceId: data.invoiceId ?? null,
+                        method: data.method ?? provider,
+                        slipUrl: data.slipUrl ?? null,
                     });
                 });
             } catch (err) {
@@ -229,7 +234,7 @@
             Loading payments...
           </div>
         ) : (
-          <div className="overflow-x-auto rounded border border-slate-200">
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
             <table className="min-w-full text-xs">
               <thead className="bg-slate-50">
                 <tr>
@@ -237,16 +242,22 @@
                     Time
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                    Provider
-                  </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                    Email
+                    User
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
                     Product
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
                     Amount
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                    Method
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                    Tx ID / Ref
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                    Slip
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
                     Status
@@ -262,7 +273,6 @@
                     <td className="px-3 py-2 text-[11px] text-slate-500">
                       {p.createdAt ? p.createdAt.toLocaleString() : "—"}
                     </td>
-                    <td className="px-3 py-2 capitalize">{p.provider}</td>
                     <td className="px-3 py-2">{p.email || "—"}</td>
                     <td className="px-3 py-2">
                         {p.plan || (p.invoiceId && 
@@ -273,6 +283,13 @@
                     </td>
                     <td className="px-3 py-2">
                       {p.amount != null ? `${p.amount} ${p.currency}` : "—"}
+                    </td>
+                    <td className="px-3 py-2 capitalize">{p.method}</td>
+                    <td className="px-3 py-2 font-mono">{p.txId || '—'}</td>
+                    <td className="px-3 py-2">
+                        {p.slipUrl ? (
+                            <a href={p.slipUrl} target="_blank" rel="noreferrer" className="underline text-blue-600">View slip</a>
+                        ) : '—'}
                     </td>
                     <td className="px-3 py-2 capitalize">
                       {p.status || "—"}
@@ -293,7 +310,7 @@
                 {filtered.length === 0 && !loading && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="px-3 py-6 text-center text-sm text-slate-500"
                     >
                       No payments found for this filter.
@@ -307,3 +324,5 @@
       </div>
     );
   }
+
+    
