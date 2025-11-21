@@ -43,31 +43,24 @@ type Invoice = {
   notesPublic?: string;
 };
 
-type PaymentForm = {
-  payerName: string;
-  email: string;
-  method: "bkash" | "bank" | "paypal";
-  amount: string;
-  txId: string;
-};
-
 export default function PublicInvoicePage() {
   const params = useParams<{ id: string }>();
   const invoiceId = params?.id;
   const { firestore: db, firebaseApp: app } = useFirebase();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
-  const [payForm, setPayForm] = useState<PaymentForm>({
-    payerName: "",
-    email: "",
-    method: "bkash",
-    amount: "",
-    txId: "",
-  });
+
+  // Form state
+  const [payerName, setPayerName] = useState('');
+  const [payerEmail, setPayerEmail] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'bkash' | 'bank' | 'paypal'>('bkash');
+  const [amountPaid, setAmountPaid] = useState('');
+  const [txId, setTxId] = useState('');
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
 
   useEffect(() => {
     if (!db || !invoiceId) return;
@@ -116,6 +109,12 @@ export default function PublicInvoicePage() {
     })();
   }, [db, invoiceId]);
 
+  useEffect(() => {
+      if (invoice) {
+          setAmountPaid(String(invoice.total));
+      }
+  }, [invoice]);
+
   function currencySymbol() {
     if (!invoice) return "";
     return invoice.currency === "USD" ? "$" : "৳";
@@ -123,17 +122,31 @@ export default function PublicInvoicePage() {
 
   async function handlePaymentSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!db || !invoice) return;
-
-    if (!payForm.payerName || !payForm.email || !payForm.amount || !payForm.txId) {
-      setError("নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।");
+    setError(null);
+    setMessage(null);
+  
+    const trimmedName = payerName.trim();
+    const trimmedEmail = payerEmail.trim();
+    const trimmedTxId = txId.trim();
+    const amountString = typeof amountPaid === 'string' ? amountPaid.trim() : String(amountPaid ?? '');
+  
+    if (!trimmedName || !trimmedEmail || !trimmedTxId || !amountString) {
+      setError('নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।');
+      return;
+    }
+  
+    const amountNumber = Number(amountString);
+    if (Number.isNaN(amountNumber) || amountNumber <= 0) {
+      setError('Amount সঠিক ভাবে লিখুন (সংখ্যা হিসেবে)।');
       return;
     }
 
-    setSubmitting(true);
-    setError(null);
-    setMessage(null);
+    if (!db || !invoice) {
+        setError('An error occurred. Please refresh and try again.');
+        return;
+    }
 
+    setSubmitting(true);
     let slipUrl: string | null = null;
 
     try {
@@ -147,11 +160,11 @@ export default function PublicInvoicePage() {
 
       await addDoc(collection(db, "invoicePayments"), {
         invoiceId: invoice.id,
-        payerName: payForm.payerName,
-        email: payForm.email,
-        method: payForm.method,
-        amount: Number(payForm.amount) || invoice.total,
-        txId: payForm.txId,
+        payerName: trimmedName,
+        email: trimmedEmail,
+        method: paymentMethod,
+        amount: amountNumber,
+        txId: trimmedTxId,
         slipUrl,
         status: "pending",
         createdAt: serverTimestamp(),
@@ -160,17 +173,14 @@ export default function PublicInvoicePage() {
       setMessage(
         "ধন্যবাদ! আপনার payment details আমরা পেয়েছি। Verify করার পর WhatsApp / ইমেইলে আপনাকে update জানানো হবে।"
       );
-      setPayForm({
-        payerName: "",
-        email: "",
-        method: payForm.method,
-        amount: "",
-        txId: "",
-      });
+      setPayerName("");
+      setPayerEmail("");
+      setAmountPaid("");
+      setTxId("");
       setSlipFile(null);
     } catch (err) {
       console.error("Failed to submit payment info", err);
-      setError("Payment information submit করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।");
+      setError("কিছু সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন বা WhatsApp-এ যোগাযোগ করুন।");
     } finally {
       setSubmitting(false);
     }
@@ -362,13 +372,8 @@ export default function PublicInvoicePage() {
                 </label>
                 <input
                   type="text"
-                  value={payForm.payerName}
-                  onChange={(e) =>
-                    setPayForm((prev) => ({
-                      ...prev,
-                      payerName: e.target.value,
-                    }))
-                  }
+                  value={payerName}
+                  onChange={(e) => setPayerName(e.target.value)}
                   className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
                 />
               </div>
@@ -378,13 +383,8 @@ export default function PublicInvoicePage() {
                 </label>
                 <input
                   type="email"
-                  value={payForm.email}
-                  onChange={(e) =>
-                    setPayForm((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
-                  }
+                  value={payerEmail}
+                  onChange={(e) => setPayerEmail(e.target.value)}
                   className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
                 />
               </div>
@@ -396,12 +396,9 @@ export default function PublicInvoicePage() {
                   Payment method *
                 </label>
                 <select
-                  value={payForm.method}
+                  value={paymentMethod}
                   onChange={(e) =>
-                    setPayForm((prev) => ({
-                      ...prev,
-                      method: e.target.value as PaymentForm["method"],
-                    }))
+                    setPaymentMethod(e.target.value as 'bkash' | 'bank' | 'paypal')
                   }
                   className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
                 >
@@ -426,13 +423,8 @@ export default function PublicInvoicePage() {
                   </span>
                   <input
                     type="number"
-                    value={payForm.amount}
-                    onChange={(e) =>
-                      setPayForm((prev) => ({
-                        ...prev,
-                        amount: e.target.value,
-                      }))
-                    }
+                    value={amountPaid}
+                    onChange={(e) => setAmountPaid(e.target.value)}
                     placeholder={invoice.total.toString()}
                     className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
                   />
@@ -444,13 +436,8 @@ export default function PublicInvoicePage() {
                 </label>
                 <input
                   type="text"
-                  value={payForm.txId}
-                  onChange={(e) =>
-                    setPayForm((prev) => ({
-                      ...prev,
-                      txId: e.target.value,
-                    }))
-                  }
+                  value={txId}
+                  onChange={(e) => setTxId(e.target.value)}
                   className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
                 />
               </div>
