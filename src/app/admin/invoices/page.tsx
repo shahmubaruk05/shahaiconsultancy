@@ -12,6 +12,7 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
+  setDoc,
 } from "firebase/firestore";
 import Link from "next/link";
 import { useFirebase } from "@/firebase/provider";
@@ -49,7 +50,7 @@ const STATUS_COLORS: Record<InvoiceStatus, string> = {
 };
   
 
-const emptyInvoice: Omit<Invoice, "id"> = {
+const emptyInvoice: Omit<Invoice, "id" | "createdAt"> = {
   clientName: "",
   email: "",
   phone: "",
@@ -75,7 +76,7 @@ const emptyInvoice: Omit<Invoice, "id"> = {
   relatedIntakeId: "",
   notesInternal: "",
   notesPublic: "Please complete payment within 3 working days.",
-  createdAt: null,
+  uid: null,
 };
 
 function ManualPaymentDialog({ invoiceId }: { invoiceId: string }) {
@@ -121,10 +122,10 @@ function ManualPaymentDialog({ invoiceId }: { invoiceId: string }) {
 }
 
 export default function AdminInvoicesPage() {
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [selectedId, setSelectedId] = useState<string | "new">("new");
-  const [form, setForm] = useState<Omit<Invoice, "id">>(emptyInvoice);
+  const [form, setForm] = useState<Omit<Invoice, "id" | "createdAt">>(emptyInvoice);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -182,6 +183,7 @@ export default function AdminInvoicesPage() {
             notesInternal: data.notesInternal || "",
             notesPublic: data.notesPublic || "",
             createdAt: data.createdAt || null,
+            uid: data.uid || null,
           });
         });
         setInvoices(rows);
@@ -201,28 +203,24 @@ export default function AdminInvoicesPage() {
 
   useEffect(() => {
     if (!selectedInvoice) {
-      // If we are creating a NEW invoice...
       if (searchParams.get("fromIntake") === "1") {
-        // ...and it's from an intake, pre-fill the form
         setForm({
           ...emptyInvoice,
           clientName: searchParams.get("name") || "",
           email: searchParams.get("email") || "",
           phone: searchParams.get("phone") || "",
           service: searchParams.get("service") || "",
+          uid: user?.uid || null,
         });
-        // Clear the URL params so it doesn't pre-fill again on reload
         router.replace('/admin/invoices', { scroll: false });
       } else {
-        // Otherwise, just use a blank form
-        setForm(emptyInvoice);
+        setForm({...emptyInvoice, uid: user?.uid || null});
       }
     } else {
-      // If we are editing an EXISTING invoice, load its data
-      const { id, ...rest } = selectedInvoice;
+      const { id, createdAt, ...rest } = selectedInvoice;
       setForm(rest);
     }
-  }, [selectedInvoice, searchParams, router]);
+  }, [selectedInvoice, searchParams, router, user]);
 
 
   function formatDate(ts?: Timestamp | null) {
@@ -240,7 +238,7 @@ export default function AdminInvoicesPage() {
     }
   }
 
-  function recalcTotals(next: Omit<Invoice, "id">): Omit<Invoice, "id"> {
+  function recalcTotals(next: Omit<Invoice, "id" | "createdAt">): Omit<Invoice, "id" | "createdAt"> {
     const subtotal = next.lineItems.reduce(
       (sum, li) => sum + (Number(li.amount) || 0),
       0
@@ -309,14 +307,18 @@ export default function AdminInvoicesPage() {
 
     try {
       if (selectedId === "new") {
-        const ref = await addDoc(collection(firestore, "invoices"), {
-          ...payload,
-          payUrl: '', // Will be updated after we get ID
-          createdAt: serverTimestamp(),
-        });
-        await updateDoc(ref, { payUrl: `${window.location.origin}/invoice/${ref.id}` });
-        setSelectedId(ref.id);
-        router.replace(`/admin/invoices?id=${ref.id}`, { scroll: false });
+        const invoicesCol = collection(firestore, "invoices");
+        const newDocRef = doc(invoicesCol); // Create a new doc ref to get the ID
+        
+        const finalPayload = {
+            ...payload,
+            payUrl: `${window.location.origin}/invoice/${newDocRef.id}`, // Use the generated ID
+            createdAt: serverTimestamp(),
+        };
+
+        await setDoc(newDocRef, finalPayload);
+        setSelectedId(newDocRef.id);
+        router.replace(`/admin/invoices?id=${newDocRef.id}`, { scroll: false });
         toast({ title: "Invoice created successfully!" });
       } else {
         await updateDoc(doc(firestore, "invoices", selectedId), payload);
@@ -349,17 +351,14 @@ export default function AdminInvoicesPage() {
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setSelectedId("new")}
+              onClick={() => {
+                setSelectedId("new");
+                setForm({...emptyInvoice, uid: user?.uid || null}); // Reset form for new invoice
+              }}
               className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
             >
               + New invoice
             </button>
-            <Link
-              href="/intake"
-              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            >
-              🔗 View intake form
-            </Link>
           </div>
         </div>
 
@@ -377,7 +376,7 @@ export default function AdminInvoicesPage() {
                 Invoice list ({invoices.length})
               </p>
             </div>
-            <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-100">
+            <div className="max-h-[720px] overflow-y-auto divide-y divide-slate-100">
               {invoices.length === 0 && (
                 <div className="px-3 py-4 text-xs text-slate-500">
                   এখনো কোনো invoice তৈরি করা হয়নি।
@@ -651,7 +650,7 @@ export default function AdminInvoicesPage() {
                   <label className="flex items-center gap-2 text-[11px] text-slate-700">
                     <input
                       type="checkbox"
-                      checked={!!form.paymentMethods.bkash}
+                      checked={!!form.paymentMethods?.bkash}
                       onChange={(e) =>
                         setForm((prev) => ({
                           ...prev,
@@ -667,7 +666,7 @@ export default function AdminInvoicesPage() {
                   <label className="flex items-center gap-2 text-[11px] text-slate-700">
                     <input
                       type="checkbox"
-                      checked={!!form.paymentMethods.bank}
+                      checked={!!form.paymentMethods?.bank}
                       onChange={(e) =>
                         setForm((prev) => ({
                           ...prev,
@@ -683,7 +682,7 @@ export default function AdminInvoicesPage() {
                   <label className="flex items-center gap-2 text-[11px] text-slate-700">
                     <input
                       type="checkbox"
-                      checked={!!form.paymentMethods.paypal}
+                      checked={!!form.paymentMethods?.paypal}
                       onChange={(e) =>
                         setForm((prev) => ({
                           ...prev,

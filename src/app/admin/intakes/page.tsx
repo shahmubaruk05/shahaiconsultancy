@@ -14,11 +14,13 @@ import {
   Timestamp,
   where,
   getDocs,
+  addDoc,
 } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { createInvoiceFromIntake } from "@/lib/invoices";
 
 type IntakeStatus = "new" | "in-progress" | "completed" | "closed";
 
@@ -35,6 +37,7 @@ type Intake = {
   status: IntakeStatus;
   source?: string;
   createdAt?: Timestamp | null;
+  invoiceId?: string; // Link to the created invoice
 };
 
 const STATUS_LABELS: Record<IntakeStatus, string> = {
@@ -62,11 +65,11 @@ export default function AdminIntakesPage() {
 
   const [isCreatingInvoice, startCreatingInvoice] = useTransition();
 
-  // simple guard (UI level)
   const isAdminEmail = useMemo(() => {
     if (!user?.email) return false;
-    // চাইলে এখানে আপনার admin ইমেইল ঠিকানা বসাতে পারেন
-    return ["shahmubaruk05@gmail.com", "shahmubaruk.ai@gmail.com"].includes(user.email);
+    return ["shahmubaruk05@gmail.com", "shahmubaruk.ai@gmail.com"].includes(
+      user.email
+    );
   }, [user]);
 
   useEffect(() => {
@@ -96,6 +99,7 @@ export default function AdminIntakesPage() {
             status: (data.status as IntakeStatus) || "new",
             source: data.source || "public-intake",
             createdAt: data.createdAt || null,
+            invoiceId: data.invoiceId || "",
           });
         });
         setIntakes(rows);
@@ -170,19 +174,48 @@ export default function AdminIntakesPage() {
     return encodeURIComponent(base);
   }
 
-  function handleCreateInvoiceFromIntake(intake: any) {
-    const params = new URLSearchParams({
-      fromIntake: "1",
-      name: intake?.name || "",
-      email: intake?.email || "",
-      phone: intake?.phone || "",
-      service: intake?.service || "",
-      country: intake?.country || "",
-      // city is not in the model, so we'll omit it for now
-    });
-    router.push(`/admin/invoices?${params.toString()}`);
-  }
+  async function handleCreateOrOpenInvoice(intake: Intake) {
+    if (!firestore) return;
 
+    if (intake.invoiceId) {
+      router.push(`/admin/invoices?id=${intake.invoiceId}`);
+      return;
+    }
+
+    startCreatingInvoice(async () => {
+      try {
+        const newInvoice = await createInvoiceFromIntake(firestore, intake.id, user?.uid || null);
+
+        // Link intake to invoice
+        await updateDoc(doc(firestore, "intakes", intake.id), {
+          invoiceId: newInvoice.id,
+        });
+
+        toast({
+          title: "Invoice Created",
+          description: `Invoice #${newInvoice.id.slice(0, 5)} has been created for ${intake.name}.`,
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/admin/invoices?id=${newInvoice.id}`)}
+            >
+              View
+            </Button>
+          ),
+        });
+
+        router.push(`/admin/invoices?id=${newInvoice.id}`);
+      } catch (err: any) {
+        console.error("Failed to create invoice:", err);
+        toast({
+          variant: "destructive",
+          title: "Invoice Creation Failed",
+          description: err.message,
+        });
+      }
+    });
+  }
 
   return (
     <section>
@@ -224,22 +257,6 @@ export default function AdminIntakesPage() {
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Intakes ({intakes.length})
             </p>
-            <div className="flex gap-1">
-              {(["new", "in-progress", "completed", "closed"] as IntakeStatus[]).map(
-                (st) => {
-                  const count = intakes.filter((i) => i.status === st).length;
-                  if (!count) return null;
-                  return (
-                    <span
-                      key={st}
-                      className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-600"
-                    >
-                      {STATUS_LABELS[st]}: {count}
-                    </span>
-                  );
-                }
-              )}
-            </div>
           </div>
           <div className="max-h-[520px] overflow-y-auto divide-y divide-slate-100">
             {intakes.length === 0 && (
@@ -254,9 +271,7 @@ export default function AdminIntakesPage() {
                 onClick={() => setSelectedId(i.id)}
                 className={[
                   "w-full text-left px-3 py-2.5 flex flex-col gap-1 text-xs",
-                  selectedId === i.id
-                    ? "bg-sky-50"
-                    : "hover:bg-slate-50",
+                  selectedId === i.id ? "bg-sky-50" : "hover:bg-slate-50",
                 ].join(" ")}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -316,25 +331,23 @@ export default function AdminIntakesPage() {
                     {STATUS_LABELS[selected.status]}
                   </span>
                   <div className="flex flex-wrap justify-end gap-1 pt-1">
-                    {(["new", "in-progress", "completed", "closed"] as IntakeStatus[]).map(
-                      (st) => (
-                        <button
-                          key={st}
-                          onClick={() =>
-                            handleStatusChange(selected.id, st)
-                          }
-                          disabled={updating || selected.status === st}
-                          className={[
-                            "rounded-full border px-2 py-0.5 text-[10px]",
-                            selected.status === st
-                              ? "border-slate-300 bg-slate-100 text-slate-700"
-                              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                          ].join(" ")}
-                        >
-                          {STATUS_LABELS[st]}
-                        </button>
-                      )
-                    )}
+                    {(
+                      ["new", "in-progress", "completed", "closed"] as IntakeStatus[]
+                    ).map((st) => (
+                      <button
+                        key={st}
+                        onClick={() => handleStatusChange(selected.id, st)}
+                        disabled={updating || selected.status === st}
+                        className={[
+                          "rounded-full border px-2 py-0.5 text-[10px]",
+                          selected.status === st
+                            ? "border-slate-300 bg-slate-100 text-slate-700"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                        ].join(" ")}
+                      >
+                        {STATUS_LABELS[st]}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -344,20 +357,25 @@ export default function AdminIntakesPage() {
                   <p className="text-[11px] font-semibold text-slate-500 uppercase">
                     Contact
                   </p>
-                  <p>Email: {selected.email || "-"}</p>
-                  <p>Phone: {selected.phone || "-"}</p>
+                  <p>
+                    <a href={`mailto:${selected.email}`} className="hover:underline">
+                      Email: {selected.email || "-"}
+                    </a>
+                  </p>
+                  <p>
+                    <a href={`tel:${selected.phone}`} className="hover:underline">
+                      Phone: {selected.phone || "-"}
+                    </a>
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[11px] font-semibold text-slate-500 uppercase">
                     Company info
                   </p>
                   <p>
-                    Authorized capital:{" "}
-                    {selected.authorizedCapital || "-"}
+                    Authorized capital: {selected.authorizedCapital || "-"}
                   </p>
-                  <p>
-                    Stage: {selected.companyStage || "-"}
-                  </p>
+                  <p>Stage: {selected.companyStage || "-"}</p>
                 </div>
               </div>
 
@@ -389,13 +407,19 @@ export default function AdminIntakesPage() {
                     </a>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => handleCreateInvoiceFromIntake(selected)}
-                    className="inline-flex items-center rounded-full border border-blue-300 bg-blue-50 px-3 py-1 text-[11px] font-medium text-blue-800 hover:bg-blue-100"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => handleCreateOrOpenInvoice(selected)}
+                    disabled={isCreatingInvoice}
                   >
-                    🧾 Create invoice
-                  </button>
+                    {isCreatingInvoice
+                      ? "Creating..."
+                      : selected.invoiceId
+                      ? "Open Invoice"
+                      : "Create Invoice"}
+                  </Button>
                 </div>
               </div>
             </div>

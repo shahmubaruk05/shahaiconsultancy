@@ -3,13 +3,13 @@
 
 import {
   doc,
-  getDoc,
   addDoc,
   updateDoc,
   collection,
   serverTimestamp,
   type Firestore,
-  type Timestamp
+  type Timestamp,
+  getDoc,
 } from "firebase/firestore";
 
 export type InvoiceStatus = "draft" | "unpaid" | "paid" | "cancelled" | "partial";
@@ -44,46 +44,50 @@ export type Invoice = {
   uid?: string | null;
 };
 
-
 export async function createInvoiceFromIntake(
   db: Firestore,
   intakeId: string,
-  overrides?: Partial<Omit<Invoice, "id">>
+  userId: string | null
 ): Promise<Invoice> {
   const intakeSnap = await getDoc(doc(db, "intakes", intakeId));
   if (!intakeSnap.exists()) {
     throw new Error("Intake not found");
   }
   const intake = intakeSnap.data();
+  const invoicesCol = collection(db, "invoices");
+  const newInvoiceRef = doc(invoicesCol); // generate ID beforehand
 
-  const newInvoiceRef = doc(collection(db, "invoices"));
-
-  const newInvoiceData: Omit<Invoice, "id"> = {
+  const newInvoiceData = {
     clientName: intake.name,
     email: intake.email,
-    phone: intake.phone,
+    phone: intake.phone || "",
     service: intake.service,
-    currency: "BDT",
-    lineItems: [],
+    currency: "BDT" as "BDT" | "USD",
+    lineItems: [{ label: "Company formation service", amount: 0 }],
     subtotal: 0,
     total: 0,
     discount: 0,
-    status: "draft",
+    status: "draft" as InvoiceStatus,
     relatedIntakeId: intakeId,
+    createdAt: serverTimestamp(),
     payUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:9002'}/invoice/${newInvoiceRef.id}`,
-    createdAt: serverTimestamp() as Timestamp,
-    ...overrides,
+    uid: userId,
+    bkashNumber: '01711781232',
+    bankDetails: 'Bank: [Bank Name]\nAccount Name: [Your Name]\nAccount Number: [XXXXXXXXX]\nBranch: [Branch Name]',
+    notesPublic: 'Please complete payment within 3 working days.',
+    paymentMethods: { bkash: true, bank: true, paypal: false },
   };
 
-  await addDoc(collection(db, "invoices"), newInvoiceData);
+  await setDoc(newInvoiceRef, newInvoiceData);
 
-  return { id: newInvoiceRef.id, ...newInvoiceData };
+  return { id: newInvoiceRef.id, ...newInvoiceData, createdAt: null };
 }
+
 
 export async function updateInvoice(
   db: Firestore,
   invoiceId: string,
-  data: Partial<Invoice>
+  data: Partial<Omit<Invoice, "id">>
 ) {
   await updateDoc(doc(db, "invoices", invoiceId), {
     ...data,
