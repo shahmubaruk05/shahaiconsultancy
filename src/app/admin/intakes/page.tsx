@@ -12,15 +12,13 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
-  where,
-  getDocs,
   addDoc,
+  setDoc,
 } from "firebase/firestore";
 import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
-import { createInvoiceFromIntake } from "@/lib/invoices";
 
 type IntakeStatus = "new" | "in-progress" | "completed" | "closed";
 
@@ -176,36 +174,62 @@ export default function AdminIntakesPage() {
 
   async function handleCreateOrOpenInvoice(intake: Intake) {
     if (!firestore) return;
-
+  
+    // If invoice already exists, just navigate to it
     if (intake.invoiceId) {
       router.push(`/admin/invoices?id=${intake.invoiceId}`);
       return;
     }
-
+  
+    // Otherwise, create a new one
     startCreatingInvoice(async () => {
       try {
-        const newInvoice = await createInvoiceFromIntake(firestore, intake.id, user?.uid || null);
-
+        const invoicesCol = collection(firestore, "invoices");
+        const newInvoiceRef = doc(invoicesCol); // generate ID beforehand
+  
+        const newInvoiceData = {
+          clientName: intake.name,
+          email: intake.email,
+          phone: intake.phone || "",
+          service: intake.service,
+          currency: "BDT",
+          lineItems: [{ label: "Company formation service", amount: 0 }],
+          subtotal: 0,
+          total: 0,
+          discount: 0,
+          status: "draft",
+          relatedIntakeId: intake.id,
+          createdAt: serverTimestamp(),
+          payUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:9002'}/invoice/${newInvoiceRef.id}`,
+          uid: user?.uid || null,
+          bkashNumber: '01711781232',
+          bankDetails: 'Bank: [Bank Name]\nAccount Name: [Your Name]\nAccount Number: [XXXXXXXXX]\nBranch: [Branch Name]',
+          notesPublic: 'Please complete payment within 3 working days.',
+          paymentMethods: { bkash: true, bank: true, paypal: false },
+        };
+  
+        await setDoc(newInvoiceRef, newInvoiceData);
+  
         // Link intake to invoice
         await updateDoc(doc(firestore, "intakes", intake.id), {
-          invoiceId: newInvoice.id,
+          invoiceId: newInvoiceRef.id,
         });
-
+  
         toast({
           title: "Invoice Created",
-          description: `Invoice #${newInvoice.id.slice(0, 5)} has been created for ${intake.name}.`,
+          description: `Invoice #${newInvoiceRef.id.slice(0, 5)} has been created for ${intake.name}.`,
           action: (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push(`/admin/invoices?id=${newInvoice.id}`)}
+              onClick={() => router.push(`/admin/invoices?id=${newInvoiceRef.id}`)}
             >
               View
             </Button>
           ),
         });
-
-        router.push(`/admin/invoices?id=${newInvoice.id}`);
+  
+        router.push(`/admin/invoices?id=${newInvoiceRef.id}`);
       } catch (err: any) {
         console.error("Failed to create invoice:", err);
         toast({
@@ -429,3 +453,5 @@ export default function AdminIntakesPage() {
     </section>
   );
 }
+
+    

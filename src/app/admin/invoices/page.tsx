@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   Timestamp,
   setDoc,
+  getDoc,
 } from "firebase/firestore";
 import Link from "next/link";
 import { useFirebase } from "@/firebase/provider";
@@ -195,32 +196,48 @@ export default function AdminInvoicesPage() {
     );
     return () => unsub();
   }, [firestore]);
-
-  const selectedInvoice: Invoice | null = useMemo(() => {
+  
+  const selectedInvoice = useMemo(() => {
     if (selectedId === "new") return null;
     return invoices.find((i) => i.id === selectedId) || null;
   }, [selectedId, invoices]);
 
+
+  // Effect to load selected invoice or pre-fill from URL
   useEffect(() => {
-    if (!selectedInvoice) {
-      if (searchParams.get("fromIntake") === "1") {
-        setForm({
-          ...emptyInvoice,
-          clientName: searchParams.get("name") || "",
-          email: searchParams.get("email") || "",
-          phone: searchParams.get("phone") || "",
-          service: searchParams.get("service") || "",
-          uid: user?.uid || null,
-        });
-        router.replace('/admin/invoices', { scroll: false });
+    async function loadSelectedInvoice() {
+      if (!firestore) return;
+
+      const fromIntake = searchParams.get("fromIntake") === "1";
+
+      if (selectedId === 'new') {
+        if (fromIntake) {
+            setForm({
+                ...emptyInvoice,
+                clientName: searchParams.get("name") || "",
+                email: searchParams.get("email") || "",
+                phone: searchParams.get("phone") || "",
+                service: searchParams.get("service") || "",
+                relatedIntakeId: searchParams.get("intakeId") || '',
+                uid: user?.uid || null,
+              });
+            // Clean URL after pre-filling
+            router.replace('/admin/invoices', { scroll: false });
+        } else {
+            setForm({...emptyInvoice, uid: user?.uid || null});
+        }
       } else {
-        setForm({...emptyInvoice, uid: user?.uid || null});
+        const docRef = doc(firestore, 'invoices', selectedId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            const { id, createdAt, ...rest } = { id: docSnap.id, ...docSnap.data() } as Invoice;
+            setForm(rest);
+        }
       }
-    } else {
-      const { id, createdAt, ...rest } = selectedInvoice;
-      setForm(rest);
     }
-  }, [selectedInvoice, searchParams, router, user]);
+    loadSelectedInvoice();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, firestore, user]);
 
 
   function formatDate(ts?: Timestamp | null) {
@@ -293,7 +310,6 @@ export default function AdminInvoicesPage() {
 
     const payload = {
       ...form,
-      payUrl: selectedId !== 'new' ? `${window.location.origin}/invoice/${selectedId}` : '',
       subtotal: form.subtotal,
       discount: Number(form.discount) || 0,
       total: form.total,
@@ -321,7 +337,11 @@ export default function AdminInvoicesPage() {
         router.replace(`/admin/invoices?id=${newDocRef.id}`, { scroll: false });
         toast({ title: "Invoice created successfully!" });
       } else {
-        await updateDoc(doc(firestore, "invoices", selectedId), payload);
+        const payloadWithUrl = {
+          ...payload,
+          payUrl: selectedId !== 'new' ? `${window.location.origin}/invoice/${selectedId}` : '',
+        }
+        await updateDoc(doc(firestore, "invoices", selectedId), payloadWithUrl);
         toast({ title: "Invoice updated." });
       }
     } catch (err) {
@@ -807,3 +827,5 @@ export default function AdminInvoicesPage() {
     </section>
   );
 }
+
+    
