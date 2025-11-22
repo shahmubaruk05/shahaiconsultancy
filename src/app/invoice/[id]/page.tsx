@@ -47,7 +47,7 @@ type Invoice = {
 export default function PublicInvoicePage() {
   const params = useParams<{ id: string }>();
   const invoiceId = params?.id;
-  const { firestore: db, firebaseApp: app } = useFirebase();
+  const { firestore, firebaseApp } = useFirebase();
   const { toast } = useToast();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,10 +65,10 @@ export default function PublicInvoicePage() {
 
 
   useEffect(() => {
-    if (!db || !invoiceId) return;
+    if (!firestore || !invoiceId) return;
     (async () => {
       try {
-        const snap = await getDoc(doc(db, "invoices", invoiceId));
+        const snap = await getDoc(doc(firestore, "invoices", invoiceId));
         if (!snap.exists()) {
           setInvoice(null);
         } else {
@@ -109,7 +109,7 @@ export default function PublicInvoicePage() {
         setLoading(false);
       }
     })();
-  }, [db, invoiceId]);
+  }, [firestore, invoiceId]);
 
   useEffect(() => {
       if (invoice) {
@@ -126,24 +126,24 @@ export default function PublicInvoicePage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
-  
+
     const trimmedName = payerName.trim();
     const trimmedEmail = payerEmail.trim();
     const trimmedTxId = txId.trim();
     const amountString = typeof amountPaid === 'string' ? amountPaid.trim() : String(amountPaid ?? '');
-  
+
     if (!trimmedName || !trimmedEmail || !trimmedTxId || !amountString) {
       setError('নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।');
       return;
     }
-  
+
     const amountNumber = Number(amountString);
     if (Number.isNaN(amountNumber) || amountNumber <= 0) {
       setError('Amount সঠিক ভাবে লিখুন (সংখ্যা হিসেবে)।');
       return;
     }
 
-    if (!db || !invoice) {
+    if (!firestore || !invoice) {
         setError('An error occurred. Please refresh and try again.');
         return;
     }
@@ -152,15 +152,15 @@ export default function PublicInvoicePage() {
     let slipUrl: string | null = null;
 
     try {
-      if (slipFile && app) {
-        const storage = getStorage(app);
+      if (slipFile && firebaseApp) {
+        const storage = getStorage(firebaseApp);
         const path = `invoice-payments/${invoice.id}/${Date.now()}-${slipFile.name}`;
-        const ref = storageRef(storage, path);
-        await uploadBytes(ref, slipFile);
-        slipUrl = await getDownloadURL(ref);
+        const fileRef = storageRef(storage, path);
+        await uploadBytes(fileRef, slipFile);
+        slipUrl = await getDownloadURL(fileRef);
       }
 
-      await addDoc(collection(db, "invoicePayments"), {
+      await addDoc(collection(firestore, "invoicePayments"), {
         invoiceId: invoice.id,
         payerName: trimmedName,
         email: trimmedEmail,
@@ -494,5 +494,3 @@ export default function PublicInvoicePage() {
     </div>
   );
 }
-
-    
