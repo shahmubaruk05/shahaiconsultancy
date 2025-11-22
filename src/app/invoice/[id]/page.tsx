@@ -60,7 +60,6 @@ export default function PublicInvoicePage() {
   const [txId, setTxId] = useState('');
   const [slipFile, setSlipFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
 
@@ -122,44 +121,52 @@ export default function PublicInvoicePage() {
     return invoice.currency === "USD" ? "$" : "৳";
   }
 
-  async function handlePaymentSubmit(e: FormEvent) {
+  const handlePaymentSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
-    setError(null);
-    setMessage(null);
-
+  
+    const form = e.currentTarget;
+    const fileInput = form.elements.namedItem(
+      "paymentSlip"
+    ) as HTMLInputElement | null;
+    const file = fileInput?.files?.[0] ?? null;
+  
     const trimmedName = payerName.trim();
     const trimmedEmail = payerEmail.trim();
     const trimmedTxId = txId.trim();
     const amountString = typeof amountPaid === 'string' ? amountPaid.trim() : String(amountPaid ?? '');
-
+  
     if (!trimmedName || !trimmedEmail || !trimmedTxId || !amountString) {
       setError('নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।');
       return;
     }
-
+  
     const amountNumber = Number(amountString);
     if (Number.isNaN(amountNumber) || amountNumber <= 0) {
       setError('Amount সঠিক ভাবে লিখুন (সংখ্যা হিসেবে)।');
       return;
     }
-
-    if (!firestore || !invoice) {
+  
+    if (!firestore || !invoice || !firebaseApp) {
         setError('An error occurred. Please refresh and try again.');
         return;
     }
-
+  
+    setError(null);
     setSubmitting(true);
-    let slipUrl: string | null = null;
-
+  
     try {
-      if (slipFile && firebaseApp) {
+      let slipUrl: string | null = null;
+  
+      if (file) {
         const storage = getStorage(firebaseApp);
-        const path = `invoice-payments/${invoice.id}/${Date.now()}-${slipFile.name}`;
+        const path = `invoice-payments/${invoice.id}/${Date.now()}-${file.name}`;
         const fileRef = storageRef(storage, path);
-        await uploadBytes(fileRef, slipFile);
+        await uploadBytes(fileRef, file);
         slipUrl = await getDownloadURL(fileRef);
       }
-
+  
       await addDoc(collection(firestore, "invoicePayments"), {
         invoiceId: invoice.id,
         payerName: trimmedName,
@@ -171,19 +178,18 @@ export default function PublicInvoicePage() {
         status: "pending",
         createdAt: serverTimestamp(),
       });
-
+  
       toast({
           title: "Submission Received!",
           description: "Your payment details have been submitted for verification.",
       });
-
-      // Clear the form
+  
       setPayerName("");
       setPayerEmail("");
       setAmountPaid(String(invoice.total));
       setTxId("");
       setSlipFile(null);
-
+  
     } catch (err: any) {
       console.error("Failed to submit payment info", err);
       setError("কিছু সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন বা WhatsApp-এ যোগাযোগ করুন।");
@@ -462,11 +468,11 @@ export default function PublicInvoicePage() {
                 type="file"
                 name="paymentSlip"
                 accept="image/*,.pdf"
+                className="text-sm text-emerald-900"
                 onChange={(e) => {
                   const file = e.target.files?.[0] || null;
                   setSlipFile(file);
                 }}
-                className="text-sm text-emerald-900"
               />
             </div>
 
@@ -495,3 +501,5 @@ export default function PublicInvoicePage() {
     </div>
   );
 }
+
+    
