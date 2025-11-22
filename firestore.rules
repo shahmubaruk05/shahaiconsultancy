@@ -13,11 +13,7 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return request.auth != null
-        && request.auth.token.email in [
-          "shahmubaruk05@gmail.com",
-          "shahmubaruk.ai@gmail.com"
-        ];
+      return request.auth != null && request.auth.token.admin == true;
     }
 
     // === Manual bKash payments (top-level collection) ===
