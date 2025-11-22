@@ -58,8 +58,16 @@ export default function PublicInvoicePage() {
   const [loading, setLoading] = useState(true);
 
   // Form state
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [payerName, setPayerName] = useState("");
+  const [payerEmail, setPayerEmail] = useState("");
+  const [method, setMethod] = useState<"bkash" | "bank" | "paypal">("bkash");
+  const [amountPaid, setAmountPaid] = useState("");
+  const [txId, setTxId] = useState("");
+  const [slipFile, setSlipFile] = useState<File | null>(null);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
 
   useEffect(() => {
@@ -77,7 +85,7 @@ export default function PublicInvoicePage() {
                 amount: Number(li.amount) || 0,
               }))
             : [];
-          setInvoice({
+          const fetchedInvoice = {
             id: snap.id,
             clientName: data.clientName || "",
             email: data.email || "",
@@ -99,11 +107,15 @@ export default function PublicInvoicePage() {
             status: (data.status as InvoiceStatus) || "draft",
             notesPublic: data.notesPublic || "",
             amount: Number(data.total) || 0,
-          });
+          };
+          setInvoice(fetchedInvoice);
+          setPayerName(fetchedInvoice.clientName);
+          setPayerEmail(fetchedInvoice.email);
+          setAmountPaid(String(fetchedInvoice.amount || ''));
         }
       } catch (err) {
         console.error("Failed to load invoice", err);
-        setFormError("Invoice load করতে সমস্যা হয়েছে।");
+        setSubmitError("Invoice load করতে সমস্যা হয়েছে।");
       } finally {
         setLoading(false);
       }
@@ -115,106 +127,55 @@ export default function PublicInvoicePage() {
     return invoice.currency === "USD" ? "$" : "৳";
   }
 
-  const handlePaymentSubmit = async (
-    e: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
-    const form = e.currentTarget;
-    const data = new FormData(form);
-  
-    const payerName = String(data.get("payerName") ?? "").trim();
-    const payerEmail = String(data.get("payerEmail") ?? "").trim();
-    const paymentMethod = String(
-      data.get("paymentMethod") ?? ""
-    ).trim();
-    const amountPaidRaw = String(
-      data.get("amountPaid") ?? ""
-    ).trim();
-    const txId = String(data.get("txId") ?? "").trim();
-    const slipFile = data.get("paymentSlip") as File | null;
-  
-    // basic validation
-    if (!payerName || !payerEmail || !amountPaidRaw || !txId) {
-      setFormError(
-        "নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।"
-      );
-      return;
-    }
-  
-    const amountPaid = Number(amountPaidRaw);
-    if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
-      setFormError("Amount paid সঠিকভাবে লিখুন।");
-      return;
-    }
-  
-    setFormError("");
-    setIsSubmitting(true);
-  
-    let slipUrl: string | null = null;
-    
-    // NOTE: Studio তে CORS issue থাকার কারণে এখনই file upload করছি না।
-    // শুধু এই fact টা রেখে দিচ্ছি যে user একটা slip দিয়েছিল কি না।
-    if (slipFile && slipFile.size > 0) {
-      slipUrl = `uploaded-slip-placeholder-${Date.now()}`;
-    }
 
-    const paymentData = {
-        invoiceId,
-        provider: paymentMethod === "bkash"
-          ? "Bkash"
-          : paymentMethod === "bank"
-          ? "Bank"
-          : "PayPal",
-        email: payerEmail,
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // আপাতত slip upload করছি না — শুধু URL null হিসেবে save করব
+      const slipUrl: string | null = null;
+
+      // amount number এ কনভার্ট
+      const paidAmountNumber = Number(amountPaid || 0);
+
+      await addDoc(collection(db, "invoicePayments"), {
+        invoiceId: params.id,
         name: payerName,
-        amount: amountPaid,
-        currency: invoice?.currency ?? "BDT",
+        email: payerEmail,
+        method,
+        amount: paidAmountNumber,
         txId,
-        slipUrl: slipUrl ?? null,
+        slipUrl, // পরে Storage ঠিক হলে এখানে সত্যি URL বসাব
+        provider:
+          method === "bkash"
+            ? "Bkash"
+            : method === "paypal"
+            ? "PayPal"
+            : "Bank",
         status: "pending",
         createdAt: serverTimestamp(),
-        source: "invoice-page",
-    };
-
-    const paymentsCol = collection(db, "payments");
-  
-    addDoc(paymentsCol, paymentData)
-      .then(async () => {
-        if (invoiceId) {
-          try {
-            await updateDoc(doc(db, "invoices", invoiceId), {
-              paymentStatus: "pending_confirmation",
-              lastPaymentAt: new Date(),
-            });
-          } catch (err) {
-            console.warn("Invoice update failed (rules may block):", err);
-          }
-        }
-  
-        toast({
-          title: "Submission Received!",
-          description: "Your payment details have been submitted for verification.",
-        });
-  
-        form.reset();
-        setFormError("");
-      })
-      .catch(async (serverError) => {
-        // Emit the contextual error
-        const permissionError = new FirestorePermissionError({
-          path: paymentsCol.path,
-          operation: 'create',
-          requestResourceData: paymentData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-  
-        // Also update UI for the user
-        setFormError("Could not submit payment due to a permission error.");
-      })
-      .finally(() => {
-        setIsSubmitting(false);
       });
+
+      // চাইলে মূল invoice ডকুমেন্টে status flag আপডেট করতে পারো
+      // const invoiceRef = doc(db, "invoices", params.id as string);
+      // await updateDoc(invoiceRef, { paymentStatus: "submitted" });
+
+      setSubmitted(true);
+      toast({
+        title: "Submission Received!",
+        description: "Your payment details have been submitted for verification.",
+      });
+
+    } catch (err) {
+      console.error("Payment submit error: ", err);
+      setSubmitError(
+        "Payment info submit করতে সমস্যা হয়েছে। আবার চেষ্টা করুন বা WhatsApp এ যোগাযোগ করুন।"
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
 
@@ -396,7 +357,7 @@ export default function PublicInvoicePage() {
             করে দ্রুত service শুরু করতে পারি।
           </p>
 
-          <form onSubmit={handlePaymentSubmit} className="mt-3 space-y-3">
+            <form onSubmit={handlePaymentSubmit} className="mt-3 space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700">
                   আপনার নাম *
@@ -404,7 +365,8 @@ export default function PublicInvoicePage() {
                 <input
                   type="text"
                   name="payerName"
-                  defaultValue={invoice?.clientName ?? ""}
+                  value={payerName}
+                  onChange={(e) => setPayerName(e.target.value)}
                   className="mt-1 w-full rounded border px-3 py-2 text-sm"
                   required
                 />
@@ -417,7 +379,8 @@ export default function PublicInvoicePage() {
                 <input
                   type="email"
                   name="payerEmail"
-                  defaultValue={invoice?.email ?? ""}
+                  value={payerEmail}
+                  onChange={(e) => setPayerEmail(e.target.value)}
                   className="mt-1 w-full rounded border px-3 py-2 text-sm"
                   required
                 />
@@ -430,8 +393,9 @@ export default function PublicInvoicePage() {
                   </label>
                   <select
                     name="paymentMethod"
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value as "bkash" | "bank" | "paypal")}
                     className="mt-1 w-full rounded border px-3 py-2 text-sm"
-                    defaultValue="bkash"
                     required
                   >
                     <option value="bkash">bKash</option>
@@ -447,8 +411,9 @@ export default function PublicInvoicePage() {
                   <input
                     type="number"
                     name="amountPaid"
+                    value={amountPaid}
+                    onChange={(e) => setAmountPaid(e.target.value)}
                     className="mt-1 w-full rounded border px-3 py-2 text-sm"
-                    defaultValue={invoice?.amount}
                     required
                   />
                 </div>
@@ -461,6 +426,8 @@ export default function PublicInvoicePage() {
                 <input
                   type="text"
                   name="txId"
+                  value={txId}
+                  onChange={(e) => setTxId(e.target.value)}
                   className="mt-1 w-full rounded border px-3 py-2 text-sm"
                   required
                 />
@@ -474,20 +441,30 @@ export default function PublicInvoicePage() {
                   type="file"
                   name="paymentSlip"
                   accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    setSlipFile(f);
+                  }}
                   className="mt-1 text-sm"
                 />
               </div>
 
-              {formError && (
-                <p className="text-xs text-red-600">{formError}</p>
+              {submitted && (
+                <p className="text-sm text-green-700 mt-2">
+                  ধন্যবাদ! আপনার payment details পাওয়া গেছে, আমরা verify করে জানিয়ে দেব।
+                </p>
+              )}
+
+              {submitError && (
+                <p className="text-sm text-red-600 mt-2">{submitError}</p>
               )}
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={submitting}
                 className="mt-2 inline-flex items-center rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
               >
-                {isSubmitting ? "Submitting..." : "Submit payment details"}
+                {submitting ? "Submitting..." : "Submit payment details"}
               </button>
             </form>
         </div>
@@ -499,3 +476,5 @@ export default function PublicInvoicePage() {
     </div>
   );
 }
+
+    
