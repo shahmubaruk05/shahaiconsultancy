@@ -17,6 +17,7 @@ import {
   getDownloadURL,
 } from "firebase/storage";
 import { useFirebase } from "@/firebase/provider";
+import { useToast } from "@/components/ui/use-toast";
 
 type InvoiceStatus = "draft" | "unpaid" | "paid" | "cancelled" | "partial";
 
@@ -47,6 +48,7 @@ export default function PublicInvoicePage() {
   const params = useParams<{ id: string }>();
   const invoiceId = params?.id;
   const { firestore: db, firebaseApp: app } = useFirebase();
+  const { toast } = useToast();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -154,7 +156,7 @@ export default function PublicInvoicePage() {
         const storage = getStorage(app);
         const path = `invoice-payments/${invoice.id}/${Date.now()}-${slipFile.name}`;
         const ref = storageRef(storage, path);
-        await uploadBytes(ref, file);
+        await uploadBytes(ref, slipFile);
         slipUrl = await getDownloadURL(ref);
       }
 
@@ -170,17 +172,26 @@ export default function PublicInvoicePage() {
         createdAt: serverTimestamp(),
       });
 
-      setMessage(
-        "ধন্যবাদ! আপনার payment details আমরা পেয়েছি। Verify করার পর WhatsApp / ইমেইলে আপনাকে update জানানো হবে।"
-      );
+      toast({
+          title: "Submission Received!",
+          description: "Your payment details have been submitted for verification.",
+      });
+
+      // Clear the form
       setPayerName("");
       setPayerEmail("");
-      setAmountPaid("");
+      setAmountPaid(String(invoice.total));
       setTxId("");
       setSlipFile(null);
-    } catch (err) {
+
+    } catch (err: any) {
       console.error("Failed to submit payment info", err);
       setError("কিছু সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন বা WhatsApp-এ যোগাযোগ করুন।");
+      toast({
+          variant: "destructive",
+          title: "Submission Failed",
+          description: err.message || "An unknown error occurred.",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -463,12 +474,7 @@ export default function PublicInvoicePage() {
                 {error}
               </p>
             )}
-            {message && (
-              <p className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                {message}
-              </p>
-            )}
-
+            
             <div className="pt-1 flex justify-end">
               <button
                 type="submit"
@@ -488,3 +494,5 @@ export default function PublicInvoicePage() {
     </div>
   );
 }
+
+    
