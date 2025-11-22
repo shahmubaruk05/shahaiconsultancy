@@ -608,36 +608,65 @@
       "type": "object",
       "description": "Represents an order or ticket for a client service.",
       "properties": {
-        "intakeId": { "type": ["string", "null"] },
-        "clientName": { "type": "string" },
-        "clientEmail": { "type": "string", "format": "email" },
-        "clientPhone": { "type": ["string", "null"] },
-        "serviceName": { "type": "string" },
-        "packageName": { "type": ["string", "null"] },
-        "country": { "type": ["string", "null"] },
-        "currency": { "type": "string", "enum": ["BDT", "USD"] },
-        "amount": { "type": "number" },
+        "intakeId": {
+          "type": "string"
+        },
+        "clientName": {
+          "type": "string"
+        },
+        "clientEmail": {
+          "type": "string"
+        },
+        "clientPhone": {
+          "type": "string"
+        },
+        "service": {
+          "type": "string",
+          "description": "e.g., BD Company Formation (RJSC)"
+        },
+        "country": {
+          "type": "string"
+        },
+        "authorizedCapital": {
+          "type": "string"
+        },
         "status": {
           "type": "string",
-          "enum": ["pending", "in_progress", "waiting_payment", "paid", "completed", "cancelled"]
+          "enum": [
+            "new",
+            "in_progress",
+            "waiting_client",
+            "completed",
+            "cancelled"
+          ]
         },
-        "paymentStatus": {
-          "type": ["string", "null"],
-          "enum": ["unpaid", "partially_paid", "paid", "refunded", null]
+        "invoiceId": {
+          "type": "string"
         },
-        "paymentMethod": {
-          "type": ["string", "null"],
-          "enum": ["bkash", "bank", "paypal", "other", null]
+        "paymentId": {
+          "type": "string"
         },
-        "invoiceId": { "type": ["string", "null"] },
-        "source": { "type": "string", "enum": ["intake-form", "manual"] },
-        "assignedTo": { "type": ["string", "null"], "description": "Admin user UID." },
-        "lastUpdateText": { "type": ["string", "null"] },
-        "lastUpdateAt": { "type": ["string", "null"], "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "notes": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "required": ["clientName", "clientEmail", "serviceName", "currency", "amount", "status", "source", "createdAt", "updatedAt"]
+      "required": [
+        "intakeId",
+        "clientName",
+        "clientEmail",
+        "service",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "OrderUpdate": {
       "title": "OrderUpdate",
