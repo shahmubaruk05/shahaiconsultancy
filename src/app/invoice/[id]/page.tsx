@@ -19,6 +19,8 @@ import {
 } from "firebase/storage";
 import { useFirebase } from "@/firebase/provider";
 import { useToast } from "@/components/ui/use-toast";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 type InvoiceStatus = "draft" | "unpaid" | "paid" | "cancelled" | "partial" | "pending_confirmation";
 
@@ -149,17 +151,15 @@ export default function PublicInvoicePage() {
     setFormError("");
     setIsSubmitting(true);
   
-    try {
-      let slipUrl: string | null = null;
-  
-      // NOTE: Studio তে CORS issue থাকার কারণে এখনই file upload করছি না।
-      // শুধু এই fact টা রেখে দিচ্ছি যে user একটা slip দিয়েছিল কি না।
-      if (slipFile && slipFile.size > 0) {
-        slipUrl = `uploaded-slip-placeholder-${Date.now()}`;
-      }
-  
-      // payments collection এ log
-      await addDoc(collection(db, "payments"), {
+    let slipUrl: string | null = null;
+    
+    // NOTE: Studio তে CORS issue থাকার কারণে এখনই file upload করছি না।
+    // শুধু এই fact টা রেখে দিচ্ছি যে user একটা slip দিয়েছিল কি না।
+    if (slipFile && slipFile.size > 0) {
+      slipUrl = `uploaded-slip-placeholder-${Date.now()}`;
+    }
+
+    const paymentData = {
         invoiceId,
         provider: paymentMethod === "bkash"
           ? "Bkash"
@@ -173,38 +173,48 @@ export default function PublicInvoicePage() {
         txId,
         slipUrl: slipUrl ?? null,
         status: "pending",
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
         source: "invoice-page",
-      });
+    };
+
+    const paymentsCol = collection(db, "payments");
   
-      // invoice doc এ status flag
-      if (invoiceId) {
-        try {
-          await updateDoc(doc(db, "invoices", invoiceId), {
-            paymentStatus: "pending_confirmation",
-            lastPaymentAt: new Date(),
-          });
-        } catch (err) {
-          console.warn("Invoice update failed (rules may block):", err);
-          // আপাতত ignore করি, admin payments log থেকেই দেখবে
+    addDoc(paymentsCol, paymentData)
+      .then(async () => {
+        if (invoiceId) {
+          try {
+            await updateDoc(doc(db, "invoices", invoiceId), {
+              paymentStatus: "pending_confirmation",
+              lastPaymentAt: new Date(),
+            });
+          } catch (err) {
+            console.warn("Invoice update failed (rules may block):", err);
+          }
         }
-      }
-      
-      toast({
+  
+        toast({
           title: "Submission Received!",
           description: "Your payment details have been submitted for verification.",
+        });
+  
+        form.reset();
+        setFormError("");
+      })
+      .catch(async (serverError) => {
+        // Emit the contextual error
+        const permissionError = new FirestorePermissionError({
+          path: paymentsCol.path,
+          operation: 'create',
+          requestResourceData: paymentData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+  
+        // Also update UI for the user
+        setFormError("Could not submit payment due to a permission error.");
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
-  
-      form.reset();
-  
-    } catch (err) {
-      console.error("Payment submit error", err);
-      setFormError(
-        "কোনো সমস্যা হয়েছে, আবার চেষ্টা করুন বা WhatsApp এ যোগাযোগ করুন।"
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
 
