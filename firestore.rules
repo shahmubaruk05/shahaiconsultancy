@@ -35,6 +35,14 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
     
+    match /payments/{paymentId} {
+      // Public invoice page theke payment confirmation create korte parbe
+      allow create: if true;
+    
+      // Read / update / delete sudhu admin panel theke
+      allow read, update, delete: if isAdmin();
+    }
+
      match /aiUsageLogs/{logId} {
       allow create: if true;
       allow read: if isAdmin();
