@@ -82,13 +82,19 @@ service cloud.firestore {
     match /orders/{orderId} {
       // Admins have full access.
       allow read, write: if isAdmin();
-      // Future rule: allow client to read if their email matches clientEmail field.
-      // allow read: if isOwner(get(/databases/$(database)/documents/orders/$(orderId)).data.clientUid);
-    }
-    
-    match /orders/{orderId}/{subcollection}/{docId} {
-      // Admins have full access to all subcollections.
-      allow read, write: if isAdmin();
+
+      // Subcollections: updates, files, statusTimeline
+      match /updates/{updateId} {
+        allow read, write: if isAdmin();
+      }
+
+      match /files/{fileId} {
+        allow read, write: if isAdmin();
+      }
+
+      match /statusTimeline/{eventId} {
+        allow read, write: if isAdmin();
+      }
     }
 
     // Secure all user-specific data under the /users/{userId} path.
