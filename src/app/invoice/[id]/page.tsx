@@ -13,14 +13,14 @@ import {
 } from "firebase/firestore";
 import {
   getStorage,
-  ref as storageRef,
+  ref,
   uploadBytes,
   getDownloadURL,
 } from "firebase/storage";
 import { useFirebase } from "@/firebase/provider";
 import { useToast } from "@/components/ui/use-toast";
 
-type InvoiceStatus = "draft" | "unpaid" | "paid" | "cancelled" | "partial";
+type InvoiceStatus = "draft" | "unpaid" | "paid" | "cancelled" | "partial" | "pending_confirmation";
 
 type Invoice = {
   id: string;
@@ -49,7 +49,8 @@ type Invoice = {
 export default function PublicInvoicePage() {
   const params = useParams<{ id: string }>();
   const invoiceId = params?.id;
-  const { firestore, firebaseApp } = useFirebase();
+  const { firestore: db, firebaseApp } = useFirebase();
+  const storage = getStorage(firebaseApp);
   const { toast } = useToast();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,10 +61,10 @@ export default function PublicInvoicePage() {
 
 
   useEffect(() => {
-    if (!firestore || !invoiceId) return;
+    if (!db || !invoiceId) return;
     (async () => {
       try {
-        const snap = await getDoc(doc(firestore, "invoices", invoiceId));
+        const snap = await getDoc(doc(db, "invoices", invoiceId));
         if (!snap.exists()) {
           setInvoice(null);
         } else {
@@ -105,7 +106,7 @@ export default function PublicInvoicePage() {
         setLoading(false);
       }
     })();
-  }, [firestore, invoiceId]);
+  }, [db, invoiceId]);
 
   function currencySymbol() {
     if (!invoice) return "";
@@ -118,52 +119,81 @@ export default function PublicInvoicePage() {
     e.preventDefault();
   
     const form = e.currentTarget;
-    const formData = new FormData(form);
+    const data = new FormData(form);
+  
+    const payerName = String(data.get("payerName") ?? "").trim();
+    const payerEmail = String(data.get("payerEmail") ?? "").trim();
+    const paymentMethod = String(
+      data.get("paymentMethod") ?? ""
+    ).trim();
+    const amountPaidRaw = String(
+      data.get("amountPaid") ?? ""
+    ).trim();
+    const txId = String(data.get("txId") ?? "").trim();
+    const slipFile = data.get("paymentSlip") as File | null;
+  
+    if (!db) {
+        setFormError("An error occurred. Please refresh and try again.");
+        return;
+    }
     
-    const payerName = formData.get('payerName') as string;
-    const payerEmail = formData.get('payerEmail') as string;
-    const paymentMethod = formData.get('paymentMethod') as string;
-    const amountPaid = formData.get('amountPaid') as string;
-    const txId = formData.get('txId') as string;
-    const paymentSlipInput = form.elements.namedItem('paymentSlip') as HTMLInputElement | null;
-    const file = paymentSlipInput?.files?.[0] ?? null;
-    
-    if (!payerName || !payerEmail || !txId || !amountPaid) {
-      setFormError("নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।");
+    // basic validation
+    if (!payerName || !payerEmail || !amountPaidRaw || !txId) {
+      setFormError(
+        "নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।"
+      );
       return;
     }
   
-    if (!firestore || !invoice || !firebaseApp) {
-        setFormError('An error occurred. Please refresh and try again.');
-        return;
+    const amountPaid = Number(amountPaidRaw);
+    if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
+      setFormError("Amount paid সঠিকভাবে লিখুন।");
+      return;
     }
-
-    setFormError(null);
+  
+    setFormError("");
     setIsSubmitting(true);
   
     try {
       let slipUrl: string | null = null;
   
-      if (file) {
-        const storage = getStorage(firebaseApp);
-        const path = `invoice-payments/${invoice.id}/${Date.now()}-${file.name}`;
-        const fileRef = storageRef(storage, path);
-        await uploadBytes(fileRef, file);
-        slipUrl = await getDownloadURL(fileRef);
+      // optional slip upload
+      if (slipFile && slipFile.size > 0) {
+        const storageRef = ref(
+          storage,
+          `invoicePaymentSlips/${invoiceId}/${Date.now()}-${slipFile.name}`
+        );
+        await uploadBytes(storageRef, slipFile);
+        slipUrl = await getDownloadURL(storageRef);
       }
   
-      await addDoc(collection(firestore, "invoicePayments"), {
-        invoiceId: invoice.id,
-        payerName,
+      // payments collection এ log
+      await addDoc(collection(db, "payments"), {
+        invoiceId,
+        provider: paymentMethod === "bkash"
+          ? "Bkash"
+          : paymentMethod === "bank"
+          ? "Bank"
+          : "PayPal",
         email: payerEmail,
-        method: paymentMethod,
-        amount: Number(amountPaid),
-        txId: txId,
-        slipUrl,
+        name: payerName,
+        amount: amountPaid,
+        currency: invoice?.currency ?? "BDT",
+        txId,
+        slipUrl: slipUrl ?? null,
         status: "pending",
-        createdAt: serverTimestamp(),
+        createdAt: new Date(),
+        source: "invoice-page",
       });
   
+      // invoice doc এ status flag
+      if (invoiceId) {
+        await updateDoc(doc(db, "invoices", invoiceId), {
+          paymentStatus: "pending_confirmation",
+          lastPaymentAt: new Date(),
+        });
+      }
+      
       toast({
           title: "Submission Received!",
           description: "Your payment details have been submitted for verification.",
@@ -171,18 +201,16 @@ export default function PublicInvoicePage() {
   
       form.reset();
   
-    } catch (err: any) {
-      console.error("Failed to submit payment info", err);
-      setFormError("কিছু সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন বা WhatsApp-এ যোগাযোগ করুন।");
-      toast({
-          variant: "destructive",
-          title: "Submission Failed",
-          description: err.message || "An unknown error occurred.",
-      });
+    } catch (err) {
+      console.error("Payment submit error", err);
+      setFormError(
+        "কোনো সমস্যা হয়েছে, আবার চেষ্টা করুন বা WhatsApp এ যোগাযোগ করুন।"
+      );
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
+
 
   if (loading) {
     return (
