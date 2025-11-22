@@ -1,119 +1,87 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions to check for authentication and ownership.
-    function signedIn() {
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return signedIn() && request.auth.uid == userId;
-    }
-    
     function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+      return isSignedIn() && request.auth.token.admin == true;
     }
 
-    // PAYMENTS: সাবস্ক্রিপশন + ইনভয়েস payment log — unified "payments" collection
-    match /payments/{paymentId} {
-      // কাজ চালানোর জন্য আপাতত সবার জন্য open:
-      allow read, write: if true;
-    }
-
-    // 🔹 যদি কোথাও এখনও "invoicePayments" collection ব্যবহার হয়
-    match /invoicePayments/{paymentId} {
-      // এটাও আপাতত পুরো open:
-      allow read, write: if true;
-    }
-    
-    // === Manual bKash payments (top-level collection) ===
-    match /bkashPayments/{txId} {
-      // clients can create when submitting manual bKash payment info
-      allow create: if true;
-      // only admin can read/update/delete
-      allow read, update, delete: if isAdmin();
-    }
-
-    match /paypalPayments/{txId} {
-      // created by backend or client when logging PayPal payments
-      allow create: if request.auth != null || isAdmin();
-      // only admin can read/update/delete
-      allow read, update, delete: if isAdmin();
-    }
-
-     match /aiUsageLogs/{logId} {
-      allow create: if true;
-      allow read: if isAdmin();
-    }
-
-    match /emailCampaigns/{campaignId} {
-      allow read, write: if isAdmin();
-    }
-
-    match /affiliates/{affiliateId} {
-      allow read, write: if isAdmin();
-    }
-
-    match /affiliateClicks/{clickId} {
-      // tracking clicks can be public create, admin read
-      allow create: if true;
-      allow read: if isAdmin();
-    }
-    
-    match /blogPosts/{postId} {
-      // Public can read all published posts
-      allow read: if true;
-
-      // Only admin can create/update/delete blog posts
-      allow create, update, delete: if isAdmin();
-    }
-
-    match /intakes/{intakeId} {
-      allow create: if true;
-      allow read, update, delete: if isAdmin();
-    }
-
-    match /invoices/{invoiceId} {
-      // public can read, admin can write
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
-    
-    // === Orders System ===
-    match /orders/{orderId} {
-      // Admins have full access.
-      allow read, write: if isAdmin();
-
-      // Subcollections: updates, files, statusTimeline
-      match /updates/{updateId} {
-        allow read, write: if isAdmin();
-      }
-
-      match /files/{fileId} {
-        allow read, write: if isAdmin();
-      }
-
-      match /statusTimeline/{eventId} {
-        allow read, write: if isAdmin();
-      }
+    // USERS
+    match /users/{uid} {
+      // Own profile or admin
+      allow read, update, delete: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow create: if isSignedIn();
     }
 
     // Secure all user-specific data under the /users/{userId} path.
     match /users/{userId}/{document=**} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // PUBLIC INTAKE FORM (client je form fillup kore)
+    match /intakes/{intakeId} {
+      // Public form theke submit hobe, tai create sobar jonno open
+      allow create: if true;
+      // Intake gulo sudhu admin dekhbe / edit korbe
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ORDERS / TICKETS (admin panel)
+    match /orders/{orderId} {
+      allow read, write: if isAdmin();
     }
     
-    match /users/{uid} {
-      // User can read/update their own doc
-      allow read, update: if request.auth != null && request.auth.uid == uid;
+    match /orders/{orderId}/{document=**} {
+        allow read, write: if isAdmin();
+    }
 
-      // Admin can read/update any user
-      allow read, update: if isAdmin();
+    // INVOICES (public payment page + admin manage)
+    match /invoices/{invoiceId} {
+      // Public payment link theke invoice details dekhte parbe
+      allow get: if true;
+      // List, create, update, delete sudhu admin
+      allow list, create, update, delete: if isAdmin();
+    }
 
-      // Create allowed when the user is creating their own doc
-      allow create: if request.auth != null && request.auth.uid == uid;
+    // PAYMENTS (pricing page bKash / PayPal + invoice payment confirmation)
+    match /payments/{paymentId} {
+      // Payment submit korar somoy client der ke doc create korte debe
+      allow create: if true;
+      // Read / update / delete sudhu admin
+      allow read, update, delete: if isAdmin();
+    }
+    
+    match /invoicePayments/{paymentId} {
+        allow create: if true;
+        allow read, update, delete: if isAdmin();
+    }
+
+
+    // Optional: bKash specific collection (jodi use kore thaken)
+    match /bkashPayments/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Optional: PayPal specific collection (jodi thake)
+    match /paypalPayments/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+    
+    match /aiUsageLogs/{logId} {
+      allow create: if true;
+      allow read: if isAdmin();
+    }
+
+    // BLOG POSTS
+    match /blogPosts/{postId} {
+      allow read: if true;        // Public blog
+      allow write: if isAdmin();  // Create/update/delete only admin
     }
   }
 }
