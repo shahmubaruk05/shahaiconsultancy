@@ -18,7 +18,7 @@ import {
 } from "firebase/storage";
 import { useFirebase } from "@/firebase/provider";
 
-type InvoiceStatus = "draft" | "sent" | "partial" | "paid" | "cancelled";
+type InvoiceStatus = "draft" | "unpaid" | "paid" | "cancelled" | "partial";
 
 type Invoice = {
   id: string;
@@ -154,7 +154,7 @@ export default function PublicInvoicePage() {
         const storage = getStorage(app);
         const path = `invoice-payments/${invoice.id}/${Date.now()}-${slipFile.name}`;
         const ref = storageRef(storage, path);
-        await uploadBytes(ref, slipFile);
+        await uploadBytes(ref, file);
         slipUrl = await getDownloadURL(ref);
       }
 
@@ -488,5 +488,3 @@ export default function PublicInvoicePage() {
     </div>
   );
 }
-
-    
