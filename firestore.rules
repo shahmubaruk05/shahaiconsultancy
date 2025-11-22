@@ -1,9 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // DEV MODE: allow everything
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Public invoice payment form → client দের থেকে submit
+    match /invoicePayments/{paymentId} {
+      // যে কেউ payment info submit করতে পারবে (create only)
+      allow create: if true;
+      // শুধু admin পড়তে / আপডেট করতে পারবে
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Admin side collections
+    match /intakes/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /orders/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /bkashPayments/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /payments/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Fallback to deny all other collections if not specified
     match /{document=**} {
-      allow read, write;
+      allow read, write: if false;
     }
   }
 }
