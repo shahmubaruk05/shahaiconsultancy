@@ -132,11 +132,6 @@ export default function PublicInvoicePage() {
     const txId = String(data.get("txId") ?? "").trim();
     const slipFile = data.get("paymentSlip") as File | null;
   
-    if (!db) {
-        setFormError("An error occurred. Please refresh and try again.");
-        return;
-    }
-    
     // basic validation
     if (!payerName || !payerEmail || !amountPaidRaw || !txId) {
       setFormError(
@@ -184,10 +179,15 @@ export default function PublicInvoicePage() {
   
       // invoice doc এ status flag
       if (invoiceId) {
-        await updateDoc(doc(db, "invoices", invoiceId), {
-          paymentStatus: "pending_confirmation",
-          lastPaymentAt: new Date(),
-        });
+        try {
+          await updateDoc(doc(db, "invoices", invoiceId), {
+            paymentStatus: "pending_confirmation",
+            lastPaymentAt: new Date(),
+          });
+        } catch (err) {
+          console.warn("Invoice update failed (rules may block):", err);
+          // আপাতত ignore করি, admin payments log থেকেই দেখবে
+        }
       }
       
       toast({
