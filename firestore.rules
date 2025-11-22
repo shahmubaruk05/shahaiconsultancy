@@ -31,12 +31,10 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
     
+    // PAYMENTS: Log for subscriptions and invoice payments
     match /payments/{paymentId} {
-      // Public invoice page theke payment confirmation create korte parbe
-      allow create: if true;
-    
-      // Read / update / delete sudhu admin panel theke
-      allow read, update, delete: if isAdmin();
+      // Permissive rule for development.
+      allow read, write: if true;
     }
 
      match /aiUsageLogs/{logId} {
