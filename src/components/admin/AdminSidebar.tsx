@@ -14,6 +14,7 @@ export default function AdminSidebar() {
     { name: "Invoices", href: "/admin/invoices" },
     { name: "Payments", href: "/admin/payments" },
     { name: "Users", href: "/admin/users" },
+    { name: "Orders", href: "/admin/orders" },
     { name: "Subscriptions", href: "/admin/subscriptions" },
     { name: "Blog", href: "/admin/blog" },
     { name: "Email Marketing", href: "/admin/email-marketing" },
