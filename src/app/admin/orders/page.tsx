@@ -26,35 +26,31 @@ import { Loader2 } from "lucide-react";
 // --- Tab Components ---
 
 function OverviewTab({ order }: { order: Order }) {
+    const created =
+      (order.createdAt as any)?.toDate?.().toLocaleString?.("en-GB") ?? "";
+    const updated =
+      (order.updatedAt as any)?.toDate?.().toLocaleString?.("en-GB") ?? "";
+  
     return (
-      <div className="text-sm space-y-4 pt-4">
-          <div className="grid grid-cols-2 gap-4">
-              <div>
-                  <p className="font-semibold text-slate-700">Client Details</p>
-                  <p>Name: {order.clientName}</p>
-                  <p>Email: {order.clientEmail}</p>
-                  <p>Phone: {order.clientPhone || "N/A"}</p>
-              </div>
-              <div>
-                  <p className="font-semibold text-slate-700">Order Details</p>
-                  <p>Service: {order.serviceName}</p>
-                  <p>Package: {order.packageName || "N/A"}</p>
-                  <p>Country: {order.country || "N/A"}</p>
-              </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-               <div>
-                  <p className="font-semibold text-slate-700">Financials</p>
-                  <p>Amount: {order.amount} {order.currency}</p>
-                  <p>Payment Method: {order.paymentMethod || "N/A"}</p>
-              </div>
-              <div>
-                  <p className="font-semibold text-slate-700">Source & Links</p>
-                  <p>Source: {order.source}</p>
-                  <p>Intake ID: {order.intakeId || "N/A"}</p>
-                  <p>Invoice ID: {order.invoiceId || "N/A"}</p>
-              </div>
-          </div>
+      <div className="pt-4 text-xs text-slate-600 space-y-2">
+        <p>
+          <span className="font-medium">Source:</span> {order.source}
+        </p>
+        {order.lastUpdateText && (
+          <p>
+            <span className="font-medium">Last update:</span> {order.lastUpdateText}
+          </p>
+        )}
+        <p>
+          <span className="font-medium">Created:</span> {created}
+        </p>
+        <p>
+          <span className="font-medium">Last updated:</span> {updated}
+        </p>
+        <p className="mt-2 text-slate-500">
+          এখানে শুধু summary দেখাচ্ছে। Updates ট্যাবে detailed note / message
+          history থাকবে, Files ট্যাবে ডকুমেন্ট এবং Timeline ট্যাবে status history।
+        </p>
       </div>
     );
   }
@@ -249,7 +245,7 @@ function OrderDetailPanel({ order, orderId }: { order: Order; orderId: string })
       // Add a timeline event for the status change
       const timelineCol = collection(ref, "statusTimeline");
       await addDoc(timelineCol, {
-        label: `Status changed to ${localStatus}, payment ${localPaymentStatus}`,
+        label: `Status changed to ${localStatus}, payment ${localPaymentStatus || 'unpaid'}`,
         status: localStatus,
         createdAt: serverTimestamp(),
       });
