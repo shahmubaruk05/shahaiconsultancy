@@ -602,6 +602,79 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["invoiceId", "payerName", "email", "method", "amount", "status", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "type": "object",
+      "description": "Represents an order or ticket for a client service.",
+      "properties": {
+        "intakeId": { "type": ["string", "null"] },
+        "clientName": { "type": "string" },
+        "clientEmail": { "type": "string", "format": "email" },
+        "clientPhone": { "type": ["string", "null"] },
+        "serviceName": { "type": "string" },
+        "packageName": { "type": ["string", "null"] },
+        "country": { "type": ["string", "null"] },
+        "currency": { "type": "string", "enum": ["BDT", "USD"] },
+        "amount": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "waiting_payment", "paid", "completed", "cancelled"]
+        },
+        "paymentStatus": {
+          "type": ["string", "null"],
+          "enum": ["unpaid", "partially_paid", "paid", "refunded", null]
+        },
+        "paymentMethod": {
+          "type": ["string", "null"],
+          "enum": ["bkash", "bank", "paypal", "other", null]
+        },
+        "invoiceId": { "type": ["string", "null"] },
+        "source": { "type": "string", "enum": ["intake-form", "manual"] },
+        "assignedTo": { "type": ["string", "null"], "description": "Admin user UID." },
+        "lastUpdateText": { "type": ["string", "null"] },
+        "lastUpdateAt": { "type": ["string", "null"], "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["clientName", "clientEmail", "serviceName", "currency", "amount", "status", "source", "createdAt", "updatedAt"]
+    },
+    "OrderUpdate": {
+      "title": "OrderUpdate",
+      "type": "object",
+      "description": "An update, message, or log entry for an order.",
+      "properties": {
+        "type": { "type": "string", "enum": ["admin", "client"] },
+        "fromName": { "type": ["string", "null"] },
+        "message": { "type": "string" },
+        "internalOnly": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "message", "createdAt"]
+    },
+    "OrderFile": {
+      "title": "OrderFile",
+      "type": "object",
+      "description": "A file attachment related to an order.",
+      "properties": {
+        "fileName": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "uploadedBy": { "type": "string", "enum": ["admin", "client"] },
+        "uploadedByName": { "type": ["string", "null"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fileName", "fileUrl", "uploadedBy", "createdAt"]
+    },
+    "OrderStatusTimeline": {
+      "title": "OrderStatusTimeline",
+      "type": "object",
+      "description": "A log entry for the status history of an order.",
+      "properties": {
+        "label": { "type": "string" },
+        "status": { "type": ["string", "null"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["label", "createdAt"]
     }
   },
   "auth": {
@@ -655,6 +728,51 @@
           "params": [
             { "name": "invoiceId", "description": "The unique identifier of the invoice." },
             { "name": "paymentId", "description": "The unique identifier of the payment." }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": { "$ref": "#/backend/entities/Order" },
+          "description": "Collection of client orders or service tickets.",
+          "params": [{ "name": "orderId", "description": "The unique identifier for the order." }]
+        }
+      },
+      {
+        "path": "/orders/{orderId}/updates/{updateId}",
+        "definition": {
+          "entityName": "OrderUpdate",
+          "schema": { "$ref": "#/backend/entities/OrderUpdate" },
+          "description": "Log of messages and updates for an order.",
+          "params": [
+            { "name": "orderId", "description": "The unique identifier for the order." },
+            { "name": "updateId", "description": "The unique identifier for the update." }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}/files/{fileId}",
+        "definition": {
+          "entityName": "OrderFile",
+          "schema": { "$ref": "#/backend/entities/OrderFile" },
+          "description": "Files attached to an order.",
+          "params": [
+            { "name": "orderId", "description": "The unique identifier for the order." },
+            { "name": "fileId", "description": "The unique identifier for the file." }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}/statusTimeline/{timelineId}",
+        "definition": {
+          "entityName": "OrderStatusTimeline",
+          "schema": { "$ref": "#/backend/entities/OrderStatusTimeline" },
+          "description": "Timeline of status changes for an order.",
+          "params": [
+            { "name": "orderId", "description": "The unique identifier for the order." },
+            { "name": "timelineId", "description": "The unique identifier for the timeline event." }
           ]
         }
       },
@@ -889,5 +1007,3 @@
     "reasoning": "The Firestore structure is designed to ensure Authorization Independence, clarity, and scalability. User-owned data is stored under the `/users/{userId}` path, creating a clear ownership model. This enables secure and efficient security rules based on `request.auth.uid`. Each entity, such as `StartupIdea`, `BusinessStrategy`, `PitchDeck`, `CompanyFormationGuide`, `Conversation`, and `Message` are stored as subcollections of `/users/{userId}`. This approach ensures that all documents in a collection share the same security requirements (Structural Segregation) and eliminates the need for complex rule logic.  The `Conversation` and `Message` collections follow the same pattern.  This design allows us to use path-based rules effectively without needing `get()` calls to parent documents, thus maintaining Authorization Independence.\n\nQAPs (Rules are not Filters): The path-based ownership model ensures secure list operations because rules can easily filter based on the `userId` in the path. A user can only list resources owned by them without additional filtering within the rules themselves.\n\nThe structure explicitly models the relationships between entities. This adheres to the principle of Data Clarity and Predictability, which simplifies debugging and maintenance."
   }
 }
-
-    

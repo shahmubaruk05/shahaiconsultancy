@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -75,6 +76,19 @@ service cloud.firestore {
     match /invoicePayments/{paymentId} {
         allow create: if true;
         allow read, update, delete: if isAdmin();
+    }
+    
+    // === Orders System ===
+    match /orders/{orderId} {
+      // Admins have full access.
+      allow read, write: if isAdmin();
+      // Future rule: allow client to read if their email matches clientEmail field.
+      // allow read: if isOwner(get(/databases/$(database)/documents/orders/$(orderId)).data.clientUid);
+    }
+    
+    match /orders/{orderId}/{subcollection}/{docId} {
+      // Admins have full access to all subcollections.
+      allow read, write: if isAdmin();
     }
 
     // Secure all user-specific data under the /users/{userId} path.
