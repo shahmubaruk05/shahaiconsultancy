@@ -18,8 +18,7 @@ export async function createOrder(data: Omit<Order, "id" | "createdAt" | "update
   const now = serverTimestamp();
   const docRef = await addDoc(ordersCol, {
     ...data,
-    status: data.status ?? "pending",
-    paymentStatus: data.paymentStatus ?? "unpaid",
+    status: data.status ?? "new",
     createdAt: now,
     updatedAt: now,
   });
@@ -36,3 +35,5 @@ export async function addOrderUpdate(
     createdAt: serverTimestamp(),
   });
 }
+
+    

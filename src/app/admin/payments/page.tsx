@@ -4,19 +4,17 @@
   import { useEffect, useMemo, useState } from "react";
   import { useRouter } from "next/navigation";
   import Link from "next/link";
-  import { getAuth, onAuthStateChanged } from "firebase/auth";
   import {
-    getFirestore,
     collection,
     doc,
     getDocs,
     updateDoc,
     query,
-    orderBy
+    orderBy,
+    serverTimestamp,
+    addDoc,
   } from "firebase/firestore";
-  import { initializeFirebase } from "@/firebase";
-
-  const { auth: fbAuth, firestore: db } = initializeFirebase();
+  import { useFirebase } from "@/firebase";
 
   const ADMIN_EMAILS = [
     "shahmubaruk05@gmail.com",
@@ -37,11 +35,13 @@
     createdAt: Date | null;
     userUid?: string | null;
     invoiceId?: string | null;
+    orderId?: string | null;
     method?: string;
     slipUrl?: string;
   }
 
   export default function AdminPaymentsPage() {
+    const { firestore, user } = useFirebase();
     const [checkingAuth, setCheckingAuth] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -53,23 +53,23 @@
     const router = useRouter();
 
     useEffect(() => {
-      const unsub = onAuthStateChanged(fbAuth, async (user) => {
-        if (!user) {
-          setCheckingAuth(false);
-          router.push("/login");
-          return;
-        }
+      if (!user) {
+        if (!checkingAuth) router.push("/login");
+        return;
+      }
 
-        const email = user.email ?? "";
-        const admin = ADMIN_EMAILS.includes(email);
-        setIsAdmin(admin);
-        setCheckingAuth(false);
+      const email = user.email ?? "";
+      const admin = ADMIN_EMAILS.includes(email);
+      setIsAdmin(admin);
+      setCheckingAuth(false);
 
-        if (!admin) {
-          setError("Access denied. Admin only.");
-          return;
-        }
+      if (!admin) {
+        setError("Access denied. Admin only.");
+        return;
+      }
+      if (!firestore) return;
 
+      const loadData = async () => {
         try {
           setLoading(true);
 
@@ -83,7 +83,7 @@
 
           for (const { name, provider } of collectionsToFetch) {
             try {
-                const q = query(collection(db, name), orderBy("createdAt", "desc"));
+                const q = query(collection(firestore, name), orderBy("createdAt", "desc"));
                 const snap = await getDocs(q);
                 snap.forEach((docSnap) => {
                     const data = docSnap.data() as any;
@@ -104,6 +104,7 @@
                         createdAt,
                         userUid: data.uid ?? null,
                         invoiceId: data.invoiceId ?? null,
+                        orderId: data.orderId ?? null,
                         method: data.method ?? provider,
                         slipUrl: data.slipUrl ?? null,
                     });
@@ -126,10 +127,9 @@
         } finally {
           setLoading(false);
         }
-      });
-
-      return () => unsub();
-    }, [db, router]);
+      }
+      loadData();
+    }, [firestore, user, checkingAuth, router]);
 
     const filtered = useMemo(() => {
       return payments.filter((p) => {
@@ -140,20 +140,47 @@
     }, [payments, providerFilter, statusFilter]);
 
     const handleUpdateStatus = async (p: PaymentRow, newStatus: string) => {
+      if (!firestore) return;
       try {
         let colName = "invoicePayments"; // default
         if (p.provider === 'bkash') colName = 'bkashPayments';
         if (p.provider === 'paypal') colName = 'paypalPayments';
         
-        await updateDoc(doc(db, colName, p.id), {
+        await updateDoc(doc(firestore, colName, p.id), {
           status: newStatus,
         });
 
+        // If an order is linked, update its paymentStatus and add a timeline event
+        if (p.orderId) {
+          const orderRef = doc(firestore, "orders", p.orderId);
+          await updateDoc(orderRef, {
+            paymentStatus: "paid",
+            updatedAt: serverTimestamp(),
+          });
+
+          // Add a timeline event
+          const timelineCol = collection(orderRef, "statusTimeline");
+          await addDoc(timelineCol, {
+            type: "payment",
+            message: `Payment of ${p.amount} ${p.currency} confirmed via ${p.provider}.`,
+            createdAt: serverTimestamp(),
+            createdBy: "admin",
+            meta: {
+              paymentId: p.id,
+              provider: p.provider,
+              amount: p.amount,
+              currency: p.currency,
+              txId: p.txId,
+            },
+          });
+        }
+
+
         // Also update invoice if linked
         if (p.invoiceId && (newStatus === 'completed' || newStatus === 'approved')) {
-            await updateDoc(doc(db, "invoices", p.invoiceId), {
+            await updateDoc(doc(firestore, "invoices", p.invoiceId), {
                 status: 'paid',
-                paidAt: new Date(),
+                paidAt: serverTimestamp(),
                 paidByPaymentId: p.id,
             });
         }
@@ -245,7 +272,7 @@
                     User
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                    Product
+                    Product / Order
                   </th>
                   <th className="px-3 py-2 text-left font-semibold text-slate-600">
                     Amount
@@ -275,11 +302,15 @@
                     </td>
                     <td className="px-3 py-2">{p.email || "—"}</td>
                     <td className="px-3 py-2">
-                        {p.plan || (p.invoiceId && 
+                        {p.orderId ? (
+                            <Link href={`/admin/orders?orderId=${p.orderId}`} className="underline text-blue-600">
+                                Order #{p.orderId.slice(0,5)}
+                            </Link>
+                        ) : p.invoiceId ? ( 
                           <Link href={`/admin/invoices?id=${p.invoiceId}`} className="underline text-blue-600">
                             Invoice #{p.invoiceId.slice(0,5)}
                           </Link>
-                        ) || '—'}
+                        ) : p.plan || '—'}
                     </td>
                     <td className="px-3 py-2">
                       {p.amount != null ? `${p.amount} ${p.currency}` : "—"}
@@ -324,5 +355,6 @@
       </div>
     );
   }
+    
 
     
