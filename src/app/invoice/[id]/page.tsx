@@ -19,8 +19,6 @@ import {
 } from "firebase/storage";
 import { useFirebase } from "@/firebase/provider";
 import { useToast } from "@/components/ui/use-toast";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
 
 type InvoiceStatus = "draft" | "unpaid" | "paid" | "cancelled" | "partial" | "pending_confirmation";
 
@@ -52,14 +50,14 @@ export default function PublicInvoicePage() {
   const params = useParams<{ id: string }>();
   const invoiceId = params?.id;
   const { firestore: db, firebaseApp } = useFirebase();
-  const storage = getStorage(firebaseApp);
+  const storage = firebaseApp ? getStorage(firebaseApp) : null;
   const { toast } = useToast();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Form state
   const [payerName, setPayerName] = useState("");
-  const [payerEmail, setPayerEmail] = useState("");
+  const [payerEmail, setEmail] = useState("");
   const [method, setMethod] = useState<"bkash" | "bank" | "paypal">("bkash");
   const [amountPaid, setAmountPaid] = useState("");
   const [txId, setTxId] = useState("");
@@ -110,7 +108,7 @@ export default function PublicInvoicePage() {
           };
           setInvoice(fetchedInvoice);
           setPayerName(fetchedInvoice.clientName);
-          setPayerEmail(fetchedInvoice.email);
+          setEmail(fetchedInvoice.email);
           setAmountPaid(String(fetchedInvoice.amount || ''));
         }
       } catch (err) {
@@ -129,49 +127,67 @@ export default function PublicInvoicePage() {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
+
+    if (!db) {
+        setError("Database not ready. Please try again.");
+        return;
+    }
 
     setSubmitting(true);
     setSubmitError(null);
+    setSubmitted(false);
 
     try {
-      // আপাতত slip upload করছি না — শুধু URL null হিসেবে save করব
-      const slipUrl: string | null = null;
+      let slipUrl: string | null = null;
 
-      // amount number এ কনভার্ট
-      const paidAmountNumber = Number(amountPaid || 0);
+      // optional file
+      if (slipFile && storage) {
+        const safeName = slipFile.name.replace(/\s+/g, "-");
+        const storageRef = ref(
+          storage,
+          `invoicePaymentSlips/${invoiceId}/${Date.now()}-${safeName}`
+        );
+        await uploadBytes(storageRef, slipFile);
+        slipUrl = await getDownloadURL(storageRef);
+      }
 
       await addDoc(collection(db, "invoicePayments"), {
-        invoiceId: params.id,
-        name: payerName,
+        invoiceId,
+        payerName,
         email: payerEmail,
         method,
-        amount: paidAmountNumber,
+        amountPaid: Number(amountPaid),
         txId,
-        slipUrl, // পরে Storage ঠিক হলে এখানে সত্যি URL বসাব
-        provider:
-          method === "bkash"
-            ? "Bkash"
-            : method === "paypal"
-            ? "PayPal"
-            : "Bank",
+        slipUrl,
         status: "pending",
         createdAt: serverTimestamp(),
       });
 
-      // চাইলে মূল invoice ডকুমেন্টে status flag আপডেট করতে পারো
-      // const invoiceRef = doc(db, "invoices", params.id as string);
-      // await updateDoc(invoiceRef, { paymentStatus: "submitted" });
+      if (invoiceId) {
+        try {
+          await updateDoc(doc(db, "invoices", invoiceId), {
+            status: "pending_confirmation",
+          });
+        } catch (err) {
+          console.warn("Invoice update failed (rules may block):", err);
+          // আপাতত ignore করি, admin payments log থেকেই দেখবে
+        }
+      }
+
 
       setSubmitted(true);
       toast({
         title: "Submission Received!",
         description: "Your payment details have been submitted for verification.",
       });
+      // Reset form if needed
+      // setPayerName(''); setEmail(''); ...
 
-    } catch (err) {
-      console.error("Payment submit error: ", err);
+    } catch (err: any) {
+      console.error("Payment submit failed", err);
       setSubmitError(
-        "Payment info submit করতে সমস্যা হয়েছে। আবার চেষ্টা করুন বা WhatsApp এ যোগাযোগ করুন।"
+        "Payment details save করতে সমস্যা হয়েছে। আবার চেষ্টা করুন, না হলে WhatsApp এ যোগাযোগ করুন।"
       );
     } finally {
       setSubmitting(false);
@@ -380,7 +396,7 @@ export default function PublicInvoicePage() {
                   type="email"
                   name="payerEmail"
                   value={payerEmail}
-                  onChange={(e) => setPayerEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="mt-1 w-full rounded border px-3 py-2 text-sm"
                   required
                 />
@@ -476,5 +492,3 @@ export default function PublicInvoicePage() {
     </div>
   );
 }
-
-    
