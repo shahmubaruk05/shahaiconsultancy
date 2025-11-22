@@ -19,6 +19,7 @@ import { useFirebase } from "@/firebase/provider";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 type IntakeStatus = "new" | "in-progress" | "completed" | "closed";
 
@@ -36,6 +37,7 @@ type Intake = {
   source?: string;
   createdAt?: Timestamp | null;
   invoiceId?: string; // Link to the created invoice
+  orderId?: string;
 };
 
 const STATUS_LABELS: Record<IntakeStatus, string> = {
@@ -62,6 +64,7 @@ export default function AdminIntakesPage() {
   const router = useRouter();
 
   const [isCreatingInvoice, startCreatingInvoice] = useTransition();
+  const [isCreatingOrder, startCreatingOrder] = useTransition();
 
   const isAdminEmail = useMemo(() => {
     if (!user?.email) return false;
@@ -98,6 +101,7 @@ export default function AdminIntakesPage() {
             source: data.source || "public-intake",
             createdAt: data.createdAt || null,
             invoiceId: data.invoiceId || "",
+            orderId: data.orderId || "",
           });
         });
         setIntakes(rows);
@@ -238,6 +242,39 @@ export default function AdminIntakesPage() {
           description: err.message,
         });
       }
+    });
+  }
+
+  async function handleCreateOrder() {
+    if (!selected || !firestore) return;
+  
+    startCreatingOrder(async () => {
+        try {
+            const docRef = await addDoc(collection(firestore, "orders"), {
+                intakeId: selected.id,
+                clientName: selected.name,
+                clientEmail: selected.email,
+                clientPhone: selected.phone || "",
+                service: selected.service,
+                country: selected.country || "",
+                authorizedCapital: selected.authorizedCapital || "",
+                status: "new",
+                notes: "",
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+
+            await updateDoc(doc(firestore, "intakes", selected.id), { orderId: docRef.id });
+
+            router.push(`/admin/orders?orderId=${docRef.id}`);
+        } catch (err: any) {
+            console.error("Failed to create order:", err);
+            toast({
+                variant: "destructive",
+                title: "Order Creation Failed",
+                description: err.message,
+            });
+        }
     });
   }
 
@@ -444,6 +481,16 @@ export default function AdminIntakesPage() {
                       ? "Open Invoice"
                       : "Create Invoice"}
                   </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={handleCreateOrder}
+                    disabled={isCreatingOrder || !!selected.orderId}
+                  >
+                    {isCreatingOrder ? (<><Loader2 className="mr-2 h-3 w-3 animate-spin"/>Creating...</>) : selected.orderId ? "Order Exists" : "Create Order / Ticket"}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -453,5 +500,3 @@ export default function AdminIntakesPage() {
     </section>
   );
 }
-
-    
