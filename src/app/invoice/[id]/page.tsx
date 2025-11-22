@@ -9,6 +9,7 @@ import {
   addDoc,
   collection,
   serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -42,6 +43,7 @@ type Invoice = {
   bankDetails?: string;
   status: InvoiceStatus;
   notesPublic?: string;
+  amount?: number;
 };
 
 export default function PublicInvoicePage() {
@@ -53,14 +55,8 @@ export default function PublicInvoicePage() {
   const [loading, setLoading] = useState(true);
 
   // Form state
-  const [payerName, setPayerName] = useState('');
-  const [payerEmail, setPayerEmail] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'bkash' | 'bank' | 'paypal'>('bkash');
-  const [amountPaid, setAmountPaid] = useState('');
-  const [txId, setTxId] = useState('');
-  const [slipFile, setSlipFile] = useState<File | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -99,22 +95,17 @@ export default function PublicInvoicePage() {
             bankDetails: data.bankDetails || "",
             status: (data.status as InvoiceStatus) || "draft",
             notesPublic: data.notesPublic || "",
+            amount: Number(data.total) || 0,
           });
         }
       } catch (err) {
         console.error("Failed to load invoice", err);
-        setError("Invoice load করতে সমস্যা হয়েছে।");
+        setFormError("Invoice load করতে সমস্যা হয়েছে।");
       } finally {
         setLoading(false);
       }
     })();
   }, [firestore, invoiceId]);
-
-  useEffect(() => {
-      if (invoice) {
-          setAmountPaid(String(invoice.total));
-      }
-  }, [invoice]);
 
   function currencySymbol() {
     if (!invoice) return "";
@@ -127,34 +118,28 @@ export default function PublicInvoicePage() {
     e.preventDefault();
   
     const form = e.currentTarget;
-    const fileInput = form.elements.namedItem(
-      "paymentSlip"
-    ) as HTMLInputElement | null;
-    const file = fileInput?.files?.[0] ?? null;
-  
-    const trimmedName = payerName.trim();
-    const trimmedEmail = payerEmail.trim();
-    const trimmedTxId = txId.trim();
-    const amountString = typeof amountPaid === 'string' ? amountPaid.trim() : String(amountPaid ?? '');
-  
-    if (!trimmedName || !trimmedEmail || !trimmedTxId || !amountString) {
-      setError('নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।');
-      return;
-    }
-  
-    const amountNumber = Number(amountString);
-    if (Number.isNaN(amountNumber) || amountNumber <= 0) {
-      setError('Amount সঠিক ভাবে লিখুন (সংখ্যা হিসেবে)।');
+    const formData = new FormData(form);
+    
+    const payerName = formData.get('payerName') as string;
+    const payerEmail = formData.get('payerEmail') as string;
+    const paymentMethod = formData.get('paymentMethod') as string;
+    const amountPaid = formData.get('amountPaid') as string;
+    const txId = formData.get('txId') as string;
+    const paymentSlipInput = form.elements.namedItem('paymentSlip') as HTMLInputElement | null;
+    const file = paymentSlipInput?.files?.[0] ?? null;
+    
+    if (!payerName || !payerEmail || !txId || !amountPaid) {
+      setFormError("নাম, ইমেইল, amount এবং transaction ID দেওয়া বাধ্যতামূলক।");
       return;
     }
   
     if (!firestore || !invoice || !firebaseApp) {
-        setError('An error occurred. Please refresh and try again.');
+        setFormError('An error occurred. Please refresh and try again.');
         return;
     }
-  
-    setError(null);
-    setSubmitting(true);
+
+    setFormError(null);
+    setIsSubmitting(true);
   
     try {
       let slipUrl: string | null = null;
@@ -169,11 +154,11 @@ export default function PublicInvoicePage() {
   
       await addDoc(collection(firestore, "invoicePayments"), {
         invoiceId: invoice.id,
-        payerName: trimmedName,
-        email: trimmedEmail,
+        payerName,
+        email: payerEmail,
         method: paymentMethod,
-        amount: amountNumber,
-        txId: trimmedTxId,
+        amount: Number(amountPaid),
+        txId: txId,
         slipUrl,
         status: "pending",
         createdAt: serverTimestamp(),
@@ -184,22 +169,18 @@ export default function PublicInvoicePage() {
           description: "Your payment details have been submitted for verification.",
       });
   
-      setPayerName("");
-      setPayerEmail("");
-      setAmountPaid(String(invoice.total));
-      setTxId("");
-      setSlipFile(null);
+      form.reset();
   
     } catch (err: any) {
       console.error("Failed to submit payment info", err);
-      setError("কিছু সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন বা WhatsApp-এ যোগাযোগ করুন।");
+      setFormError("কিছু সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন বা WhatsApp-এ যোগাযোগ করুন।");
       toast({
           variant: "destructive",
           title: "Submission Failed",
           description: err.message || "An unknown error occurred.",
       });
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -382,116 +363,99 @@ export default function PublicInvoicePage() {
           </p>
 
           <form onSubmit={handlePaymentSubmit} className="mt-3 space-y-3">
-            <div className="grid md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-emerald-900 mb-1">
+                <label className="block text-xs font-medium text-slate-700">
                   আপনার নাম *
                 </label>
                 <input
                   type="text"
-                  value={payerName}
-                  onChange={(e) => setPayerName(e.target.value)}
-                  className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
+                  name="payerName"
+                  defaultValue={invoice?.clientName ?? ""}
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  required
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-emerald-900 mb-1">
+                <label className="block text-xs font-medium text-slate-700">
                   ইমেইল *
                 </label>
                 <input
                   type="email"
-                  value={payerEmail}
-                  onChange={(e) => setPayerEmail(e.target.value)}
-                  className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
+                  name="payerEmail"
+                  defaultValue={invoice?.email ?? ""}
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  required
                 />
               </div>
-            </div>
 
-            <div className="grid md:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-emerald-900 mb-1">
-                  Payment method *
-                </label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) =>
-                    setPaymentMethod(e.target.value as 'bkash' | 'bank' | 'paypal')
-                  }
-                  className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
-                >
-                  {invoice.paymentMethods.bkash && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700">
+                    Payment method *
+                  </label>
+                  <select
+                    name="paymentMethod"
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                    defaultValue="bkash"
+                    required
+                  >
                     <option value="bkash">bKash</option>
-                  )}
-                  {invoice.paymentMethods.bank && (
                     <option value="bank">Bank transfer</option>
-                  )}
-                  {invoice.paymentMethods.paypal && (
                     <option value="paypal">PayPal</option>
-                  )}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-emerald-900 mb-1">
-                  Amount paid *
-                </label>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-emerald-800">
-                    {currencySymbol()}
-                  </span>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-700">
+                    Amount paid *
+                  </label>
                   <input
                     type="number"
-                    value={amountPaid}
-                    onChange={(e) => setAmountPaid(e.target.value)}
-                    placeholder={invoice.total.toString()}
-                    className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
+                    name="amountPaid"
+                    className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                    defaultValue={invoice?.amount}
+                    required
                   />
                 </div>
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-emerald-900 mb-1">
+                <label className="block text-xs font-medium text-slate-700">
                   Transaction ID / Reference *
                 </label>
                 <input
                   type="text"
-                  value={txId}
-                  onChange={(e) => setTxId(e.target.value)}
-                  className="w-full rounded border border-emerald-200 px-2 py-1.5 text-xs"
+                  name="txId"
+                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  required
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-medium text-emerald-900 mb-1">
-                Payment slip / screenshot (optional)
-              </label>
-              <input
-                type="file"
-                name="paymentSlip"
-                accept="image/*,.pdf"
-                className="text-sm text-emerald-900"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setSlipFile(file);
-                }}
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700">
+                  Payment slip / screenshot (optional)
+                </label>
+                <input
+                  type="file"
+                  name="paymentSlip"
+                  accept="image/*,.pdf"
+                  className="mt-1 text-sm"
+                />
+              </div>
 
-            {error && (
-              <p className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                {error}
-              </p>
-            )}
-            
-            <div className="pt-1 flex justify-end">
+              {formError && (
+                <p className="text-xs text-red-600">{formError}</p>
+              )}
+
               <button
                 type="submit"
-                disabled={submitting}
-                className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-70"
+                disabled={isSubmitting}
+                className="mt-2 inline-flex items-center rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
               >
-                {submitting ? "Submitting…" : "Submit payment details"}
+                {isSubmitting ? "Submitting..." : "Submit payment details"}
               </button>
-            </div>
-          </form>
+            </form>
         </div>
 
         <p className="mt-4 text-[11px] text-slate-500 text-center">
@@ -501,5 +465,3 @@ export default function PublicInvoicePage() {
     </div>
   );
 }
-
-    
