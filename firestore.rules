@@ -16,6 +16,18 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.admin == true;
     }
 
+    // PAYMENTS: সাবস্ক্রিপশন + ইনভয়েস payment log — unified "payments" collection
+    match /payments/{paymentId} {
+      // কাজ চালানোর জন্য আপাতত সবার জন্য open:
+      allow read, write: if true;
+    }
+
+    // 🔹 যদি কোথাও এখনও "invoicePayments" collection ব্যবহার হয়
+    match /invoicePayments/{paymentId} {
+      // এটাও আপাতত পুরো open:
+      allow read, write: if true;
+    }
+    
     // === Manual bKash payments (top-level collection) ===
     match /bkashPayments/{txId} {
       // clients can create when submitting manual bKash payment info
@@ -29,12 +41,6 @@ service cloud.firestore {
       allow create: if request.auth != null || isAdmin();
       // only admin can read/update/delete
       allow read, update, delete: if isAdmin();
-    }
-    
-    // PAYMENTS: Log for subscriptions and invoice payments
-    match /payments/{paymentId} {
-      // Permissive rule for development.
-      allow read, write: if true;
     }
 
      match /aiUsageLogs/{logId} {
@@ -73,11 +79,6 @@ service cloud.firestore {
       // public can read, admin can write
       allow read: if true;
       allow create, update, delete: if isAdmin();
-    }
-
-    match /invoicePayments/{paymentId} {
-        allow create: if true;
-        allow read, update, delete: if isAdmin();
     }
     
     // === Orders System ===
