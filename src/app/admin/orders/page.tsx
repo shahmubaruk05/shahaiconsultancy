@@ -59,79 +59,97 @@ function OverviewTab({ order }: { order: Order }) {
     const { firestore, user } = useFirebase();
     const updatesQuery = useMemoFirebase(() => {
         if (!firestore || !orderId) return null;
-        return query(collection(firestore, `orders/${orderId}/updates`), orderBy("createdAt", "desc"));
+        return query(collection(firestore, `orders/${orderId}/updates`), orderBy("createdAt", "asc"));
     }, [firestore, orderId]);
     const { data: updates, isLoading } = useCollection<OrderUpdate>(updatesQuery);
     
     const [noteText, setNoteText] = useState('');
-    const [isInternal, setIsInternal] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
   
-    async function handleAddNote() {
+    async function handleAddUpdate() {
         if (!firestore || !noteText.trim() || !user) return;
+        const message = noteText.trim();
         try {
             setIsSubmitting(true);
-            const updatesCol = collection(firestore, `orders/${orderId}/updates`);
+            const orderRef = doc(firestore, "orders", orderId);
+            const updatesCol = collection(orderRef, "updates");
+            
             await addDoc(updatesCol, {
                 type: "admin",
                 fromName: user.displayName || "Admin",
-                message: noteText,
-                internalOnly: isInternal,
+                message,
+                internalOnly: false, // For now, can add a checkbox later
                 createdAt: serverTimestamp(),
+            });
+
+            await updateDoc(orderRef, {
+                lastUpdateText: message,
+                lastUpdateAt: serverTimestamp(),
             });
             setNoteText('');
         } catch (err) {
-            console.error("Failed to add update", err);
+            console.error("Failed to add order update", err);
         } finally {
             setIsSubmitting(false);
         }
     }
   
     return (
-        <div className="pt-4 space-y-4">
-            <div className="space-y-2">
+        <div className="space-y-3 pt-4">
+            <div className="flex flex-col gap-2">
+                <label className="text-xs font-medium text-slate-700">
+                    Add admin note / client update
+                </label>
                 <textarea
                     value={noteText}
                     onChange={(e) => setNoteText(e.target.value)}
                     rows={3}
-                    placeholder="Write an internal note or a message for the client..."
                     className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    placeholder="যেমন: NID received, RJSC name clearance submitted..."
                 />
-                <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                        <input
-                            type="checkbox"
-                            checked={isInternal}
-                            onChange={(e) => setIsInternal(e.target.checked)}
-                        />
-                        Internal note (client won't see)
-                    </label>
-                    <button
-                        type="button"
-                        onClick={handleAddNote}
-                        disabled={isSubmitting || !noteText.trim()}
-                        className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-700 disabled:opacity-50"
-                    >
-                        {isSubmitting ? "Adding..." : "Add Update"}
-                    </button>
+                <button
+                    type="button"
+                    onClick={handleAddUpdate}
+                    disabled={isSubmitting}
+                    className="self-start inline-flex items-center rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-700 disabled:opacity-50"
+                >
+                    {isSubmitting ? "Saving..." : "Add update"}
+                </button>
+            </div>
+
+            <div className="border-t border-slate-100 pt-3">
+                {isLoading && (
+                    <p className="text-xs text-slate-500">Loading updates...</p>
+                )}
+                {updates && updates.length === 0 && !isLoading && (
+                     <p className="text-xs text-slate-500">
+                        এখনো কোনো update নেই। উপরে note লিখে Add update চাপুন।
+                    </p>
+                )}
+                <div className="space-y-2">
+                    {updates?.map((upd) => {
+                        const ts = (upd.createdAt as any)?.toDate?.().toLocaleString?.("en-GB") ?? "";
+                        return (
+                            <div
+                                key={upd.id}
+                                className="rounded-md border border-slate-200 px-3 py-2 text-xs"
+                            >
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="font-medium text-slate-800">
+                                        {upd.fromName ?? (upd.type || '').toUpperCase()}
+                                    </span>
+                                    <span className="text-[10px] text-slate-500">{ts}</span>
+                                </div>
+                                <p className="whitespace-pre-line text-slate-700">
+                                    {upd.message}
+                                </p>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
-            {isLoading ? <p className="text-xs text-slate-500">Loading updates...</p> : (
-                <div className="space-y-3">
-                    {(updates || []).map(upd => (
-                        <div key={upd.id} className="text-xs border-b border-slate-100 pb-2">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="font-semibold text-slate-800">{upd.fromName || upd.type}</span>
-                                <span className="text-[10px] text-slate-400">{(upd.createdAt as any)?.toDate?.().toLocaleString('en-GB') ?? ''}</span>
-                            </div>
-                            <p className="text-slate-700 whitespace-pre-wrap">{upd.message}</p>
-                            {upd.internalOnly && <span className="text-[10px] text-amber-600"> (Internal)</span>}
-                        </div>
-                    ))}
-                </div>
-            )}
         </div>
-    )
+    );
   }
   
   function OrderFilesTab({ orderId }: { orderId: string }) {
@@ -552,3 +570,5 @@ function PaymentBadge({ status }: { status: Order["paymentStatus"] | null }) {
     </span>
   );
 }
+
+    
