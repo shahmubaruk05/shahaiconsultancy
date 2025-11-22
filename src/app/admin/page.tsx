@@ -15,7 +15,12 @@ const quickLinks = [
   {
     href: "/admin/payments",
     title: "Payments",
-    desc: "bKash / PayPal transaction log ও manual verification.",
+    desc: "bKash / PayPal transaction log ও manual verification।",
+  },
+  {
+    href: "/admin/orders",
+    title: "Orders",
+    desc: "Intake থেকে তৈরি সব service orders/tickets manage করুন।",
   },
   {
     href: "/admin/users",
@@ -25,7 +30,7 @@ const quickLinks = [
   {
     href: "/admin/blog",
     title: "Blog",
-    desc: "নতুন blog post publish করুন, category ও SEO manage করুন.",
+    desc: "নতুন blog post publish করুন, category ও SEO manage করুন।",
   },
 ];
 
