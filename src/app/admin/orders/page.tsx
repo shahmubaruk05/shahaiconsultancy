@@ -221,13 +221,21 @@ function OverviewTab({ order }: { order: Order }) {
         <div className="pt-4">
             {isLoading ? <p className="text-xs text-slate-500">Loading timeline...</p> : (
                 <ul className="space-y-3 border-l-2 border-slate-200 ml-2">
-                    {(timeline || []).map(event => (
+                    {(timeline || []).map(event => {
+                         const ts =
+            (event.createdAt as any)?.toDate?.().toLocaleString?.("en-GB") ?? "";
+                        return (
                         <li key={event.id} className="relative pl-6">
                             <div className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-slate-300"></div>
                             <p className="text-xs font-medium text-slate-800">{event.label}</p>
-                            <p className="text-[11px] text-slate-500">{(event.createdAt as any)?.toDate?.().toLocaleString('en-GB') ?? ''}</p>
+                            <p className="text-[11px] text-slate-500">{ts}</p>
                         </li>
-                    ))}
+                    )})}
+                    {timeline && timeline.length === 0 && (
+                      <p className="text-xs text-slate-500 pl-4">
+                        এখনও কোনো timeline event নেই। Status change করলেই এখানে log হবে।
+                      </p>
+                    )}
                 </ul>
             )}
         </div>
@@ -570,5 +578,3 @@ function PaymentBadge({ status }: { status: Order["paymentStatus"] | null }) {
     </span>
   );
 }
-
-    
