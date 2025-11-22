@@ -5,11 +5,11 @@ import { useEffect, useState, FormEvent } from "react";
 import { useParams } from "next/navigation";
 import {
   doc,
-  getDoc,
   addDoc,
   collection,
   serverTimestamp,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -157,14 +157,10 @@ export default function PublicInvoicePage() {
     try {
       let slipUrl: string | null = null;
   
-      // optional slip upload
+      // NOTE: Studio তে CORS issue থাকার কারণে এখনই file upload করছি না।
+      // শুধু এই fact টা রেখে দিচ্ছি যে user একটা slip দিয়েছিল কি না।
       if (slipFile && slipFile.size > 0) {
-        const storageRef = ref(
-          storage,
-          `invoicePaymentSlips/${invoiceId}/${Date.now()}-${slipFile.name}`
-        );
-        await uploadBytes(storageRef, slipFile);
-        slipUrl = await getDownloadURL(storageRef);
+        slipUrl = `uploaded-slip-placeholder-${Date.now()}`;
       }
   
       // payments collection এ log
