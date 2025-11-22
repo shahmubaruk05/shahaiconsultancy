@@ -460,12 +460,13 @@ export default function PublicInvoicePage() {
               </label>
               <input
                 type="file"
+                name="paymentSlip"
                 accept="image/*,.pdf"
                 onChange={(e) => {
                   const file = e.target.files?.[0] || null;
                   setSlipFile(file);
                 }}
-                className="text-xs text-emerald-900"
+                className="text-sm text-emerald-900"
               />
             </div>
 
