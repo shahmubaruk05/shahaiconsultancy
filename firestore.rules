@@ -2,37 +2,103 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+    // helpers
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Public invoice payment form → client দের থেকে submit
-    match /invoicePayments/{paymentId} {
-      // যে কেউ payment info submit করতে পারবে (create only)
+    function isAdmin() {
+      // custom claim: role = "admin"
+      return isSignedIn() && request.auth.token.role == "admin";
+    }
+
+    // ---------- USERS ----------
+    match /users/{uid} {
+      // নিজে নিজের data + admin full
+      allow read, write: if (isSignedIn() && request.auth.uid == uid) || isAdmin();
+    }
+    
+    match /users/{uid}/{document=**} {
+      allow read, write: if (isSignedIn() && request.auth.uid == uid) || isAdmin();
+    }
+
+    // ---------- PUBLIC INTAKE FORM ----------
+    // public intake form থেকে যে data আসে (admin/intakes এর জন্য)
+    match /intakes/{intakeId} {
+      // কেউ লগইন না থাকলেও intake form submit করতে পারবে
       allow create: if true;
-      // শুধু admin পড়তে / আপডেট করতে পারবে
+
+      // শুধু admin intake list দেখতে / update করতে পারবে
       allow read, update, delete: if isAdmin();
     }
 
-    // Admin side collections
-    match /intakes/{docId} {
+    // ---------- ORDERS / TICKETS ----------
+    match /orders/{orderId}/{document=**} {
       allow read, write: if isAdmin();
     }
 
-    match /orders/{docId} {
+    // ---------- INVOICES ----------
+    // admin panel থেকে invoice তৈরি/দেখা
+    match /invoices/{invoiceId} {
+      // admin সব করতে পারবে
+      allow read, write: if isAdmin();
+
+      // public payment link theke invoice details dekhte parbe
+      allow get: if true;
+    }
+    
+    match /invoices/{invoiceId}/{document=**} {
+        allow read, write: if isAdmin();
+    }
+
+
+    // ---------- SUBSCRIPTIONS / PAYMENTS ----------
+    match /subscriptions/{subId} {
       allow read, write: if isAdmin();
     }
 
+    // generic payments log (admin/payments)
+    match /payments/{paymentId} {
+      // payment submit korar shomoy client der ke doc create korte debe
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // manual bKash subscription payments (আমরা আগে বানিয়েছি)
     match /bkashPayments/{docId} {
+       // payment submit korar shomoy client der ke doc create korte debe
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+    
+    match /paypalPayments/{docId} {
+       // payment submit korar shomoy client der ke doc create korte debe
+      allow create: if true;
       allow read, write: if isAdmin();
     }
 
-    match /payments/{docId} {
-      allow read, write: if isAdmin();
+    // ---------- INVOICE PAYMENT CONFIRMATION ----------
+    // public invoice payment confirmation form এই collection এ লেখে
+    match /invoicePayments/{docId} {
+      // যে কেউ payment confirm submit করতে পারবে (intake form এর মত)
+      allow create: if true;
+
+      // details শুধু admin দেখবে / edit করবে
+      allow read, update, delete: if isAdmin();
+    }
+    
+    match /aiUsageLogs/{logId} {
+        allow create, read, write: if true;
+    }
+    
+    match /blogPosts/{postId} {
+        allow read: if true;
+        allow write: if isAdmin();
     }
 
-    // Fallback to deny all other collections if not specified
-    match /{document=**} {
+
+    // safety net – অন্য সব কিছু বন্ধ
+    match /{path=**} {
       allow read, write: if false;
     }
   }
