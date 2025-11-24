@@ -15,6 +15,7 @@
     addDoc,
   } from "firebase/firestore";
   import { useFirebase } from "@/firebase";
+  import { Badge } from "@/components/ui/badge";
 
   const ADMIN_EMAILS = [
     "shahmubaruk05@gmail.com",
@@ -22,6 +23,7 @@
   ];
 
   type Plan = "pro" | "premium" | "free" | string;
+  type PaymentStatus = "pending" | "approved" | "rejected" | "cancelled" | "partial" | "completed";
 
   interface PaymentRow {
     id: string;
@@ -31,14 +33,24 @@
     amount: number | null;
     currency: string | null;
     plan: Plan | null;
-    status: string | null;
+    status: PaymentStatus;
     createdAt: Date | null;
     userUid?: string | null;
     invoiceId?: string | null;
     orderId?: string | null;
     method?: string;
-    slipUrl?: string;
+    slipUrl?: string | null;
   }
+
+  const STATUS_STYLES: Record<PaymentStatus, string> = {
+    pending: "bg-amber-100 text-amber-800",
+    approved: "bg-emerald-100 text-emerald-800",
+    completed: "bg-emerald-100 text-emerald-800",
+    rejected: "bg-red-100 text-red-800",
+    cancelled: "bg-slate-100 text-slate-700",
+    partial: "bg-sky-100 text-sky-800",
+  };
+
 
   export default function AdminPaymentsPage() {
     const { firestore, user } = useFirebase();
@@ -46,7 +58,7 @@
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
     const [payments, setPayments] = useState<PaymentRow[]>([]);
-    const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "completed">("all");
+    const [statusFilter, setStatusFilter] = useState<"all" | PaymentStatus>("all");
     const [providerFilter, setProviderFilter] = useState<"all" | "bKash" | "PayPal" | "Bank">("all");
     const [error, setError] = useState<string | null>(null);
 
@@ -116,67 +128,30 @@
     const filtered = useMemo(() => {
       return payments.filter((p) => {
         if (providerFilter !== "all" && p.provider !== providerFilter) return false;
-        if (statusFilter !== "all" && (p.status ?? "") !== statusFilter) return false;
+        if (statusFilter !== "all" && p.status !== statusFilter) return false;
         return true;
       });
     }, [payments, providerFilter, statusFilter]);
 
-    const handleUpdateStatus = async (p: PaymentRow, newStatus: string) => {
-      if (!firestore) return;
-      try {
-        await updateDoc(doc(firestore, "payments", p.id), {
-          status: newStatus,
-        });
-
-        // If an order is linked, update its paymentStatus and add a timeline event
-        if (p.orderId) {
-          const orderRef = doc(firestore, "orders", p.orderId);
-          await updateDoc(orderRef, {
-            paymentStatus: "paid",
+    const handleUpdateStatus = async (id: string, status: PaymentStatus) => {
+        if (!firestore) return;
+        try {
+          await updateDoc(doc(firestore, "payments", id), {
+            status,
             updatedAt: serverTimestamp(),
           });
+      
+          // This is a client-side state update for instant UI feedback.
+          setPayments(prev => 
+            prev.map(p => p.id === id ? { ...p, status } : p)
+          );
 
-          // Add a timeline event
-          const timelineCol = collection(orderRef, "statusTimeline");
-          await addDoc(timelineCol, {
-            type: "payment",
-            message: `Payment of ${p.amount} ${p.currency} confirmed via ${p.provider}.`,
-            createdAt: serverTimestamp(),
-            createdBy: "admin",
-            meta: {
-              paymentId: p.id,
-              provider: p.provider,
-              amount: p.amount,
-              currency: p.currency,
-              txId: p.txId,
-            },
-          });
+        } catch (err) {
+          console.error("Failed to update payment status", err);
+          alert("Status update করতে সমস্যা হচ্ছে, একটু পর আবার চেষ্টা করুন।");
         }
-
-
-        // Also update invoice if linked
-        if (p.invoiceId && (newStatus === 'completed' || newStatus === 'approved')) {
-            await updateDoc(doc(firestore, "invoices", p.invoiceId), {
-                status: 'paid',
-                paidAt: serverTimestamp(),
-                paidByPaymentId: p.id,
-            });
-        }
-
-
-        setPayments((prev) =>
-          prev.map((row) =>
-            row.id === p.id && row.provider === p.provider
-              ? { ...row, status: newStatus }
-              : row,
-          ),
-        );
-      } catch (err) {
-        console.error("Failed to update payment status", err);
-        alert("Payment status update করতে সমস্যা হয়েছে।");
-      }
-    };
-
+      };
+      
     if (checkingAuth) {
       return <div className="p-4 text-sm text-slate-500">Checking admin access...</div>;
     }
@@ -222,14 +197,17 @@
             <select
               value={statusFilter}
               onChange={(e) =>
-                setStatusFilter(e.target.value as "all" | "pending" | "approved" | "completed")
+                setStatusFilter(e.target.value as "all" | PaymentStatus)
               }
               className="rounded border border-slate-300 px-2 py-1 text-xs"
             >
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="completed">Completed (Auto)</option>
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="partial">Partial</option>
+                <option value="rejected">Rejected</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="completed">Completed (Auto)</option>
             </select>
           </div>
         </div>
@@ -301,17 +279,37 @@
                         ) : '—'}
                     </td>
                     <td className="px-3 py-2 capitalize">
-                      {p.status || "—"}
+                        <Badge className={`${STATUS_STYLES[p.status] || "bg-slate-100 text-slate-700"} font-medium`}>
+                           {p.status || "—"}
+                        </Badge>
                     </td>
                     <td className="px-3 py-2">
-                      {p.status === "pending" && (
-                        <button
-                          onClick={() => handleUpdateStatus(p, "approved")}
-                          className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-700"
-                        >
-                          Mark approved
-                        </button>
-                      )}
+                        <div className="flex gap-1">
+                            <button
+                                className="px-1.5 py-0.5 text-[10px] rounded bg-green-600 text-white hover:bg-green-700"
+                                onClick={() => handleUpdateStatus(p.id, "approved")}
+                            >
+                                Approve
+                            </button>
+                             <button
+                                className="px-1.5 py-0.5 text-[10px] rounded bg-sky-500 text-white hover:bg-sky-600"
+                                onClick={() => handleUpdateStatus(p.id, "partial")}
+                            >
+                                Partial
+                            </button>
+                            <button
+                                className="px-1.5 py-0.5 text-[10px] rounded bg-red-600 text-white hover:bg-red-700"
+                                onClick={() => handleUpdateStatus(p.id, "rejected")}
+                            >
+                                Reject
+                            </button>
+                            <button
+                                className="px-1.5 py-0.5 text-[10px] rounded border border-slate-300 text-slate-700 hover:bg-slate-100"
+                                onClick={() => handleUpdateStatus(p.id, "cancelled")}
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </td>
                   </tr>
                 ))}
