@@ -275,8 +275,17 @@
                     <td className="px-3 py-2 font-mono">{p.txId || '—'}</td>
                     <td className="px-3 py-2">
                         {p.slipUrl ? (
-                            <a href={p.slipUrl} target="_blank" rel="noreferrer" className="underline text-blue-600">View slip</a>
-                        ) : '—'}
+                            <a
+                              href={p.slipUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sky-600 hover:underline"
+                            >
+                              View slip
+                            </a>
+                        ) : (
+                          "—"
+                        )}
                     </td>
                     <td className="px-3 py-2 capitalize">
                         <Badge className={`${STATUS_STYLES[p.status] || "bg-slate-100 text-slate-700"} font-medium`}>
@@ -334,3 +343,4 @@
     
 
     
+
