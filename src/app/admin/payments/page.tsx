@@ -25,7 +25,7 @@
 
   interface PaymentRow {
     id: string;
-    provider: "bkash" | "paypal" | "bank";
+    provider: "bKash" | "PayPal" | "Bank";
     email: string | null;
     txId: string | null;
     amount: number | null;
@@ -47,7 +47,7 @@
     const [loading, setLoading] = useState(true);
     const [payments, setPayments] = useState<PaymentRow[]>([]);
     const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "completed">("all");
-    const [providerFilter, setProviderFilter] = useState<"all" | "bkash" | "paypal" | "bank">("all");
+    const [providerFilter, setProviderFilter] = useState<"all" | "bKash" | "PayPal" | "Bank">("all");
     const [error, setError] = useState<string | null>(null);
 
     const router = useRouter();
@@ -73,51 +73,33 @@
         try {
           setLoading(true);
 
+          const q = query(collection(firestore, "payments"), orderBy("createdAt", "desc"));
+          const snap = await getDocs(q);
+
           const rows: PaymentRow[] = [];
-          
-          const collectionsToFetch = [
-              { name: "bkashPayments", provider: "bkash" as const },
-              { name: "paypalPayments", provider: "paypal" as const },
-              { name: "invoicePayments", provider: "bank" as const },
-          ];
+          snap.forEach((docSnap) => {
+              const data = docSnap.data() as any;
+              let createdAt: Date | null = null;
+              if (data.createdAt && data.createdAt.toDate) {
+              createdAt = data.createdAt.toDate();
+              }
 
-          for (const { name, provider } of collectionsToFetch) {
-            try {
-                const q = query(collection(firestore, name), orderBy("createdAt", "desc"));
-                const snap = await getDocs(q);
-                snap.forEach((docSnap) => {
-                    const data = docSnap.data() as any;
-                    let createdAt: Date | null = null;
-                    if (data.createdAt && data.createdAt.toDate) {
-                    createdAt = data.createdAt.toDate();
-                    }
-
-                    rows.push({
-                        id: docSnap.id,
-                        provider: provider,
-                        email: data.email ?? data.payerEmail ?? null,
-                        txId: data.txId ?? data.paypalEventId ?? null,
-                        amount: data.amount ? Number(data.amount) : (data.amountBdt ? Number(data.amountBdt) : null),
-                        currency: data.currency ?? (provider === 'bkash' ? 'BDT' : 'USD'),
-                        plan: data.plan ?? null,
-                        status: data.status ?? "pending",
-                        createdAt,
-                        userUid: data.uid ?? null,
-                        invoiceId: data.invoiceId ?? null,
-                        orderId: data.orderId ?? null,
-                        method: data.method ?? provider,
-                        slipUrl: data.slipUrl ?? null,
-                    });
-                });
-            } catch (err) {
-                 console.warn(`${name} collection not found or not readable`, err);
-            }
-          }
-
-          rows.sort((a, b) => {
-            const ta = a.createdAt?.getTime() ?? 0;
-            const tb = b.createdAt?.getTime() ?? 0;
-            return tb - ta;
+              rows.push({
+                  id: docSnap.id,
+                  provider: data.provider || "Bank",
+                  email: data.userEmail ?? data.email ?? null,
+                  txId: data.txId ?? null,
+                  amount: data.amount ? Number(data.amount) : null,
+                  currency: data.currency ?? (data.provider === 'bKash' ? 'BDT' : 'USD'),
+                  plan: data.plan ?? null,
+                  status: data.status ?? "pending",
+                  createdAt,
+                  userUid: data.uid ?? null,
+                  invoiceId: data.invoiceId ?? null,
+                  orderId: data.orderId ?? null,
+                  method: data.method ?? data.provider,
+                  slipUrl: data.slipUrl ?? null,
+              });
           });
 
           setPayments(rows);
@@ -142,11 +124,7 @@
     const handleUpdateStatus = async (p: PaymentRow, newStatus: string) => {
       if (!firestore) return;
       try {
-        let colName = "invoicePayments"; // default
-        if (p.provider === 'bkash') colName = 'bkashPayments';
-        if (p.provider === 'paypal') colName = 'paypalPayments';
-        
-        await updateDoc(doc(firestore, colName, p.id), {
+        await updateDoc(doc(firestore, "payments", p.id), {
           status: newStatus,
         });
 
@@ -228,14 +206,14 @@
             <select
               value={providerFilter}
               onChange={(e) =>
-                setProviderFilter(e.target.value as "all" | "bkash" | "paypal" | "bank")
+                setProviderFilter(e.target.value as "all" | "bKash" | "PayPal" | "Bank")
               }
               className="rounded border border-slate-300 px-2 py-1 text-xs"
             >
               <option value="all">All</option>
-              <option value="bkash">bKash</option>
-              <option value="paypal">PayPal</option>
-              <option value="bank">Bank</option>
+              <option value="bKash">bKash</option>
+              <option value="PayPal">PayPal</option>
+              <option value="Bank">Bank</option>
             </select>
           </div>
 
@@ -313,7 +291,7 @@
                         ) : p.plan || '—'}
                     </td>
                     <td className="px-3 py-2">
-                      {p.amount != null ? `${p.amount} ${p.currency}` : "—"}
+                      {p.amount != null ? `${p.amount} ${p.currency || ''}` : "—"}
                     </td>
                     <td className="px-3 py-2 capitalize">{p.method}</td>
                     <td className="px-3 py-2 font-mono">{p.txId || '—'}</td>

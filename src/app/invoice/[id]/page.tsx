@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   doc,
@@ -58,12 +58,12 @@ export default function PublicInvoicePage() {
   // Form state
   const [payerName, setPayerName] = useState("");
   const [payerEmail, setEmail] = useState("");
-  const [method, setMethod] = useState<"bkash" | "bank" | "paypal">("bkash");
+  const [method, setMethod] = useState<"bKash" | "Bank" | "PayPal">("bKash");
   const [amountPaid, setAmountPaid] = useState("");
   const [txId, setTxId] = useState("");
-  const [slipFile, setSlipFile] = useState<File | null>(null);
+  const slipInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [submitting, setSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
@@ -127,41 +127,45 @@ export default function PublicInvoicePage() {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting) return;
+    if (isSubmitting) return;
 
     if (!db) {
-        setError("Database not ready. Please try again.");
+        setSubmitError("Database not ready. Please try again.");
         return;
     }
 
-    setSubmitting(true);
+    setIsSubmitting(true);
     setSubmitError(null);
     setSubmitted(false);
 
     try {
+      const file = slipInputRef.current?.files?.[0] ?? null;
       let slipUrl: string | null = null;
-
-      // optional file
-      if (slipFile && storage) {
-        const safeName = slipFile.name.replace(/\s+/g, "-");
-        const storageRef = ref(
-          storage,
-          `invoicePaymentSlips/${invoiceId}/${Date.now()}-${safeName}`
-        );
-        await uploadBytes(storageRef, slipFile);
-        slipUrl = await getDownloadURL(storageRef);
+      
+      if (file && storage) {
+        try {
+          const storageRef = ref(storage, `invoicePaymentSlips/${invoiceId}/${Date.now()}-${file.name}`);
+          await uploadBytes(storageRef, file);
+          slipUrl = await getDownloadURL(storageRef);
+        } catch (err) {
+          console.error("Slip upload failed", err);
+          // Upload fail হলেও আমরা payment entry create করব
+          slipUrl = null;
+        }
       }
-
-      await addDoc(collection(db, "invoicePayments"), {
+      
+      await addDoc(collection(db, "payments"), {
         invoiceId,
-        payerName,
-        email: payerEmail,
+        userEmail: payerEmail,
+        name: payerName,
+        amount: Number(amountPaid),
         method,
-        amountPaid: Number(amountPaid),
+        provider: method,
         txId,
         slipUrl,
         status: "pending",
         createdAt: serverTimestamp(),
+        source: "invoice-payment-form"
       });
 
       if (invoiceId) {
@@ -171,7 +175,6 @@ export default function PublicInvoicePage() {
           });
         } catch (err) {
           console.warn("Invoice update failed (rules may block):", err);
-          // আপাতত ignore করি, admin payments log থেকেই দেখবে
         }
       }
 
@@ -181,16 +184,14 @@ export default function PublicInvoicePage() {
         title: "Submission Received!",
         description: "Your payment details have been submitted for verification.",
       });
-      // Reset form if needed
-      // setPayerName(''); setEmail(''); ...
 
     } catch (err: any) {
       console.error("Payment submit failed", err);
       setSubmitError(
-        "Payment details save করতে সমস্যা হয়েছে। আবার চেষ্টা করুন, না হলে WhatsApp এ যোগাযোগ করুন।"
+        "Payment তথ্য পাঠাতে সমস্যা হচ্ছে, একটু পর আবার চেষ্টা করুন।"
       );
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -410,13 +411,13 @@ export default function PublicInvoicePage() {
                   <select
                     name="paymentMethod"
                     value={method}
-                    onChange={(e) => setMethod(e.target.value as "bkash" | "bank" | "paypal")}
+                    onChange={(e) => setMethod(e.target.value as "bKash" | "Bank" | "PayPal")}
                     className="mt-1 w-full rounded border px-3 py-2 text-sm"
                     required
                   >
-                    <option value="bkash">bKash</option>
-                    <option value="bank">Bank transfer</option>
-                    <option value="paypal">PayPal</option>
+                    <option value="bKash">bKash</option>
+                    <option value="Bank">Bank transfer</option>
+                    <option value="PayPal">PayPal</option>
                   </select>
                 </div>
 
@@ -454,13 +455,10 @@ export default function PublicInvoicePage() {
                   Payment slip / screenshot (optional)
                 </label>
                 <input
+                  ref={slipInputRef}
                   type="file"
-                  name="paymentSlip"
+                  name="slip"
                   accept="image/*,.pdf"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-                    setSlipFile(f);
-                  }}
                   className="mt-1 text-sm"
                 />
               </div>
@@ -477,10 +475,10 @@ export default function PublicInvoicePage() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={isSubmitting}
                 className="mt-2 inline-flex items-center rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
               >
-                {submitting ? "Submitting..." : "Submit payment details"}
+                {isSubmitting ? "Submitting..." : "Submit payment details"}
               </button>
             </form>
         </div>
