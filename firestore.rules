@@ -3,108 +3,70 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --------- helpers ---------
+    // ----- helper -----
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      // Firebase custom claim: role = "admin"
-      return isSignedIn() && request.auth.token.role == "admin";
+    // তোমার main admin ইমেইল, ঠিক এটাকে owner ধরছি
+    function isOwner() {
+      return isSignedIn()
+        && request.auth.token.email == "shahmubaruk07@gmail.com";
     }
 
-    // ---------- PUBLIC READ-ONLY CONTENT (blog, pricing ইত্যাদি) ----------
-    // চাইলে তুমি পরে নাম বদলাতে পারো
-
-    match /blogPosts/{id} {
-      allow read: if true;           // সবাই blog পড়তে পারবে
-      allow write: if isAdmin();     // শুধু admin লিখবে/এডিট করবে
-    }
-
-    match /pricingPlans/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // ---------- USERS ----------
-    match /users/{uid}/{document=**} {
-      // যে user সে নিজে + admin – data দেখতে/এডিট করতে পারবে
-      allow read, update: if (isSignedIn() && request.auth.uid == uid) || isAdmin();
-      // signup করার সময় users ডক বানানোর জন্য
+    // ========= USERS =========
+    match /users/{uid} {
+      allow read, update: if (isSignedIn() && request.auth.uid == uid) || isOwner();
       allow create: if isSignedIn();
-      // delete শুধু admin
-      allow delete: if isAdmin();
+      allow delete: if isOwner();
     }
 
-    // ---------- SUBSCRIPTIONS (Pro/Premium plan info) ----------
-    match /subscriptions/{id} {
-      // এখন শুধু admin panel থেকে manage করবে
-      allow read, write: if isAdmin();
+    // ========= INTAKES (problemটা এখানেই) =========
+    // ১) যদি top-level collection হয়: /intakes
+    match /intakes/{intakeId} {
+      // এখনের জন্য dev-mode: সবার জন্য allow
+      allow read, write: if true;
     }
 
-    // ---------- INTAKES (public intake form + admin panel) ----------
-    match /intakes/{id} {
-      // Public intake form submit – auth দরকার নেই
-      allow create: if true;
-
-      // Intake list দেখা, status update করা – শুধু admin
-      allow read, update, delete: if isAdmin();
+    // ২) যদি nested হয় (যেমন /admins/{uid}/intakes) তখন এইটা কাজ করবে
+    match /{path=**}/intakes/{intakeId} {
+      allow read, write: if true;
     }
 
-    // ---------- ORDERS / TICKETS (admin /admin/orders) ----------
-    match /orders/{id}/{document=**} {
-      allow read, write: if isAdmin();
+    // ========= ORDERS / TICKETS =========
+    match /orders/{orderId} {
+      // শুধু owner manage করবে
+      allow read, write: if isOwner();
     }
 
-    // ---------- INVOICES ----------
+    // ========= INVOICES =========
     match /invoices/{id} {
-
-      // Public invoice page: /invoice/{id}
-      // invoice ডকে যদি public == true থাকে তাহলে লিঙ্ক যাদের কাছে আছে তারা দেখতে পারবে
-      allow read: if resource.data.public == true || isAdmin();
-
-      // invoice create / edit / delete – শুধুই admin
-      allow create, update, delete: if isAdmin();
+      // public invoice link দেখবে সবাই (resource.data.public == true হলে)
+      allow read: if resource.data.public == true || isOwner();
+      allow create, update, delete: if isOwner();
     }
 
-    // ---------- INVOICE PAYMENT CONFIRMATIONS ----------
-    // এখানে আমি ধরলাম collection-এর নাম "invoicePayments"
-    // (তুমি যদি অন্য নাম ব্যবহার করে থাকো, সেই নামটা এখানে বসিয়ে নিও)
-
+    // ========= PAYMENT CONFIRMATION =========
+    // এখানে ধরে নিলাম collection নাম invoicePayments
     match /invoicePayments/{id} {
-      // Public payment confirmation form থেকে create
-      allow create: if true;
-
-      // Payment list দেখা ও status change – শুধু admin
-      allow read, update, delete: if isAdmin();
+      allow create: if true;        // public form থেকে submit
+      allow read, update, delete: if isOwner();
     }
 
-    // ---------- PAYMENTS TABLE (admin /admin/payments টেবিল) ----------
-    // এখানে তুমি সব bkash / PayPal / Bank transaction aggregate রাখছো ধরে নিলাম
-
+    // ========= PAYMENTS DASHBOARD =========
     match /payments/{id} {
-      allow read, write: if isAdmin();
-    }
-    
-    // manual bKash subscription payments (আমরা আগে বানিয়েছি)
-    match /bkashPayments/{docId} {
-       // payment submit korar shomoy client der ke doc create korte debe
-      allow create: if true;
-      allow read, write: if isAdmin();
-    }
-    
-    match /paypalPayments/{docId} {
-       // payment submit korar shomoy client der ke doc create korte debe
-      allow create: if true;
-      allow read, write: if isAdmin();
-    }
-    
-     match /aiUsageLogs/{logId} {
-        allow create, read, write: if true;
+      allow create: if true;        // public side থেকে log তৈরি
+      allow read, update, delete: if isOwner();
     }
 
-    // ---------- DEFAULT: সবকিছু বন্ধ ----------
-    match /{document=**} {
+    // ========= পুরনো bkashPayments থাকলে =========
+    match /bkashPayments/{id} {
+      allow create: if true;
+      allow read, update, delete: if isOwner();
+    }
+
+    // ===== default deny =====
+    match /{path=**}/users/{document=**} {
       allow read, write: if false;
     }
   }
