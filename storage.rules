@@ -1,29 +1,10 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.role == "admin";
-    }
-
-    // ---------- INVOICE PAYMENT SLIPS ----------
-    // public payment confirmation form থেকে এখানে upload হয়:
-    // invoicePaymentSlips/{invoiceId}/{filename}
-    match /invoicePaymentSlips/{invoiceId}/{fileName} {
-      // upload সবাই করতে পারবে (bkash / bank slip)
-      allow write: if true;
-
-      // read/delete শুধু admin
-      allow read, delete: if isAdmin();
-    }
-
-    // অন্য সব path lock
+    // TEMP DEV RULE: allow all uploads & downloads
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
   }
 }
