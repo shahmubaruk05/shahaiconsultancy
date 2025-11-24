@@ -2,72 +2,9 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ----- helper -----
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // তোমার main admin ইমেইল, ঠিক এটাকে owner ধরছি
-    function isOwner() {
-      return isSignedIn()
-        && request.auth.token.email == "shahmubaruk07@gmail.com";
-    }
-
-    // ========= USERS =========
-    match /users/{uid} {
-      allow read, update: if (isSignedIn() && request.auth.uid == uid) || isOwner();
-      allow create: if isSignedIn();
-      allow delete: if isOwner();
-    }
-
-    // ========= INTAKES (problemটা এখানেই) =========
-    // ১) যদি top-level collection হয়: /intakes
-    match /intakes/{intakeId} {
-      // এখনের জন্য dev-mode: সবার জন্য allow
+    // TEMP DEV RULE: everything open
+    match /{document=**} {
       allow read, write: if true;
-    }
-
-    // ২) যদি nested হয় (যেমন /admins/{uid}/intakes) তখন এইটা কাজ করবে
-    match /{path=**}/intakes/{intakeId} {
-      allow read, write: if true;
-    }
-
-    // ========= ORDERS / TICKETS =========
-    match /orders/{orderId} {
-      // শুধু owner manage করবে
-      allow read, write: if isOwner();
-    }
-
-    // ========= INVOICES =========
-    match /invoices/{id} {
-      // public invoice link দেখবে সবাই (resource.data.public == true হলে)
-      allow read: if resource.data.public == true || isOwner();
-      allow create, update, delete: if isOwner();
-    }
-
-    // ========= PAYMENT CONFIRMATION =========
-    // এখানে ধরে নিলাম collection নাম invoicePayments
-    match /invoicePayments/{id} {
-      allow create: if true;        // public form থেকে submit
-      allow read, update, delete: if isOwner();
-    }
-
-    // ========= PAYMENTS DASHBOARD =========
-    match /payments/{id} {
-      allow create: if true;        // public side থেকে log তৈরি
-      allow read, update, delete: if isOwner();
-    }
-
-    // ========= পুরনো bkashPayments থাকলে =========
-    match /bkashPayments/{id} {
-      allow create: if true;
-      allow read, update, delete: if isOwner();
-    }
-
-    // ===== default deny =====
-    match /{path=**}/users/{document=**} {
-      allow read, write: if false;
     }
   }
 }
